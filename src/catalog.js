@@ -16,6 +16,24 @@ export const CAPABILITIES = {
     output: { url: 'string' },
     primary: 'url',
   },
+  'text.summarize': {
+    description: 'Condense a document into a short summary',
+    input: { text: 'string' },
+    output: { summary: 'string' },
+    primary: 'summary',
+  },
+  'audio.speak': {
+    description: 'Text to speech, returns an audio URL',
+    input: { text: 'string', voice: 'string?' },
+    output: { url: 'string' },
+    primary: 'url',
+  },
+  'embed.text': {
+    description: 'Vector embeddings for retrieval and search',
+    input: { text: 'string' },
+    output: { vector: 'object' },
+    primary: 'vector',
+  },
   'math.eval': {
     description: 'Evaluate an arithmetic expression exactly',
     input: { expression: 'string' },

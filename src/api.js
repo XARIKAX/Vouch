@@ -1,6 +1,10 @@
 import { ApiError } from './engine.js';
+import { CAPABILITIES } from './catalog.js';
 
 const MAX_BODY = 256 * 1024;
+
+// Catalog browsing is public — anonymous callers share one sandbox-tier bucket.
+const ANON_KEY = { id: 'anon', tier: 'sandbox' };
 
 export function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -91,8 +95,17 @@ export function createApi(engine) {
       });
     }],
 
+    ['GET', /^\/v1\/capabilities$/, async (req, res) => {
+      const key = req.headers.authorization ? auth(req) : ANON_KEY;
+      const rl = limit(key);
+      const capabilities = Object.entries(CAPABILITIES).map(([id, c]) => ({
+        id, description: c.description, input_schema: c.input, output_schema: c.output,
+      }));
+      send(res, 200, { capabilities }, rl);
+    }],
+
     ['GET', /^\/v1\/offers$/, async (req, res, _p, query) => {
-      const key = auth(req);
+      const key = req.headers.authorization ? auth(req) : ANON_KEY;
       const rl = limit(key);
       const offers = engine.offers({
         capability: query.get('capability') ?? undefined,

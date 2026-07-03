@@ -86,7 +86,9 @@ function composeText(prompt, seed) {
 // ---------------------------------------------------------------------------
 const junkFor = (capability) => {
   if (capability === 'math.eval') return null; // computed below (wrong answer)
-  if (capability === 'image.generate') return { url: 'about:blank#failed' };
+  if (capability === 'image.generate' || capability === 'audio.speak') return { url: 'about:blank#failed' };
+  if (capability === 'text.summarize') return { summary: '### ERROR ###' };
+  if (capability === 'embed.text') return { vector: [] };
   return { text: '### ERROR ### lorem lorem ###' };
 };
 
@@ -109,11 +111,25 @@ async function execute(provider, task, cfg) {
   if (!honest) return junkFor(cap);
 
   if (cap === 'text.generate') return { text: composeText(task.input.prompt, provider.id + task.id) };
+  if (cap === 'text.summarize') {
+    const src = String(task.input.text);
+    const firstSentences = src.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
+    return { summary: `${firstSentences} In short: ${src.slice(0, 80).trim()}${src.length > 80 ? '…' : ''}` };
+  }
   if (cap === 'image.generate') {
     const seed = Math.floor(hash01(task.id) * 1e6);
     const w = task.input.width ?? 1024;
     const h = task.input.height ?? 1024;
     return { url: `https://picsum.photos/seed/${seed}/${w}/${h}` };
+  }
+  if (cap === 'audio.speak') {
+    const seed = hash01(task.id + task.input.text).toString(16).slice(2, 12);
+    return { url: `https://cdn.vouch.example/tts/${seed}.mp3` };
+  }
+  if (cap === 'embed.text') {
+    const vector = Array.from({ length: 8 }, (_, i) =>
+      Math.round((hash01(task.input.text + ':' + i) * 2 - 1) * 1e4) / 1e4);
+    return { vector };
   }
   return { error: `provider ${provider.id} cannot serve ${cap}` };
 }
@@ -128,7 +144,10 @@ export function seedProviders(state) {
       id: 'prv_calder', name: 'Calder Labs', stake: 200, track: 96, reliability: 1,
       offers: {
         'text.generate': { price_ceiling: 0.02, sla_deadline_ms: 8000 },
+        'text.summarize': { price_ceiling: 0.008, sla_deadline_ms: 5000 },
         'image.generate': { price_ceiling: 0.03, sla_deadline_ms: 12000 },
+        'audio.speak': { price_ceiling: 0.012, sla_deadline_ms: 9000 },
+        'embed.text': { price_ceiling: 0.001, sla_deadline_ms: 1500 },
         'math.eval': { price_ceiling: 0.005, sla_deadline_ms: 2000 },
       },
     },
@@ -136,7 +155,10 @@ export function seedProviders(state) {
       id: 'prv_norn', name: 'Norn Compute', stake: 120, track: 88, reliability: 1,
       offers: {
         'text.generate': { price_ceiling: 0.012, sla_deadline_ms: 12000 },
+        'text.summarize': { price_ceiling: 0.005, sla_deadline_ms: 8000 },
         'image.generate': { price_ceiling: 0.022, sla_deadline_ms: 15000 },
+        'audio.speak': { price_ceiling: 0.009, sla_deadline_ms: 12000 },
+        'embed.text': { price_ceiling: 0.0008, sla_deadline_ms: 2500 },
       },
     },
     {

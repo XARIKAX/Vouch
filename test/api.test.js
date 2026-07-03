@@ -65,9 +65,10 @@ test('full HTTP loop: key → deposit → offers → task → settled', async ()
 test('auth: missing or bad key → 401 unauthorized', async () => {
   const { server, call } = await boot();
   try {
-    const noKey = await call('GET', '/v1/offers');
+    const noKey = await call('GET', '/v1/balance');
     assert.equal(noKey.status, 401);
     assert.equal(noKey.body.error.code, 'unauthorized');
+    // a present-but-invalid key is rejected even on public routes
     const badKey = await call('GET', '/v1/offers', { key: 'vch_not_real' });
     assert.equal(badKey.status, 401);
   } finally {
@@ -169,6 +170,65 @@ test('MCP: tools/list is open, tools/call requires a key and works end to end', 
       params: { name: 'vouch_balance', arguments: {} },
     });
     assert.equal(unauth.result.isError, true);
+  } finally {
+    server.close();
+  }
+});
+
+test('catalog is public: offers and capabilities need no key', async () => {
+  const { server, call } = await boot();
+  try {
+    const offers = await call('GET', '/v1/offers');
+    assert.equal(offers.status, 200);
+    assert.ok(offers.body.offers.length >= 8);
+    const caps = await call('GET', '/v1/capabilities');
+    assert.equal(caps.status, 200);
+    const ids = caps.body.capabilities.map((c) => c.id);
+    assert.ok(ids.includes('text.summarize'));
+    assert.ok(ids.includes('embed.text'));
+    assert.ok(ids.includes('research.web')); // listed even with no providers
+  } finally {
+    server.close();
+  }
+});
+
+test('new capabilities settle: summarize and embeddings', async () => {
+  const { server, call } = await boot();
+  try {
+    const KEY = (await call('POST', '/v1/keys', { body: {} })).body.key;
+    const poll = async (id) => {
+      for (let i = 0; i < 100; i++) {
+        const t = (await call('GET', `/v1/tasks/${id}`, { key: KEY })).body;
+        if (['settled', 'refunded'].includes(t.status)) return t;
+        await sleep(20);
+      }
+      throw new Error('not terminal');
+    };
+
+    const sum = await call('POST', '/v1/tasks', {
+      key: KEY,
+      body: {
+        capability: 'text.summarize',
+        input: { text: 'Escrow gates settlement on verification. Failed work refunds the buyer. Providers bond capital and lose it when they ship junk.' },
+        acceptance: { checks: [{ assert: 'contains_none', values: ['###'] }] },
+        budget: 0.01, deadline_ms: 8000, min_track: 90,
+      },
+    });
+    const sumDone = await poll(sum.body.id);
+    assert.equal(sumDone.status, 'settled');
+    assert.ok(sumDone.output.summary.length > 10);
+
+    const emb = await call('POST', '/v1/tasks', {
+      key: KEY,
+      body: {
+        capability: 'embed.text',
+        input: { text: 'vector me' },
+        budget: 0.002, deadline_ms: 5000,
+      },
+    });
+    const embDone = await poll(emb.body.id);
+    assert.equal(embDone.status, 'settled');
+    assert.equal(embDone.output.vector.length, 8);
   } finally {
     server.close();
   }

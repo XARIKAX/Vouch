@@ -33,6 +33,7 @@ export function createApp(cfgOverrides = {}) {
     if (url.pathname === '/mcp') return mcp(req, res);
     if (url.pathname === '/docs' || url.pathname === '/docs/') return staticFile(res, 'docs/index.html', 'text/html; charset=utf-8');
     if (url.pathname === '/dashboard') return staticFile(res, 'public/dashboard.html', 'text/html; charset=utf-8');
+    if (url.pathname === '/services') return staticFile(res, 'public/services.html', 'text/html; charset=utf-8');
     if (url.pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: true, tasks: Object.keys(engine.state.tasks).length }));
@@ -55,6 +56,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     api        http://localhost:${port}/v1
     mcp        http://localhost:${port}/mcp
     docs       http://localhost:${port}/docs
+    services   http://localhost:${port}/services
     dashboard  http://localhost:${port}/dashboard
 
     bootstrap key (sandbox tier, $${engine.cfg.faucet} escrow faucet — shown once):

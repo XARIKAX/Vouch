@@ -223,8 +223,8 @@ body.lock{overflow:hidden}
     <span class="stxt">Search docs…</span><kbd>⌘K</kbd>
   </button>
   <div class="top-right">
-    <a href="#" class="tl">Dashboard</a>
-    <a href="#" class="tl">Status</a>
+    <a href="/services" class="tl">Services</a>
+    <a href="/dashboard" class="tl">Dashboard</a>
     <a href="#quickstart" class="btn acc">Get started</a>
     <button class="icon-btn" id="theme-btn" title="Toggle theme"></button>
   </div>
@@ -541,8 +541,9 @@ console.log(task.id, task.quote.price);</code></pre></div></div>
   <div class="endpoint"><span class="pill get">GET</span><span class="inline">/offers</span></div>
   <p class="lead">The live catalog of standing offers: what the network will currently commit to, per capability, before you post anything.</p>
 
-  <div class="codewrap"><div class="codehead">Request</div><pre><code>curl "https://api.vouch.example/v1/offers?capability=image.generate" \
-  -H "Authorization: Bearer vch_your_key"</code></pre></div>
+  <p>Browsing is public — <span class="inline">GET /v1/offers</span> and <span class="inline">GET /v1/capabilities</span> need no key. A key raises your rate limit.</p>
+
+  <div class="codewrap"><div class="codehead">Request</div><pre><code>curl "https://api.vouch.example/v1/offers?capability=image.generate"</code></pre></div>
 
   <table>
     <tr><th>Param</th><th>Type</th><th>Description</th></tr>

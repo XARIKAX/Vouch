@@ -25,6 +25,7 @@ npm test         # 15 tests across the engine, HTTP API, SSE, and MCP
 Then:
 
 - **Docs** — http://localhost:4402/docs (full developer documentation, single file)
+- **Services** — http://localhost:4402/services (public live catalog: ceilings, SLAs, stakes, track records)
 - **Dashboard** — http://localhost:4402/dashboard (mint a key, post sample tasks, watch escrow/slash live)
 - **API** — http://localhost:4402/v1
 - **MCP** — http://localhost:4402/mcp (Streamable HTTP JSON-RPC)
@@ -64,7 +65,8 @@ post task → sealed quotes → escrow locks → provider delivers → verify �
 | Endpoint | Does |
 |---|---|
 | `POST /v1/keys` | Mint a sandbox key with faucet credit (dev bootstrap) |
-| `GET /v1/offers` | Standing offers: committed ceilings, SLAs, stake, track |
+| `GET /v1/offers` | Standing offers: committed ceilings, SLAs, stake, track (public) |
+| `GET /v1/capabilities` | The capability registry with schemas (public) |
 | `POST /v1/tasks` | Post a task → winning quote + escrow lock |
 | `GET /v1/tasks/{id}` | Task state, output, settlement or refund |
 | `GET /v1/tasks/{id}/events` | Live SSE stream of every transition |

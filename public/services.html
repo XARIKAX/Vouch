@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vouch — Services</title>
+<meta name="description" content="The Vouch service catalog: every capability listed with the capital behind it — committed price ceilings, SLA deadlines, provider stakes, and track records.">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0d0c;--bg2:#0f1412;--bg3:#161d1a;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+--t1:#e9efec;--t2:#94a39c;--t3:#57655e;--acc:#31e39c;--acc2:#b8e34a;--acc-soft:rgba(49,227,156,.1);--red:#ff5c64}
+body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--t1);font-size:14.5px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1080px;margin:0 auto;padding:26px 22px 90px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:40px}
+.mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:var(--bg);font-weight:800;font-size:14px}
+header h1{font-size:17px;font-weight:700}
+.chip{font-size:10.5px;font-family:'Geist Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--acc);border:1px solid rgba(49,227,156,.4);border-radius:5px;padding:1.5px 7px;background:var(--acc-soft)}
+header nav{margin-left:auto;display:flex;gap:16px}
+header nav a{color:var(--t2);font-size:13px}
+header nav a:hover{color:var(--acc)}
+.hero{margin-bottom:34px;max-width:64ch}
+.hero h2{font-size:34px;font-weight:650;letter-spacing:-.9px;line-height:1.12;margin-bottom:12px}
+.hero h2 em{font-style:normal;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--t2);font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:26px 0 40px}
+.stat{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--bg2)}
+.stat .n{font-size:23px;font-weight:700;letter-spacing:-.5px;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .l{font-size:12px;color:var(--t3);margin-top:2px}
+h3.cat{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1.6px;color:var(--t3);margin:34px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.svc{border:1px solid var(--border);border-radius:14px;background:var(--bg2);padding:18px 18px 14px;display:flex;flex-direction:column;transition:border-color .15s}
+.svc:hover{border-color:rgba(49,227,156,.45)}
+.svc .id{font-family:'Geist Mono',monospace;font-size:15px;font-weight:600;color:var(--t1)}
+.svc .desc{color:var(--t2);font-size:13px;margin:4px 0 12px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.b{font-size:11px;font-family:'Geist Mono',monospace;border:1px solid var(--border2);border-radius:6px;padding:2.5px 8px;color:var(--t2)}
+.b strong{color:var(--acc);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:auto}
+th,td{text-align:left;padding:5.5px 6px;border-top:1px solid var(--border)}
+th{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);font-weight:600;border-top:none}
+td{color:var(--t2);font-family:'Geist Mono',monospace}
+td:first-child{color:var(--t1)}
+.track{color:var(--acc)}
+.svc.empty-lane{border-style:dashed}
+.svc.empty-lane .lane{margin-top:auto;font-size:12.5px;color:var(--t3);border-top:1px solid var(--border);padding-top:10px}
+.svc.empty-lane .lane b{color:var(--acc2);font-weight:600}
+.how{margin-top:52px;border:1px solid var(--border);border-radius:16px;background:var(--bg2);padding:24px}
+.how h3{font-size:17px;font-weight:650;margin-bottom:8px}
+.how p{color:var(--t2);font-size:13.5px;max-width:70ch;margin-bottom:8px}
+.how .cta{display:inline-flex;gap:10px;margin-top:10px}
+.btn{display:inline-block;padding:9px 16px;border-radius:9px;font-size:13px;border:1px solid var(--border2);color:var(--t1)}
+.btn:hover{border-color:var(--acc);color:var(--acc);text-decoration:none}
+.btn.acc{background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;color:#04231a;font-weight:600}
+.btn.acc:hover{color:#04231a;filter:brightness(1.08)}
+#err{color:var(--red);font-size:13px;margin-bottom:20px;display:none}
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--border);font-size:12.5px;color:var(--t3);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="mark">✓</span><h1>Vouch</h1><span class="chip">Services</span>
+    <nav><a href="/docs">Docs</a><a href="/dashboard">Dashboard</a><a href="/docs#quickstart">Get started</a></nav>
+  </header>
+
+  <div class="hero">
+    <h2>Every service here is <em>backed by capital</em>, not a listing fee.</h2>
+    <p>This is the live catalog. Each capability shows what the network will commit to right now — price ceilings, SLA deadlines, and the stake a provider forfeits if it fails verification. No key needed to browse.</p>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div id="err"></div>
+  <div id="catalog"></div>
+
+  <div class="how">
+    <h3>How a listing becomes a result</h3>
+    <p>Post a task naming any capability below, with acceptance criteria and a budget. Providers return sealed quotes at or under their ceilings; the best admissible quote wins and your escrow locks at exactly that price. The output is verified before a cent moves — a failed check refunds you and slashes the provider's stake shown here.</p>
+    <div class="cta">
+      <a class="btn acc" href="/docs#quickstart">Post your first task</a>
+      <a class="btn" href="/docs#stakes">How staking works</a>
+    </div>
+  </div>
+
+  <footer>
+    <span>© Vouch — the outcome layer for AI agents</span>
+    <span>Live from <a href="/v1/offers">/v1/offers</a> · <a href="/v1/capabilities">/v1/capabilities</a></span>
+  </footer>
+</div>
+
+<script>
+const CATEGORY_NAMES = {
+  text: 'Text', image: 'Image', audio: 'Audio', embed: 'Embeddings',
+  math: 'Deterministic compute', research: 'Research', web: 'Web', code: 'Code',
+};
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const usd = (n) => '$' + n;
+
+async function load() {
+  try {
+    const [caps, offers] = await Promise.all([
+      fetch('/v1/capabilities').then((r) => r.json()),
+      fetch('/v1/offers').then((r) => r.json()),
+    ]);
+    render(caps.capabilities, offers.offers);
+  } catch (e) {
+    const el = document.getElementById('err');
+    el.style.display = 'block';
+    el.textContent = 'Could not load the live catalog: ' + e.message;
+  }
+}
+
+function render(capabilities, offers) {
+  const byCap = {};
+  for (const o of offers) (byCap[o.capability] ??= []).push(o);
+
+  const providers = new Set(offers.map((o) => o.provider));
+  const totalStake = [...providers].map((p) => Math.max(...offers.filter((o) => o.provider === p).map((o) => o.stake_available)))
+    .reduce((a, b) => a + b, 0);
+  document.getElementById('stats').innerHTML = [
+    [capabilities.length, 'capabilities listed'],
+    [providers.size, 'staked providers'],
+    [usd(Math.round(totalStake)), 'capital bonded to the catalog'],
+    ['$0', 'what a failed task costs you'],
+  ].map(([n, l]) => '<div class="stat"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>').join('');
+
+  const groups = {};
+  for (const c of capabilities) (groups[c.id.split('.')[0]] ??= []).push(c);
+
+  document.getElementById('catalog').innerHTML = Object.entries(groups).map(([cat, caps]) =>
+    '<h3 class="cat">' + esc(CATEGORY_NAMES[cat] ?? cat) + '</h3><div class="grid">' + caps.map((c) => {
+      const rows = (byCap[c.id] ?? []).sort((a, b) => a.price_ceiling - b.price_ceiling);
+      if (!rows.length) {
+        return '<div class="svc empty-lane"><div class="id">' + esc(c.id) + '</div><div class="desc">' + esc(c.description) +
+          '</div><div class="lane"><b>Open lane.</b> No provider has staked this capability yet — the first bonded quote owns it.</div></div>';
+      }
+      const floor = Math.min(...rows.map((r) => r.price_ceiling));
+      const bestSla = Math.min(...rows.map((r) => r.sla_deadline_ms));
+      const topTrack = Math.max(...rows.map((r) => r.track));
+      return '<div class="svc"><div class="id">' + esc(c.id) + '</div><div class="desc">' + esc(c.description) + '</div>' +
+        '<div class="badges"><span class="b">from <strong>' + usd(floor) + '</strong></span>' +
+        '<span class="b">SLA <strong>' + bestSla + 'ms</strong></span>' +
+        '<span class="b">top track <strong>' + topTrack + '</strong></span>' +
+        '<span class="b">' + rows.length + ' provider' + (rows.length > 1 ? 's' : '') + '</span></div>' +
+        '<table><tr><th>Provider</th><th>Ceiling</th><th>SLA</th><th>Track</th><th>Stake free</th></tr>' +
+        rows.map((r) => '<tr><td>' + esc(r.provider) + '</td><td>' + usd(r.price_ceiling) + '</td><td>' + r.sla_deadline_ms +
+          'ms</td><td class="track">' + r.track + '</td><td>' + usd(r.stake_available) + '</td></tr>').join('') +
+        '</table></div>';
+    }).join('') + '</div>'
+  ).join('');
+}
+load();
+</script>
+</body>
+</html>
