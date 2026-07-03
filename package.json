@@ -1,0 +1,14 @@
+{
+  "name": "vouch",
+  "version": "0.1.0",
+  "description": "The outcome layer for AI agents — escrowed tasks, staked providers, verified settlement.",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "VOUCH_FAST=1 node server.js",
+    "demo": "node scripts/demo.js",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}

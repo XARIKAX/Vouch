@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vouch — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0d0c;--bg2:#0f1412;--bg3:#161d1a;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+--t1:#e9efec;--t2:#94a39c;--t3:#57655e;--acc:#31e39c;--acc2:#b8e34a;--acc-soft:rgba(49,227,156,.1);--red:#ff5c64}
+body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 22px 80px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+.mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;color:var(--bg);font-weight:800;font-size:14px}
+h1{font-size:18px;font-weight:700}
+.chip{font-size:10.5px;font-family:'Geist Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--acc);border:1px solid rgba(49,227,156,.4);border-radius:5px;padding:1.5px 7px;background:var(--acc-soft)}
+header a{margin-left:auto;color:var(--t2);font-size:13px;text-decoration:none}
+header a:hover{color:var(--acc)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+input,button{font-family:'Geist',sans-serif;font-size:13px;border-radius:9px;border:1px solid var(--border2);background:var(--bg2);color:var(--t1);padding:9px 12px}
+input{flex:1;min-width:260px;font-family:'Geist Mono',monospace}
+input::placeholder{color:var(--t3)}
+button{cursor:pointer}
+button:hover{border-color:var(--acc);color:var(--acc)}
+button.acc{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#04231a;border:none;font-weight:600}
+button.acc:hover{color:#04231a;filter:brightness(1.08)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:22px}
+.stat{border:1px solid var(--border);border-radius:12px;padding:13px 15px;background:var(--bg2)}
+.stat .n{font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .l{font-size:11.5px;color:var(--t3);margin-top:1px}
+h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);margin:22px 0 10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);font-weight:600}
+td{color:var(--t2)}
+td.mono{font-family:'Geist Mono',monospace;font-size:12px;color:var(--t1);white-space:nowrap}
+.pill{display:inline-block;font-size:10.5px;font-family:'Geist Mono',monospace;padding:2px 8px;border-radius:5px;border:1px solid var(--border2);color:var(--t2)}
+.pill.settled{color:var(--acc);border-color:rgba(49,227,156,.4);background:var(--acc-soft)}
+.pill.refunded{color:var(--red);border-color:rgba(255,92,100,.4);background:rgba(255,92,100,.08)}
+.pill.dispatched,.pill.verifying,.pill.submitted,.pill.disputed{color:var(--acc2);border-color:rgba(184,227,74,.35)}
+.empty{color:var(--t3);padding:18px 10px;font-size:13px}
+#msg{font-size:12.5px;color:var(--t3);margin:-8px 0 14px;min-height:18px}
+#msg.err{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="mark">✓</span><h1>Vouch</h1><span class="chip">Dashboard</span>
+    <a href="/docs">Docs →</a>
+  </header>
+
+  <div class="row">
+    <input id="key" placeholder="vch_… (paste a key, or mint one)" autocomplete="off">
+    <button id="mint">Mint sandbox key</button>
+    <button id="deposit">Deposit $2</button>
+    <button id="sample" class="acc">Post sample task</button>
+  </div>
+  <div id="msg"></div>
+
+  <div class="grid">
+    <div class="stat"><div class="n" id="s-balance">—</div><div class="l">escrow balance</div></div>
+    <div class="stat"><div class="n" id="s-locked">—</div><div class="l">locked in open tasks</div></div>
+    <div class="stat"><div class="n" id="s-settled">—</div><div class="l">settled</div></div>
+    <div class="stat"><div class="n" id="s-refunded">—</div><div class="l">refunded (you paid $0)</div></div>
+  </div>
+
+  <h2>Tasks</h2>
+  <table>
+    <thead><tr><th>Task</th><th>Capability</th><th>Status</th><th>Provider</th><th>Price</th><th>Detail</th></tr></thead>
+    <tbody id="tasks"><tr><td colspan="6" class="empty">Paste or mint a key to begin.</td></tr></tbody>
+  </table>
+
+  <h2>Network offers</h2>
+  <table>
+    <thead><tr><th>Capability</th><th>Provider</th><th>Ceiling</th><th>SLA</th><th>Track</th><th>Stake free</th></tr></thead>
+    <tbody id="offers"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const keyInput = $('key');
+keyInput.value = localStorage.getItem('vouch_key') || '';
+
+const note = (text, err) => { const m = $('msg'); m.textContent = text; m.className = err ? 'err' : ''; };
+const api = async (method, path, body) => {
+  const res = await fetch(path, {
+    method,
+    headers: {
+      ...(keyInput.value ? { Authorization: 'Bearer ' + keyInput.value } : {}),
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ? data.error.code + ': ' + data.error.message : res.status);
+  return data;
+};
+
+$('mint').onclick = async () => {
+  try {
+    const k = await api('POST', '/v1/keys', { name: 'dashboard' });
+    keyInput.value = k.key;
+    localStorage.setItem('vouch_key', k.key);
+    note('Key minted with faucet credit — stored in this browser.');
+    refresh();
+  } catch (e) { note(e.message, true); }
+};
+$('deposit').onclick = async () => {
+  try { await api('POST', '/v1/escrow/deposit', { amount: 2 }); note('Deposited $2 (simulated).'); refresh(); }
+  catch (e) { note(e.message, true); }
+};
+
+const SAMPLES = [
+  { capability: 'math.eval', input: { expression: '19 * (2 + 3)' },
+    acceptance: { checks: [{ assert: 'equals', path: 'result', value: 95 }] },
+    budget: 0.01, deadline_ms: 5000 },
+  { capability: 'text.generate', input: { prompt: 'why escrow beats retries for autonomous agents' },
+    acceptance: { checks: [{ assert: 'length_between', min: 120 }, { assert: 'contains_none', values: ['###', 'ERROR'] }],
+      rubric: 'substantive, engages the prompt' },
+    budget: 0.03, deadline_ms: 10000, min_track: 90 },
+  { capability: 'text.generate', input: { prompt: 'a bargain-bin summary' },
+    acceptance: { checks: [{ assert: 'length_between', min: 120 }, { assert: 'contains_none', values: ['###', 'ERROR'] }] },
+    budget: 0.006, deadline_ms: 10000 }, // cheap enough that only the unreliable provider quotes
+];
+let sampleIdx = 0;
+$('sample').onclick = async () => {
+  try {
+    const body = SAMPLES[sampleIdx++ % SAMPLES.length];
+    const t = await api('POST', '/v1/tasks', body);
+    note('Posted ' + t.id + ' — ' + t.quote.provider + ' committed $' + t.quote.price);
+    refresh();
+  } catch (e) { note(e.message, true); refresh(); }
+};
+keyInput.addEventListener('change', () => { localStorage.setItem('vouch_key', keyInput.value); refresh(); });
+
+const pill = (s) => '<span class="pill ' + s + '">' + s + '</span>';
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function refresh() {
+  if (!keyInput.value) return;
+  try {
+    const [bal, tasks, offers] = await Promise.all([
+      api('GET', '/v1/balance'),
+      api('GET', '/v1/tasks?limit=25'),
+      api('GET', '/v1/offers'),
+    ]);
+    $('s-balance').textContent = '$' + bal.balance;
+    $('s-locked').textContent = '$' + bal.locked;
+    $('s-settled').textContent = tasks.tasks.filter((t) => t.status === 'settled').length;
+    $('s-refunded').textContent = tasks.tasks.filter((t) => t.status === 'refunded').length;
+
+    $('tasks').innerHTML = tasks.tasks.length ? tasks.tasks.map((t) => {
+      const detail = t.status === 'settled'
+        ? 'verified by [' + t.settlement.verified_by.join(', ') + ']'
+        : t.status === 'refunded'
+          ? esc(t.refund.reason) + (t.refund.detail ? ' — ' + esc(t.refund.detail) : '')
+          : '';
+      return '<tr><td class="mono">' + esc(t.id) + '</td><td class="mono">' + esc(t.capability) + '</td><td>' +
+        pill(t.status) + '</td><td class="mono">' + esc(t.quote?.provider ?? '') + '</td><td class="mono">$' +
+        (t.quote?.price ?? '') + '</td><td>' + detail + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty">No tasks yet — post a sample.</td></tr>';
+
+    $('offers').innerHTML = offers.offers.map((o) =>
+      '<tr><td class="mono">' + esc(o.capability) + '</td><td class="mono">' + esc(o.provider) + '</td><td class="mono">$' +
+      o.price_ceiling + '</td><td class="mono">' + o.sla_deadline_ms + 'ms</td><td class="mono">' + o.track +
+      '</td><td class="mono">$' + o.stake_available + '</td></tr>').join('');
+    note('');
+  } catch (e) { note(e.message, true); }
+}
+refresh();
+setInterval(refresh, 2500);
+</script>
+</body>
+</html>
