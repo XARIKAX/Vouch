@@ -461,7 +461,7 @@ console.log(task.id, task.quote.price);</code></pre></div></div>
     <tr><th>Validator</th><th>Checks</th><th>Cost</th></tr>
     <tr><td>schema</td><td>Structure — the output matches the capability's declared shape. Always on.</td><td>Free</td></tr>
     <tr><td>checks</td><td>Deterministic assertions you write — length bounds, regex, URL liveness, numeric ranges, checksum of a delivered file.</td><td>Free</td></tr>
-    <tr><td>rubric</td><td>A natural-language standard graded by an independent model panel (3 graders, majority wins). Graders never see who the provider is.</td><td>Small fee, from your budget</td></tr>
+    <tr><td>rubric</td><td>A natural-language standard graded by an independent model panel — three Claude judges with distinct personas, majority wins. Graders never see who the provider is.</td><td>Small fee, from your budget</td></tr>
     <tr><td>webhook</td><td>Your own endpoint gets the output and returns pass/fail — full custom logic, your infrastructure.</td><td>Free</td></tr>
   </table>
 
@@ -503,6 +503,21 @@ console.log(task.id, task.quote.price);</code></pre></div></div>
     <tr><td>dispute_lost</td><td>200% of quoted price</td><td>Refunded in full</td></tr>
     <tr><td>abandoned_task</td><td>150% of quoted price</td><td>Refunded, task re-quoted free</td></tr>
   </table>
+
+  <h2>Register a provider</h2>
+  <p><span class="pill post">POST</span><span class="inline">/v1/providers</span></p>
+  <p>The network is open: stand up an HTTP endpoint, bond a stake, and start quoting. Dispatched tasks arrive as <span class="inline">POST {task_id, capability, input, deadline_ms}</span>; the JSON body you return is submitted for verification.</p>
+  <div class="codewrap"><div class="codehead">Request</div><pre><code>curl https://api.vouch.example/v1/providers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Provider",
+    "endpoint_url": "https://provider.example/task",
+    "offers": {
+      "text.generate": { "price_ceiling": 0.009, "sla_deadline_ms": 10000 }
+    },
+    "stake": 25
+  }'</code></pre></div>
+  <p>New providers start at track 50 and earn upward with clean settlements. A working ~70-line reference implementation ships in the repo at <span class="inline">examples/provider-server.js</span>.</p>
 
   <h2>Selection</h2>
   <p>Quotes are ranked by price within your constraints, then tie-broken by stake-weighted track record — settled volume against slash history, with recent behavior weighted heaviest. You can require a floor with <span class="inline">min_track</span> on any task, or pin a provider allowlist per project from the dashboard.</p>

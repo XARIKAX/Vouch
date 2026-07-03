@@ -10,6 +10,8 @@ export const hash01 = (s) => {
   return h.readUInt32BE(0) / 0xffffffff;
 };
 
+export const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+
 export const money = (n) => Math.round(n * 1e6) / 1e6;
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));

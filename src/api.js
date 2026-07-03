@@ -95,6 +95,14 @@ export function createApi(engine) {
       });
     }],
 
+    // Provider registration is open in the dev sandbox (stake is a simulated
+    // bond). In production this sits behind provider onboarding + real staking.
+    ['POST', /^\/v1\/providers$/, async (req, res) => {
+      const body = await readBody(req);
+      const provider = engine.registerProvider(body);
+      send(res, 201, provider);
+    }],
+
     ['GET', /^\/v1\/capabilities$/, async (req, res) => {
       const key = req.headers.authorization ? auth(req) : ANON_KEY;
       const rl = limit(key);

@@ -1,7 +1,8 @@
-import { id, txHash, hash01, money, clamp } from './util.js';
+import { id, txHash, hash01, money, clamp, sha256 } from './util.js';
 import { CAPABILITIES, validateInput } from './catalog.js';
 import { seedProviders, runExecutor } from './providers.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
+import { createStore } from './store.js';
 
 // ---------------------------------------------------------------------------
 // ApiError carries the HTTP status and the error code from the docs.
@@ -25,34 +26,44 @@ export function createEngine(cfg = {}) {
     rpm: { sandbox: 60, startup: 600, scale: 6000 },
     disputeWindowMs: 24 * 60 * 60 * 1000,
     graderUrl: process.env.VOUCH_GRADER_URL || null,
+    anthropicKey: process.env.ANTHROPIC_API_KEY || null,
+    anthropicBaseUrl: process.env.VOUCH_ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
+    graderModel: process.env.VOUCH_GRADER_MODEL || 'claude-opus-4-8',
+    persistPath: null,
     ...cfg,
   };
 
-  const state = {
-    keys: {},       // keyId -> { id, token, name, tier, createdAt }
+  const store = createStore(cfg.persistPath);
+  const loaded = store.load();
+  const state = loaded ?? {
+    keys: {},       // keyId -> { id, tokenHash, name, tier, createdAt }
     accounts: {},   // keyId -> { balance, locked, lockedToday, history: [] }
     providers: {},  // providerId -> { stake, stakeReserved, track, earnings, ... }
     tasks: {},      // taskId -> task
     disputes: {},   // disputeId -> dispute
   };
-  seedProviders(state);
+  if (!loaded) seedProviders(state);
+  const persist = () => store.save(state);
 
   const subscribers = new Map(); // taskId -> Set<fn(event)>
 
   // ---- accounts & keys ----------------------------------------------------
 
   function createKey(name = 'default') {
-    const key = { id: id('key'), token: id('vch'), name, tier: 'sandbox', createdAt: Date.now() };
+    const token = id('vch');
+    const key = { id: id('key'), tokenHash: sha256(token), name, tier: 'sandbox', createdAt: Date.now() };
     state.keys[key.id] = key;
     state.accounts[key.id] = {
       balance: cfg.faucet, locked: 0, lockedToday: 0,
       history: [{ ts: Date.now(), kind: 'faucet', amount: cfg.faucet, tx: txHash() }],
     };
-    return key;
+    persist();
+    return { ...key, token }; // the plaintext token exists only in this return value
   }
 
   function authenticate(token) {
-    const key = Object.values(state.keys).find((k) => k.token === token);
+    const h = sha256(token ?? '');
+    const key = Object.values(state.keys).find((k) => k.tokenHash === h);
     if (!key) throw new ApiError(401, 'unauthorized', 'Missing, invalid, or revoked key.');
     return key;
   }
@@ -64,6 +75,7 @@ export function createEngine(cfg = {}) {
     acct.balance = money(acct.balance + capped);
     const entry = { ts: Date.now(), kind: 'deposit', amount: capped, tx: txHash() };
     acct.history.push(entry);
+    persist();
     return { balance: acct.balance, credited: capped, tx: entry.tx };
   }
 
@@ -210,6 +222,7 @@ export function createEngine(cfg = {}) {
     Object.assign(task, fields);
     emit(task, { status, ...fields });
     notifyWebhook(task);
+    persist();
     return true;
   }
 
@@ -347,6 +360,7 @@ export function createEngine(cfg = {}) {
     task.status = 'dispatched';
     state.tasks[task.id] = task;
     emit(task, { status: 'dispatched', quote: task.quote });
+    persist();
 
     runTask(task); // fire and forget; observable via events
 
@@ -395,6 +409,7 @@ export function createEngine(cfg = {}) {
       emit(task, { status: 'settled', dispute: { id: dispute.id, outcome: 'rejected' } });
     }
     dispute.resolvedAt = Date.now();
+    persist();
     notifyWebhook(task);
   }
 
@@ -432,10 +447,57 @@ export function createEngine(cfg = {}) {
     return d;
   }
 
+  // ---- provider registration ---------------------------------------------
+
+  function registerProvider(body) {
+    const { name, endpoint_url, offers: offered, stake } = body ?? {};
+    if (!name || typeof name !== 'string') {
+      throw new ApiError(400, 'invalid_input', 'name is required');
+    }
+    if (!/^https?:\/\//.test(endpoint_url ?? '')) {
+      throw new ApiError(400, 'invalid_input', 'endpoint_url must be an http(s) URL your provider serves');
+    }
+    if (!offered || typeof offered !== 'object' || !Object.keys(offered).length) {
+      throw new ApiError(400, 'invalid_input', 'offers must map at least one capability to { price_ceiling, sla_deadline_ms }');
+    }
+    for (const [cap, o] of Object.entries(offered)) {
+      if (!CAPABILITIES[cap]) throw new ApiError(404, 'unknown_capability', `No capability "${cap}" in the catalog.`);
+      if (!(o?.price_ceiling > 0)) throw new ApiError(400, 'invalid_input', `offers.${cap}.price_ceiling must be a positive USDC amount`);
+      if (!Number.isInteger(o?.sla_deadline_ms) || o.sla_deadline_ms <= 0) {
+        throw new ApiError(400, 'invalid_input', `offers.${cap}.sla_deadline_ms must be a positive integer`);
+      }
+    }
+    // Simulated bond, capped like the escrow faucet. On-chain staking replaces this.
+    const bonded = Math.min(Math.max(Number(stake) || 0, 1), 1000);
+    const provider = {
+      id: id('prv'), name, endpoint_url,
+      offers: Object.fromEntries(Object.entries(offered).map(([cap, o]) =>
+        [cap, { price_ceiling: money(o.price_ceiling), sla_deadline_ms: o.sla_deadline_ms }])),
+      stake: bonded, stakeReserved: 0, earnings: 0,
+      track: 50, settledCount: 0, slashedCount: 0,
+    };
+    state.providers[provider.id] = provider;
+    persist();
+    return provider;
+  }
+
+  // ---- boot recovery --------------------------------------------------------
+  // Restored in-flight tasks have lost their timers and executor promises;
+  // treat them as abandoned so escrow is made whole and stake answers for it.
+
+  if (loaded) {
+    for (const task of Object.values(state.tasks)) {
+      if (!TERMINAL.has(task.status) && task.status !== 'disputed' && task.quote) {
+        refundTask(task, 'provider_abandoned', 'platform restarted while the task was in flight');
+      }
+    }
+    persist();
+  }
+
   return {
     cfg, state,
     createKey, authenticate, deposit, balance,
     offers, createTask, getTask, listTasks, subscribe, publicTask,
-    openDispute, getDispute,
+    openDispute, getDispute, registerProvider,
   };
 }

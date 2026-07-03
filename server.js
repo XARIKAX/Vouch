@@ -31,6 +31,7 @@ export function createApp(cfgOverrides = {}) {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname.startsWith('/v1/')) return api(req, res, url);
     if (url.pathname === '/mcp') return mcp(req, res);
+    if (url.pathname === '/' || url.pathname === '/index.html') return staticFile(res, 'public/index.html', 'text/html; charset=utf-8');
     if (url.pathname === '/docs' || url.pathname === '/docs/') return staticFile(res, 'docs/index.html', 'text/html; charset=utf-8');
     if (url.pathname === '/dashboard') return staticFile(res, 'public/dashboard.html', 'text/html; charset=utf-8');
     if (url.pathname === '/services') return staticFile(res, 'public/services.html', 'text/html; charset=utf-8');
@@ -38,7 +39,7 @@ export function createApp(cfgOverrides = {}) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: true, tasks: Object.keys(engine.state.tasks).length }));
     }
-    res.writeHead(302, { Location: '/docs' });
+    res.writeHead(302, { Location: '/' });
     res.end();
   });
 
@@ -48,8 +49,12 @@ export function createApp(cfgOverrides = {}) {
 // Entry point: `node server.js`
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = Number(process.env.VOUCH_PORT ?? 4402);
-  const { server, engine } = createApp();
-  const bootstrap = engine.createKey('bootstrap');
+  const persistPath = process.env.VOUCH_EPHEMERAL === '1'
+    ? null
+    : (process.env.VOUCH_STATE ?? path.join(ROOT, 'data', 'state.json'));
+  const { server, engine } = createApp({ persistPath });
+  const restored = Object.keys(engine.state.keys).length > 0;
+  const bootstrap = restored ? null : engine.createKey('bootstrap');
   server.listen(port, () => {
     console.log(`
   ✓ vouch — the outcome layer for AI agents
@@ -59,8 +64,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     services   http://localhost:${port}/services
     dashboard  http://localhost:${port}/dashboard
 
+    state      ${persistPath ?? 'in-memory (VOUCH_EPHEMERAL=1)'}
+    grading    ${engine.cfg.anthropicKey ? `claude panel (${engine.cfg.graderModel})` : engine.cfg.graderUrl ? 'custom webhook' : 'offline heuristic — set ANTHROPIC_API_KEY for real grading'}
+${bootstrap ? `
     bootstrap key (sandbox tier, $${engine.cfg.faucet} escrow faucet — shown once):
     ${bootstrap.token}
-`);
+` : '    state restored — existing keys remain valid\n'}`);
   });
 }

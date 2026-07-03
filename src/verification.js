@@ -1,5 +1,6 @@
 import { validateOutput, primaryValue } from './catalog.js';
 import { hash01 } from './util.js';
+import { claudeGrade } from './grader.js';
 
 // ---------------------------------------------------------------------------
 // Verification pipeline: schema → checks → rubric → webhook.
@@ -67,11 +68,14 @@ async function runCheck(check, task, output, cfg) {
   }
 }
 
-// Rubric panel: three independent graders, majority wins. The default grader
-// is a deterministic heuristic so the stack runs offline; point
-// VOUCH_GRADER_URL at a real model endpoint to swap it out (it receives
-// { input, output, rubric, grader } and must return { pass: boolean }).
+// Rubric panel: three independent graders, majority wins. Grader resolution:
+//   1. VOUCH_GRADER_URL      — your own endpoint ({input, output, rubric, grader} -> {pass})
+//   2. ANTHROPIC_API_KEY     — a Claude judge panel (three personas, see grader.js)
+//   3. deterministic heuristic — offline fallback so the stack runs anywhere
 async function gradeOnce(task, output, rubric, graderIdx, cfg) {
+  if (!cfg.graderUrl && cfg.anthropicKey) {
+    return claudeGrade(task, output, rubric, graderIdx, cfg);
+  }
   if (cfg.graderUrl) {
     try {
       const res = await fetch(cfg.graderUrl, {

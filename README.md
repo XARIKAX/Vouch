@@ -24,6 +24,7 @@ npm test         # 15 tests across the engine, HTTP API, SSE, and MCP
 
 Then:
 
+- **Landing** — http://localhost:4402/ (the pitch, one page)
 - **Docs** — http://localhost:4402/docs (full developer documentation, single file)
 - **Services** — http://localhost:4402/services (public live catalog: ceilings, SLAs, stakes, track records)
 - **Dashboard** — http://localhost:4402/dashboard (mint a key, post sample tasks, watch escrow/slash live)
@@ -74,6 +75,7 @@ post task → sealed quotes → escrow locks → provider delivers → verify �
 | `GET /v1/disputes/{id}` | Dispute status |
 | `GET /v1/balance` | Escrow balance, locked, history |
 | `POST /v1/escrow/deposit` | Fund escrow (simulated USDC) |
+| `POST /v1/providers` | Register a provider: endpoint, offers, bonded stake |
 
 Errors follow the docs: `no_quotes` (409, with the nearest miss attached), `escrow_insufficient` (402), `rate_limited` (429 + `Retry-After`), `dispute_window_closed` (410). Rate-limit and escrow-ceiling headers ride on every response.
 
@@ -100,7 +102,7 @@ Tools: `vouch_find_offers`, `vouch_post_task`, `vouch_task_status`, `vouch_dispu
 |---|---|
 | `schema` | Output matches the capability's declared shape (always on) |
 | `checks` | Deterministic asserts: `length_between`, `contains_none`, `contains_all`, `regex`, `equals`, `links_resolve` |
-| `rubric` | 3-grader panel, majority wins. Heuristic by default; set `VOUCH_GRADER_URL` to use a real model endpoint |
+| `rubric` | 3-judge panel, majority wins. Set `ANTHROPIC_API_KEY` for a real Claude panel (three distinct judging personas); or `VOUCH_GRADER_URL` for your own grader endpoint; offline heuristic otherwise |
 | `webhook` | Your endpoint receives the output and returns `{ "pass": true\|false }` |
 
 ## Layout
@@ -113,28 +115,52 @@ src/verification.js  the validator pipeline and rubric panel
 src/providers.js     seeded provider network + executors (one deliberately
                      unreliable, so the slash path is demonstrable)
 src/catalog.js       capability registry with stable input/output schemas
+src/grader.js        Claude-backed rubric judge panel (Messages API)
+src/store.js         JSON snapshot persistence with crash recovery
 src/api.js           REST routes, auth, token-bucket rate limiting, SSE
 src/mcp.js           Model Context Protocol server (Streamable HTTP JSON-RPC)
 docs/                the documentation site (served at /docs)
 public/              the live dashboard (served at /dashboard)
+examples/            reference provider implementation (register + serve)
 scripts/demo.js      narrated end-to-end demo
-test/                engine + HTTP/SSE/MCP test suites
+test/                engine + HTTP/SSE/MCP + grader/persistence/provider suites
 ```
+
+## Run a provider
+
+The network is open. `POST /v1/providers` with your endpoint, offers, and a bonded stake — dispatched tasks arrive as `POST {task_id, capability, input, deadline_ms}` and the JSON you return is verified before you're paid. A complete reference provider ships in the repo:
+
+```sh
+npm start                                          # terminal 1: the platform
+VOUCH_URL=http://localhost:4402 node examples/provider-server.js   # terminal 2: a provider
+```
+
+It registers itself, bonds $25 of (simulated) stake, and starts winning `text.generate` quotes. Return junk and the platform slashes it — the whole thesis, runnable on localhost.
+
+## Deploy
+
+```sh
+docker build -t vouch . && docker run -p 4402:4402 -v vouch-data:/data vouch
+```
+
+State persists to `/data/state.json` (JSON snapshot, atomic writes); tasks in flight during a crash are refunded as `provider_abandoned` on boot. API keys are stored as SHA-256 hashes. CI (`.github/workflows/ci.yml`) runs the test suite and the demo on Node 20 and 22.
 
 ## Configuration
 
 | Env | Default | Does |
 |---|---|---|
 | `VOUCH_PORT` | `4402` | HTTP port |
+| `VOUCH_STATE` | `data/state.json` | State snapshot path (`VOUCH_EPHEMERAL=1` for in-memory) |
+| `ANTHROPIC_API_KEY` | — | Enables the Claude rubric-grading panel (three judge personas via the Messages API) |
+| `VOUCH_GRADER_MODEL` | `claude-opus-4-8` | Model for the grading panel |
 | `VOUCH_FAST` | off | Compress provider latencies (dev/test) |
-| `VOUCH_GRADER_URL` | — | External rubric grader endpoint (receives `{input, output, rubric, grader}`, returns `{pass}`) |
+| `VOUCH_GRADER_URL` | — | External rubric grader endpoint (receives `{input, output, rubric, grader}`, returns `{pass}`); takes precedence over the Claude panel |
 
 ## Status & roadmap
 
-This is a working reference implementation: the full protocol runs end to end in-process, with a **simulated USDC ledger** (deposits are a faucet, settlement transactions are generated hashes) and **seeded demo providers**. The seams are deliberate:
+The full protocol runs end to end: real HTTP providers can register and serve tasks, rubric grading runs on a real Claude judge panel when `ANTHROPIC_API_KEY` is set, state survives restarts, and keys are stored hashed. What remains simulated, deliberately:
 
-- `src/engine.js` ledger functions → swap for on-chain USDC escrow (e.g. x402 settlement)
-- `src/providers.js` executors → swap for real provider integrations and an open registration endpoint
-- rubric grader → point `VOUCH_GRADER_URL` at a real model
+- **The USDC ledger** — deposits are a faucet and settlement transactions are generated hashes. The four ledger functions in `src/engine.js` (lock/settle/refund/slash) are the seam for on-chain escrow on Base.
+- **Provider stakes** — bonds are granted, not deposited. Real staking lands with the on-chain ledger.
 
-State is in-memory; a restart clears it. Keys are stored in plaintext server-side — this is a dev sandbox, not custody software.
+This is a dev sandbox, not custody software — don't put real money behind it before the on-chain settlement layer and a security review.

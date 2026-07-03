@@ -92,7 +92,35 @@ const junkFor = (capability) => {
   return { text: '### ERROR ### lorem lorem ###' };
 };
 
+// Registered providers serve tasks over HTTP: POST {task_id, capability,
+// input, deadline_ms} to their endpoint; the JSON body they return is the
+// output submitted for verification. Timeouts and errors become refunds.
+async function executeExternal(provider, task) {
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), task.quote.deadline_ms);
+  try {
+    const res = await fetch(provider.endpoint_url, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        task_id: task.id,
+        capability: task.capability,
+        input: task.input,
+        deadline_ms: task.quote.deadline_ms,
+      }),
+    });
+    if (!res.ok) return { error: `provider endpoint returned ${res.status}` };
+    return await res.json();
+  } catch (e) {
+    return { error: e.name === 'AbortError' ? 'provider endpoint timed out' : `provider endpoint unreachable: ${e.message}` };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function execute(provider, task, cfg) {
+  if (provider.endpoint_url) return executeExternal(provider, task);
   const cap = task.capability;
   const latency = Math.max(5, Math.floor(task.quote.deadline_ms * (0.3 + 0.3 * hash01(provider.id + task.id))));
   await sleep(cfg.fast ? Math.min(latency, 60) : latency);
