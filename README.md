@@ -145,6 +145,8 @@ docker build -t vouch . && docker run -p 4402:4402 -v vouch-data:/data vouch
 
 State persists to `/data/state.json` (JSON snapshot, atomic writes); tasks in flight during a crash are refunded as `provider_abandoned` on boot. API keys are stored as SHA-256 hashes. CI (`.github/workflows/ci.yml`) runs the test suite and the demo on Node 20 and 22.
 
+Vouch is a long-running server with file-backed state — it needs a host that runs persistent processes with a writable volume (Railway, Fly.io, Render, any Docker host). It does **not** run on serverless platforms like Vercel. See [DEPLOYMENT.md](DEPLOYMENT.md) for hosted setup (Railway/Fly.io) and DNS cutover steps.
+
 ## Configuration
 
 | Env | Default | Does |
