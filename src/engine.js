@@ -3,6 +3,7 @@ import { CAPABILITIES, validateInput } from './catalog.js';
 import { seedProviders, runExecutor } from './providers.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
+import { createAttestor } from './attest.js';
 
 // ---------------------------------------------------------------------------
 // ApiError carries the HTTP status and the error code from the docs.
@@ -32,6 +33,9 @@ export function createEngine(cfg = {}) {
     persistPath: null,
     store: null,           // injected store (serverless); overrides persistPath
     recoveryGraceMs: 0,    // boot recovery skips in-flight tasks younger than this
+    maxAttempts: 4,        // hard cap on auto-retry attempts per task
+    insuranceRate: 0.5,    // failure compensation as a fraction of the task price
+    attestKey: process.env.VOUCH_ATTEST_KEY || null,
     ...cfg,
   };
 
@@ -43,7 +47,13 @@ export function createEngine(cfg = {}) {
     providers: {},  // providerId -> { stake, stakeReserved, track, earnings, ... }
     tasks: {},      // taskId -> task
     disputes: {},   // disputeId -> dispute
+    workflows: {},  // workflowId -> workflow
+    insurance: { balance: 0, funded: 0, claims: [] }, // outcome-guarantee pool
   };
+  // Forward-compat with state files predating these fields.
+  state.workflows ??= {};
+  state.insurance ??= { balance: 0, funded: 0, claims: [] };
+  const attestor = createAttestor(cfg);
   const persist = () => store.save(state);
   if (!loaded) { seedProviders(state); persist(); }
 
@@ -170,7 +180,13 @@ export function createEngine(cfg = {}) {
   function settleEscrow(task) {
     const acct = state.accounts[task.keyId];
     const p = state.providers[task.quote.provider];
-    acct.locked = money(acct.locked - task.quote.price);
+    // The full escrow was locked up front; the winning provider is paid its
+    // quoted price and any surplus (e.g. a cheaper retry provider) returns to
+    // the agent. locked === price in the common single-attempt case.
+    const locked = task.escrow?.locked ?? task.quote.price;
+    const surplus = money(Math.max(0, locked - task.quote.price));
+    acct.locked = money(acct.locked - locked);
+    if (surplus > 0) acct.balance = money(acct.balance + surplus);
     p.earnings = money(p.earnings + task.quote.price);
     p.stakeReserved = money(Math.max(0, p.stakeReserved - task.quote.stake_reserved));
     p.settledCount++;
@@ -182,10 +198,11 @@ export function createEngine(cfg = {}) {
 
   function refundEscrow(task, reason) {
     const acct = state.accounts[task.keyId];
-    acct.locked = money(acct.locked - task.quote.price);
-    acct.balance = money(acct.balance + task.quote.price);
-    acct.lockedToday = money(Math.max(0, acct.lockedToday - task.quote.price));
-    const entry = { ts: Date.now(), kind: 'refund', amount: task.quote.price, task: task.id, reason, tx: txHash() };
+    const locked = task.escrow?.locked ?? task.quote.price;
+    acct.locked = money(acct.locked - locked);
+    acct.balance = money(acct.balance + locked);
+    acct.lockedToday = money(Math.max(0, acct.lockedToday - locked));
+    const entry = { ts: Date.now(), kind: 'refund', amount: locked, task: task.id, reason, tx: txHash() };
     acct.history.push(entry);
     return entry.tx;
   }
@@ -197,6 +214,9 @@ export function createEngine(cfg = {}) {
     p.stakeReserved = money(Math.max(0, p.stakeReserved - task.quote.stake_reserved));
     p.slashedCount++;
     p.track = clamp(p.track - 15, 0, 100);
+    // Slashed stake capitalizes the outcome-insurance pool.
+    state.insurance.balance = money(state.insurance.balance + amount);
+    state.insurance.funded = money(state.insurance.funded + amount);
     return amount;
   }
 
@@ -244,69 +264,140 @@ export function createEngine(cfg = {}) {
   function refundTask(task, reason, detail) {
     const p = state.providers[task.quote.provider];
     const multiple = reason === 'provider_abandoned' ? 1.5 : reason === 'dispute_upheld' ? 2 : 1;
+    // Compensation draws from the pool as it stands *before* this task's own
+    // slash tops it up — a fresh pool has nothing to pay out yet.
+    const comp = payInsurance(task, reason);
     const slashed = slashProvider(task, multiple);
     const refundTx = refundEscrow(task, reason);
     terminalize(task, 'refunded', {
       refund: { reason, detail, tx: refundTx },
       slash: { provider: p.id, amount: slashed },
+      ...(comp ? { compensation: comp } : {}),
+      ...(task.attempts?.length ? { attempts: task.attempts } : {}),
     });
+  }
+
+  // Outcome insurance: on a failed task the agent gets its escrow back (cost
+  // $0) and, on top of that, a compensation payout from the pool for the wasted
+  // round-trip — funded by the stake just slashed from providers.
+  function payInsurance(task, reason) {
+    const rate = cfg.insuranceRate;
+    if (!(rate > 0)) return null;
+    const comp = money(Math.min(state.insurance.balance, task.quote.price * rate));
+    if (!(comp > 0)) return null;
+    const acct = state.accounts[task.keyId];
+    state.insurance.balance = money(state.insurance.balance - comp);
+    acct.balance = money(acct.balance + comp);
+    const tx = txHash();
+    acct.history.push({ ts: Date.now(), kind: 'insurance', amount: comp, task: task.id, tx });
+    state.insurance.claims.push({ ts: Date.now(), task: task.id, reason, amount: comp });
+    if (state.insurance.claims.length > 200) state.insurance.claims.shift();
+    return { amount: comp, tx };
+  }
+
+  // Next-best provider for a retry: admissible, not already tried, and priced
+  // at or under the escrow already locked (so no additional funds are needed).
+  function pickRetryQuote(task) {
+    const tried = new Set((task.attempts ?? []).map((a) => a.provider));
+    const cap = task.escrow?.locked ?? task.budget;
+    const quotes = collectQuotes(task).filter(
+      (q) => !tried.has(q.provider) && admissible(task, q) === null && q.price <= cap
+    );
+    if (!quotes.length) return null;
+    quotes.sort((a, b) => a.price - b.price || (b.track * b.stake_available) - (a.track * a.stake_available));
+    return quotes[0];
+  }
+
+  function reserveProvider(task, q) {
+    const p = state.providers[q.provider];
+    p.stakeReserved = money(p.stakeReserved + q.price);
+    task.quote = { provider: q.provider, price: q.price, deadline_ms: q.deadline_ms, stake_reserved: q.price };
   }
 
   async function runTask(task) {
     const startedAt = Date.now();
-    // Commitment enforcement: the quoted deadline is a hard timer, not a hint.
+    task.attempts = task.attempts ?? [];
+    // Deadline: with auto-retry the agent's deadline_ms caps the whole loop;
+    // otherwise the single committed quote governs.
+    const deadlineBudget = task.retry ? task.deadline_ms : task.quote.deadline_ms;
     task.timer = setTimeout(() => {
       if (!TERMINAL.has(task.status)) {
-        refundTask(task, 'deadline_missed', `no verified output within the quoted ${task.quote.deadline_ms} ms`);
+        refundTask(task, 'deadline_missed', `no verified output within ${deadlineBudget} ms`);
       }
-    }, task.quote.deadline_ms + (cfg.fast ? 250 : 1000));
+    }, deadlineBudget + (cfg.fast ? 250 : 1000));
 
-    const provider = state.providers[task.quote.provider];
-    let output;
-    try {
-      output = await runExecutor(provider, task, cfg);
-    } catch (e) {
-      output = { error: e.message };
+    while (true) {
+      const provider = state.providers[task.quote.provider];
+      let output;
+      try {
+        output = await runExecutor(provider, task, cfg);
+      } catch (e) {
+        output = { error: e.message };
+      }
+      if (TERMINAL.has(task.status)) return;
+
+      let failure = null;
+      if (output?.error) {
+        failure = { reason: 'provider_abandoned', detail: output.error };
+      } else {
+        task.status = 'submitted';
+        emit(task, { status: 'submitted' });
+
+        task.status = 'verifying';
+        const validators = ['schema'];
+        if (task.acceptance.checks?.length) validators.push('checks');
+        if (task.acceptance.rubric) validators.push('rubric');
+        if (task.acceptance.webhook) validators.push('webhook');
+        emit(task, { status: 'verifying', validators });
+
+        const verdict = await verify(task, output, cfg);
+        if (TERMINAL.has(task.status)) return;
+
+        if (verdict.pass) {
+          task.output = output;
+          const settleTx = settleEscrow(task);
+          const settlement = {
+            provider: task.quote.provider,
+            price: task.quote.price,
+            verified_by: verdict.verified_by,
+            elapsed_ms: Date.now() - startedAt,
+            attempts: task.attempts.length + 1,
+            escrow_tx: settleTx,
+            settled_at: Date.now(),
+          };
+          // Portable proof-of-verified-work.
+          task.attestation = attestor.attest('settlement', {
+            task_id: task.id,
+            capability: task.capability,
+            provider: task.quote.provider,
+            price: task.quote.price,
+            verified_by: verdict.verified_by,
+            output_sha256: sha256(JSON.stringify(output)),
+            settled_at: settlement.settled_at,
+          });
+          terminalize(task, 'settled', { output, settlement, attestation: task.attestation });
+          return;
+        }
+        failure = { reason: 'verification_failed', detail: `${verdict.failed.validator}: ${verdict.failed.detail}` };
+      }
+
+      // Failure. Retry to a fresh provider if enabled and one is available;
+      // otherwise refund + slash + insure.
+      task.attempts.push({ provider: task.quote.provider, ...failure });
+      const next = (task.retry && task.attempts.length < task.maxAttempts) ? pickRetryQuote(task) : null;
+      if (next) {
+        slashProvider(task, failure.reason === 'provider_abandoned' ? 1.5 : 1);
+        reserveProvider(task, next);
+        emit(task, { status: 'retrying', attempt: task.attempts.length, next_provider: next.provider, reason: failure.reason });
+        task.status = 'dispatched';
+        continue;
+      }
+      return refundTask(task, failure.reason, failure.detail);
     }
-    if (TERMINAL.has(task.status)) return;
-
-    if (output?.error) {
-      return refundTask(task, 'provider_abandoned', output.error);
-    }
-    task.status = 'submitted';
-    emit(task, { status: 'submitted' });
-
-    task.status = 'verifying';
-    const validators = ['schema'];
-    if (task.acceptance.checks?.length) validators.push('checks');
-    if (task.acceptance.rubric) validators.push('rubric');
-    if (task.acceptance.webhook) validators.push('webhook');
-    emit(task, { status: 'verifying', validators });
-
-    const verdict = await verify(task, output, cfg);
-    if (TERMINAL.has(task.status)) return;
-
-    if (!verdict.pass) {
-      return refundTask(task, 'verification_failed', `${verdict.failed.validator}: ${verdict.failed.detail}`);
-    }
-
-    task.output = output;
-    const settleTx = settleEscrow(task);
-    terminalize(task, 'settled', {
-      output,
-      settlement: {
-        provider: task.quote.provider,
-        price: task.quote.price,
-        verified_by: verdict.verified_by,
-        elapsed_ms: Date.now() - startedAt,
-        escrow_tx: settleTx,
-        settled_at: Date.now(),
-      },
-    });
   }
 
   function createTask(key, body) {
-    const { capability, input, acceptance = {}, budget, deadline_ms, min_track, webhook_url, idempotency_key } = body ?? {};
+    const { capability, input, acceptance = {}, budget, deadline_ms, min_track, webhook_url, idempotency_key, retry } = body ?? {};
 
     if (idempotency_key) {
       const existing = Object.values(state.tasks).find(
@@ -327,9 +418,18 @@ export function createEngine(cfg = {}) {
       throw new ApiError(400, 'invalid_input', 'deadline_ms must be a positive integer');
     }
 
+    // Auto-retry: on failure, reroute to the next-best provider (within the
+    // committed escrow) until the output verifies or attempts run out. Opt-in:
+    // retry:true, or retry:{ max_attempts:N }.
+    const retryOn = retry === true || (retry && typeof retry === 'object');
+    const maxAttempts = retryOn
+      ? Math.max(2, Math.min(cfg.maxAttempts, Number(retry?.max_attempts) || cfg.maxAttempts))
+      : 1;
+
     const task = {
       id: id('tsk'), keyId: key.id, capability, input,
       acceptance, budget, deadline_ms, min_track, webhook_url, idempotency_key,
+      retry: retryOn, maxAttempts, attempts: [],
       status: 'quoting', createdAt: Date.now(), events: [],
     };
 
@@ -351,13 +451,17 @@ export function createEngine(cfg = {}) {
     admissibleQuotes.sort((a, b) => a.price - b.price || (b.track * b.stake_available) - (a.track * a.stake_available));
     const winner = admissibleQuotes[0];
 
+    // A retry-enabled task locks its full committed budget so it can reroute
+    // to a pricier-but-better provider; only the winner is paid, the surplus is
+    // refunded on settlement. A plain task locks exactly the winning quote.
     const acct = state.accounts[key.id];
-    if (acct.balance < winner.price) {
-      throw new ApiError(402, 'escrow_insufficient', 'Balance below the lowest admissible quote. Top up or raise the ceiling.', {
-        required: winner.price, balance: acct.balance,
+    const lockAmount = retryOn ? money(budget) : winner.price;
+    if (acct.balance < lockAmount) {
+      throw new ApiError(402, 'escrow_insufficient', 'Balance below the escrow required for this task. Top up or lower the budget.', {
+        required: lockAmount, balance: acct.balance,
       });
     }
-    if (acct.lockedToday + winner.price > cfg.dailyCeiling[key.tier]) {
+    if (acct.lockedToday + lockAmount > cfg.dailyCeiling[key.tier]) {
       throw new ApiError(402, 'escrow_insufficient', 'Daily escrow ceiling reached for this key.', {
         ceiling: cfg.dailyCeiling[key.tier], locked_today: acct.lockedToday,
       });
@@ -365,13 +469,13 @@ export function createEngine(cfg = {}) {
 
     const provider = state.providers[winner.provider];
     provider.stakeReserved = money(provider.stakeReserved + winner.price);
-    const escrowTx = lockEscrow(key.id, winner.price);
+    const escrowTx = lockEscrow(key.id, lockAmount);
 
     task.quote = {
       provider: winner.provider, price: winner.price,
       deadline_ms: winner.deadline_ms, stake_reserved: winner.price,
     };
-    task.escrow = { locked: winner.price, tx: escrowTx };
+    task.escrow = { locked: lockAmount, tx: escrowTx };
     task.status = 'dispatched';
     state.tasks[task.id] = task;
     emit(task, { status: 'dispatched', quote: task.quote });
@@ -496,6 +600,153 @@ export function createEngine(cfg = {}) {
     return provider;
   }
 
+  // ---- provider reputation (public) ---------------------------------------
+
+  function publicProvider(p) {
+    const reliability = p.settledCount + p.slashedCount > 0
+      ? money(p.settledCount / (p.settledCount + p.slashedCount)) : null;
+    return {
+      id: p.id, name: p.name, endpoint_url: p.endpoint_url,
+      track: Math.round(p.track), stake: p.stake, stake_available: money(p.stake - p.stakeReserved),
+      earnings: p.earnings, settled: p.settledCount, slashed: p.slashedCount,
+      reliability, capabilities: Object.keys(p.offers), offers: p.offers,
+    };
+  }
+  function listProviders() {
+    return Object.values(state.providers)
+      .map(publicProvider)
+      .sort((a, b) => b.track - a.track || b.stake - a.stake);
+  }
+  function getProvider(id) {
+    const p = state.providers[id];
+    if (!p) throw new ApiError(404, 'not_found', `No provider ${id}.`);
+    return publicProvider(p);
+  }
+
+  function insuranceStats() {
+    return {
+      pool_balance: state.insurance.balance,
+      total_funded: state.insurance.funded,
+      claims_paid: state.insurance.claims.length,
+      recent_claims: state.insurance.claims.slice(-10),
+    };
+  }
+
+  function getAttestation(key, taskId) {
+    const task = state.tasks[taskId];
+    if (!task || task.keyId !== key.id) throw new ApiError(404, 'not_found', `No task ${taskId}.`);
+    if (!task.attestation) throw new ApiError(409, 'not_attestable', `Task ${taskId} has no attestation (status ${task.status}).`);
+    return { attestation: task.attestation, public_key: attestor.publicKeyPem };
+  }
+  function attestorKey() {
+    return { alg: 'ed25519', key_id: attestor.keyId, public_key: attestor.publicKeyPem };
+  }
+
+  // ---- verification-as-a-service ------------------------------------------
+  // Verify an output the caller already has (from any source) and hand back a
+  // signed attestation — no escrow, no execution, no provider.
+  async function verifyOutput(key, body) {
+    const { capability, input = {}, output, acceptance = {} } = body ?? {};
+    if (!CAPABILITIES[capability]) throw new ApiError(404, 'unknown_capability', `No capability "${capability}" in the catalog.`);
+    if (output === undefined || output === null) throw new ApiError(400, 'invalid_input', 'output is required');
+    const acceptCheck = validateAcceptance(acceptance);
+    if (!acceptCheck.ok) throw new ApiError(400, 'invalid_acceptance', acceptCheck.detail);
+
+    const synthetic = { id: id('vrf'), capability, input, acceptance };
+    const verdict = await verify(synthetic, output, cfg);
+    const attestation = verdict.pass
+      ? attestor.attest('verification', {
+          capability, verified_by: verdict.verified_by,
+          output_sha256: sha256(JSON.stringify(output)),
+        })
+      : null;
+    return {
+      pass: verdict.pass,
+      verified_by: verdict.verified_by ?? null,
+      failed: verdict.failed ?? null,
+      attestation,
+    };
+  }
+
+  // ---- verified workflows --------------------------------------------------
+  // Sequential task graph: each step is a normal task; later steps can splice
+  // earlier verified outputs via {{steps.N.output.path}} refs. The chain stops
+  // at the first step that doesn't settle.
+  const REF = /\{\{\s*steps\.(\d+)\.output([.\w[\]]*)\s*\}\}/g;
+  function resolveRefs(value, ctx) {
+    if (typeof value === 'string') {
+      return value.replace(REF, (_m, i, path) => {
+        let cur = ctx.steps[Number(i)]?.output;
+        for (const key of path.split(/[.[\]]/).filter(Boolean)) cur = cur?.[key];
+        return cur ?? '';
+      });
+    }
+    if (Array.isArray(value)) return value.map((v) => resolveRefs(v, ctx));
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolveRefs(v, ctx)]));
+    }
+    return value;
+  }
+  function publicWorkflow(wf) {
+    const { keyId, ...rest } = wf;
+    return rest;
+  }
+  function whenSettled(taskId) {
+    const t = state.tasks[taskId];
+    if (!t) return Promise.resolve(null);
+    if (TERMINAL.has(t.status)) return Promise.resolve(t);
+    return new Promise((resolve) => {
+      const un = subscribe(taskId, (evt) => {
+        if (evt.status === 'settled' || evt.status === 'refunded') { un(); resolve(state.tasks[taskId]); }
+      });
+    });
+  }
+  async function runWorkflow(wf, key, steps) {
+    const ctx = { steps: [] };
+    for (let i = 0; i < steps.length; i++) {
+      let created;
+      try {
+        created = createTask(key, resolveRefs(steps[i], ctx));
+      } catch (e) {
+        wf.status = 'failed';
+        wf.failure = { step: i, error: e.message };
+        persist();
+        return;
+      }
+      wf.steps.push({ index: i, taskId: created.task.id, status: created.task.status });
+      const done = await whenSettled(created.task.id);
+      const entry = wf.steps[wf.steps.length - 1];
+      entry.status = done?.status ?? 'unknown';
+      ctx.steps.push({ output: done?.output ?? null, status: done?.status });
+      if (!done || done.status !== 'settled') {
+        wf.status = 'failed';
+        wf.failure = { step: i, taskId: created.task.id, reason: done?.refund?.reason ?? 'unknown' };
+        persist();
+        return;
+      }
+    }
+    wf.status = 'completed';
+    wf.output = ctx.steps.at(-1)?.output ?? null;
+    persist();
+  }
+  function createWorkflow(key, body) {
+    const steps = body?.steps;
+    if (!Array.isArray(steps) || !steps.length) {
+      throw new ApiError(400, 'invalid_input', 'steps must be a non-empty array of task bodies');
+    }
+    if (steps.length > 12) throw new ApiError(400, 'invalid_input', 'a workflow is capped at 12 steps');
+    const wf = { id: id('wkf'), keyId: key.id, status: 'running', steps: [], createdAt: Date.now() };
+    state.workflows[wf.id] = wf;
+    persist();
+    track(runWorkflow(wf, key, steps));
+    return publicWorkflow(wf);
+  }
+  function getWorkflow(key, wfId) {
+    const wf = state.workflows[wfId];
+    if (!wf || wf.keyId !== key.id) throw new ApiError(404, 'not_found', `No workflow ${wfId}.`);
+    return publicWorkflow(wf);
+  }
+
   // ---- boot recovery --------------------------------------------------------
   // Restored in-flight tasks have lost their timers and executor promises;
   // treat them as abandoned so escrow is made whole and stake answers for it.
@@ -517,5 +768,7 @@ export function createEngine(cfg = {}) {
     createKey, authenticate, deposit, balance,
     offers, createTask, getTask, listTasks, subscribe, publicTask,
     openDispute, getDispute, registerProvider,
+    listProviders, getProvider, insuranceStats, getAttestation, attestorKey,
+    verifyOutput, createWorkflow, getWorkflow,
   };
 }

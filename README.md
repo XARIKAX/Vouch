@@ -68,14 +68,24 @@ post task → sealed quotes → escrow locks → provider delivers → verify �
 | `POST /v1/keys` | Mint a sandbox key with faucet credit (dev bootstrap) |
 | `GET /v1/offers` | Standing offers: committed ceilings, SLAs, stake, track (public) |
 | `GET /v1/capabilities` | The capability registry with schemas (public) |
-| `POST /v1/tasks` | Post a task → winning quote + escrow lock |
+| `POST /v1/tasks` | Post a task → winning quote + escrow lock. Add `retry: true` for auto-retry to a verified result |
 | `GET /v1/tasks/{id}` | Task state, output, settlement or refund |
 | `GET /v1/tasks/{id}/events` | Live SSE stream of every transition |
+| `GET /v1/tasks/{id}/attestation` | ed25519 proof-of-verified-work for a settled task |
 | `POST /v1/tasks/{id}/dispute` | Escalate a settlement for re-review |
 | `GET /v1/disputes/{id}` | Dispute status |
+| `POST /v1/verify` | Verify your own output, get a signed verdict — no escrow, no execution |
+| `POST /v1/workflows` | Run a verified multi-step task graph (outputs thread via `{{steps.N.output.path}}`) |
+| `GET /v1/workflows/{id}` | Workflow state and per-step results |
+| `GET /v1/providers` | Provider reputation: track record, stake, reliability (public) |
+| `GET /v1/providers/{id}` | One provider's detail (public) |
+| `GET /v1/insurance` | Outcome-insurance pool balance and recent claims (public) |
+| `GET /v1/attestation/key` | Public key to verify attestations offline (public) |
 | `GET /v1/balance` | Escrow balance, locked, history |
 | `POST /v1/escrow/deposit` | Fund escrow (simulated USDC) |
 | `POST /v1/providers` | Register a provider: endpoint, offers, bonded stake |
+
+**Auto-retry** (`retry: true` or `retry: { max_attempts }`) locks the full budget in escrow, reroutes past any provider that fails verification, pays only the one that passes, and refunds the surplus. **Outcome insurance**: slashed stake capitalizes a pool that compensates the agent on a failed task, on top of the automatic refund. **Attestations** are ed25519-signed so any holder can verify verified-work offline. A zero-dep **provider SDK** lives in `examples/vouch-provider-sdk.js`.
 
 Errors follow the docs: `no_quotes` (409, with the nearest miss attached), `escrow_insufficient` (402), `rate_limited` (429 + `Retry-After`), `dispute_window_closed` (410). Rate-limit and escrow-ceiling headers ride on every response.
 
