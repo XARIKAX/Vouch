@@ -1,0 +1,27 @@
+# Fly.io config — alternative to Railway. See DEPLOYMENT.md.
+# Deploy: fly launch --copy-config --no-deploy && fly volumes create vouch_data --region lhr --size 1 && fly deploy
+app = "vouch"
+primary_region = "lhr"
+
+[env]
+  VOUCH_PORT = "4402"
+  VOUCH_STATE = "/data/state.json"
+
+[[mounts]]
+  source = "vouch_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 4402
+  force_https = true
+  # State lives on a single volume, so keep exactly one machine running.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "3s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"

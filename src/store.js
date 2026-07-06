@@ -7,6 +7,9 @@ import path from 'node:path';
 
 const DROP_KEYS = new Set(['timer']);
 
+// Shared by every store backend: drops runtime-only fields from snapshots.
+export const stateReplacer = (k, v) => (DROP_KEYS.has(k) ? undefined : v);
+
 export function createStore(filePath) {
   if (!filePath) {
     return { load: () => null, save: () => {}, path: null };
@@ -25,7 +28,7 @@ export function createStore(filePath) {
     try {
       mkdirSync(path.dirname(filePath), { recursive: true });
       const tmp = `${filePath}.tmp`;
-      writeFileSync(tmp, JSON.stringify(state, (k, v) => (DROP_KEYS.has(k) ? undefined : v)));
+      writeFileSync(tmp, JSON.stringify(state, stateReplacer));
       renameSync(tmp, filePath);
     } catch (e) {
       console.error(`vouch: failed to persist state to ${filePath}: ${e.message}`);

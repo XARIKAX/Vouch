@@ -1,4 +1,4 @@
-import { id, txHash, hash01, money, clamp, sha256 } from './util.js';
+import { id, txHash, hash01, money, clamp, sha256, sleep } from './util.js';
 import { CAPABILITIES, validateInput } from './catalog.js';
 import { seedProviders, runExecutor } from './providers.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
@@ -30,10 +30,12 @@ export function createEngine(cfg = {}) {
     anthropicBaseUrl: process.env.VOUCH_ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
     graderModel: process.env.VOUCH_GRADER_MODEL || 'claude-opus-4-8',
     persistPath: null,
+    store: null,           // injected store (serverless); overrides persistPath
+    recoveryGraceMs: 0,    // boot recovery skips in-flight tasks younger than this
     ...cfg,
   };
 
-  const store = createStore(cfg.persistPath);
+  const store = cfg.store ?? createStore(cfg.persistPath);
   const loaded = store.load();
   const state = loaded ?? {
     keys: {},       // keyId -> { id, tokenHash, name, tier, createdAt }
@@ -42,10 +44,23 @@ export function createEngine(cfg = {}) {
     tasks: {},      // taskId -> task
     disputes: {},   // disputeId -> dispute
   };
-  if (!loaded) seedProviders(state);
   const persist = () => store.save(state);
+  if (!loaded) { seedProviders(state); persist(); }
 
   const subscribers = new Map(); // taskId -> Set<fn(event)>
+
+  // Background work (task runs, dispute reviews, webhooks) is fire-and-forget
+  // in server mode but must complete before a serverless invocation returns.
+  // Every background promise is tracked here; drain() awaits them all.
+  const inflight = new Set();
+  const track = (p) => {
+    inflight.add(p);
+    p.catch(() => {}).finally(() => inflight.delete(p));
+    return p;
+  };
+  async function drain() {
+    while (inflight.size) await Promise.allSettled([...inflight]);
+  }
 
   // ---- accounts & keys ----------------------------------------------------
 
@@ -221,7 +236,7 @@ export function createEngine(cfg = {}) {
     task.status = status;
     Object.assign(task, fields);
     emit(task, { status, ...fields });
-    notifyWebhook(task);
+    track(notifyWebhook(task));
     persist();
     return true;
   }
@@ -362,7 +377,7 @@ export function createEngine(cfg = {}) {
     emit(task, { status: 'dispatched', quote: task.quote });
     persist();
 
-    runTask(task); // fire and forget; observable via events
+    track(runTask(task)); // fire and forget; observable via events, awaitable via drain()
 
     return { task: publicTask(task), reused: false };
   }
@@ -410,7 +425,7 @@ export function createEngine(cfg = {}) {
     }
     dispute.resolvedAt = Date.now();
     persist();
-    notifyWebhook(task);
+    track(notifyWebhook(task));
   }
 
   function openDispute(key, taskId, body) {
@@ -437,7 +452,7 @@ export function createEngine(cfg = {}) {
     task.status = 'disputed';
     emit(task, { status: 'disputed', dispute: { id: dispute.id, reason: dispute.reason } });
 
-    setTimeout(() => resolveDispute(dispute, task), cfg.fast ? 50 : 1500);
+    track(sleep(cfg.fast ? 50 : 1500).then(() => resolveDispute(dispute, task)));
     return dispute;
   }
 
@@ -484,10 +499,13 @@ export function createEngine(cfg = {}) {
   // ---- boot recovery --------------------------------------------------------
   // Restored in-flight tasks have lost their timers and executor promises;
   // treat them as abandoned so escrow is made whole and stake answers for it.
+  // recoveryGraceMs spares recent tasks: on serverless, a task loaded as
+  // in-flight may still be running inside a concurrent invocation.
 
   if (loaded) {
     for (const task of Object.values(state.tasks)) {
-      if (!TERMINAL.has(task.status) && task.status !== 'disputed' && task.quote) {
+      if (!TERMINAL.has(task.status) && task.status !== 'disputed' && task.quote
+          && Date.now() - task.createdAt >= cfg.recoveryGraceMs) {
         refundTask(task, 'provider_abandoned', 'platform restarted while the task was in flight');
       }
     }
@@ -495,7 +513,7 @@ export function createEngine(cfg = {}) {
   }
 
   return {
-    cfg, state,
+    cfg, state, drain,
     createKey, authenticate, deposit, balance,
     offers, createTask, getTask, listTasks, subscribe, publicTask,
     openDispute, getDispute, registerProvider,

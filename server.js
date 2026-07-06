@@ -27,7 +27,7 @@ export function createApp(cfgOverrides = {}) {
     }
   };
 
-  const server = http.createServer(async (req, res) => {
+  const handler = async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname.startsWith('/v1/')) return api(req, res, url);
     if (url.pathname === '/mcp') return mcp(req, res);
@@ -41,9 +41,10 @@ export function createApp(cfgOverrides = {}) {
     }
     res.writeHead(302, { Location: '/' });
     res.end();
-  });
+  };
 
-  return { server, engine };
+  const server = http.createServer(handler);
+  return { server, engine, handler };
 }
 
 // Entry point: `node server.js`

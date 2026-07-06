@@ -7,6 +7,17 @@ const MAX_BODY = 256 * 1024;
 const ANON_KEY = { id: 'anon', tier: 'sandbox' };
 
 export function readBody(req) {
+  // Serverless runtimes (e.g. Vercel's Node helpers) consume the request
+  // stream before the handler runs and leave the parsed body on req.body.
+  if (req.body !== undefined) {
+    const b = req.body;
+    if (b === null || b === '') return Promise.resolve({});
+    if (Buffer.isBuffer(b) || typeof b === 'string') {
+      try { return Promise.resolve(JSON.parse(b.toString('utf8'))); }
+      catch { return Promise.reject(new ApiError(400, 'invalid_input', 'Request body is not valid JSON.')); }
+    }
+    return Promise.resolve(b);
+  }
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];

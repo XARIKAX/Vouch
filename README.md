@@ -145,6 +145,8 @@ docker build -t vouch . && docker run -p 4402:4402 -v vouch-data:/data vouch
 
 State persists to `/data/state.json` (JSON snapshot, atomic writes); tasks in flight during a crash are refunded as `provider_abandoned` on boot. API keys are stored as SHA-256 hashes. CI (`.github/workflows/ci.yml`) runs the test suite and the demo on Node 20 and 22.
 
+Two hosted modes: **server mode** (the Dockerfile — Railway, Fly.io, any Docker host with a `/data` volume) and **serverless mode** on Vercel (`api/index.js` + `vercel.json`, state in Upstash Redis via REST — still zero dependencies). See [DEPLOYMENT.md](DEPLOYMENT.md) for setup steps and the serverless trade-offs.
+
 ## Configuration
 
 | Env | Default | Does |
