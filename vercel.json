@@ -1,13 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
   "regions": ["lhr1"],
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ],
   "functions": {
     "api/index.js": {
-      "maxDuration": 300,
-      "includeFiles": "{public,docs}/**"
+      "maxDuration": 60,
+      "includeFiles": "**/*.html"
     }
   }
 }
