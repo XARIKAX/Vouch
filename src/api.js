@@ -114,6 +114,54 @@ export function createApi(engine) {
       send(res, 201, provider);
     }],
 
+    // Provider reputation — public.
+    ['GET', /^\/v1\/providers$/, async (req, res) => {
+      const key = req.headers.authorization ? auth(req) : ANON_KEY;
+      const rl = limit(key);
+      send(res, 200, { providers: engine.listProviders() }, rl);
+    }],
+
+    ['GET', /^\/v1\/providers\/([a-z0-9_]+)$/, async (req, res, [providerId]) => {
+      const key = req.headers.authorization ? auth(req) : ANON_KEY;
+      const rl = limit(key);
+      send(res, 200, engine.getProvider(providerId), rl);
+    }],
+
+    // Insurance pool — public stats.
+    ['GET', /^\/v1\/insurance$/, async (req, res) => {
+      const key = req.headers.authorization ? auth(req) : ANON_KEY;
+      const rl = limit(key);
+      send(res, 200, engine.insuranceStats(), rl);
+    }],
+
+    // Attestation public key — anyone can verify a receipt offline.
+    ['GET', /^\/v1\/attestation\/key$/, async (req, res) => {
+      send(res, 200, engine.attestorKey());
+    }],
+
+    // Verification-as-a-service: bring your own output, get a signed verdict.
+    ['POST', /^\/v1\/verify$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      const result = await engine.verifyOutput(key, body);
+      send(res, 200, result, rl);
+    }],
+
+    // Verified workflows.
+    ['POST', /^\/v1\/workflows$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      send(res, 201, engine.createWorkflow(key, body), { ...rl, ...escrowHeader(key) });
+    }],
+
+    ['GET', /^\/v1\/workflows\/([a-z0-9_]+)$/, async (req, res, [wfId]) => {
+      const key = auth(req);
+      const rl = limit(key);
+      send(res, 200, engine.getWorkflow(key, wfId), rl);
+    }],
+
     ['GET', /^\/v1\/capabilities$/, async (req, res) => {
       const key = req.headers.authorization ? auth(req) : ANON_KEY;
       const rl = limit(key);
@@ -166,6 +214,12 @@ export function createApi(engine) {
         if (['settled', 'refunded'].includes(evt.status)) { unsub(); res.end(); }
       });
       req.on('close', unsub);
+    }],
+
+    ['GET', /^\/v1\/tasks\/([a-z0-9_]+)\/attestation$/, async (req, res, [taskId]) => {
+      const key = auth(req);
+      const rl = limit(key);
+      send(res, 200, engine.getAttestation(key, taskId), rl);
     }],
 
     ['GET', /^\/v1\/tasks\/([a-z0-9_]+)$/, async (req, res, [taskId]) => {
