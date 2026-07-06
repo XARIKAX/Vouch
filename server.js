@@ -49,7 +49,7 @@ export function createApp(cfgOverrides = {}) {
 
 // Entry point: `node server.js`
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const port = Number(process.env.VOUCH_PORT ?? 4402);
+  const port = Number(process.env.VOUCH_PORT ?? process.env.PORT ?? 4402);
   const persistPath = process.env.VOUCH_EPHEMERAL === '1'
     ? null
     : (process.env.VOUCH_STATE ?? path.join(ROOT, 'data', 'state.json'));
