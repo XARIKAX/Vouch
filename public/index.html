@@ -245,6 +245,55 @@ footer{border-top:1px solid var(--border);padding:66px 0 46px;background:color-m
 .fbase .mono{font-size:12px}
 .fbase .ok-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);margin-right:7px}
 
+/* ---------- USP: the guarantee (interactive) ---------- */
+.usp{background:
+  radial-gradient(50rem 30rem at 50% -10%,rgba(230,201,136,.08),transparent 60%);border-block:1px solid var(--border)}
+.usp .wrap{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:60px;align-items:center}
+.usp .kicker{font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:2.6px;text-transform:uppercase;color:var(--acc);margin-bottom:18px;display:flex;align-items:center;gap:12px}
+.usp .kicker::before{content:"";width:28px;height:1px;background:var(--acc)}
+.usp h2{font-size:clamp(34px,4.2vw,52px);margin-bottom:20px}
+.usp h2 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.usp .say{color:var(--t2);font-size:17.5px;font-weight:380;max-width:34rem;margin-bottom:26px}
+.usp .say strong{color:var(--t1);font-weight:600}
+.usp .prompt{font-family:'Geist Mono',monospace;font-size:12.5px;color:var(--t3);display:flex;align-items:center;gap:9px}
+.usp .prompt b{color:var(--acc);font-weight:500}
+.usp .prompt .arrow{animation:nudge 1.8s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+
+.demo{border:1px solid var(--border2);border-radius:22px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(24,24,26,.95),rgba(15,15,16,.97));
+  box-shadow:0 44px 100px rgba(0,0,0,.55),inset 0 1px 0 rgba(232,222,197,.06)}
+.demo-tabs{display:flex;gap:8px;padding:14px}
+.demo-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:9px;padding:13px;border-radius:13px;
+  border:1px solid var(--border2);background:transparent;color:var(--t2);font-family:'Geist',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:.2s}
+.demo-tab .ic{width:19px;height:19px;border-radius:50%;display:grid;place-items:center;font-size:11px;border:1px solid currentColor}
+.demo-tab:hover{color:var(--t1);border-color:var(--border3)}
+.demo-tab[aria-pressed="true"].good{color:var(--acc);border-color:color-mix(in srgb,var(--acc) 55%,transparent);background:var(--acc-soft)}
+.demo-tab[aria-pressed="true"].bad{color:var(--red);border-color:rgba(255,92,100,.5);background:var(--red-soft)}
+.demo-screen{padding:6px 22px 22px;font-family:'Geist Mono',monospace}
+.dscr-head{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--t3);padding:8px 0 14px;border-bottom:1px solid var(--border)}
+.dscr-head .st{margin-left:auto;letter-spacing:1.5px;font-size:10px;padding:2px 9px;border-radius:99px;border:1px solid currentColor}
+.demo[data-state="pass"] .dscr-head .st{color:var(--acc)}
+.demo[data-state="fail"] .dscr-head .st{color:var(--red)}
+.drow{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--border);font-size:12.8px}
+.drow .k{width:17px;height:17px;border-radius:50%;display:grid;place-items:center;font-size:9px;flex:none;border:1px solid var(--border2);color:var(--t3)}
+.drow.hit .k{border-color:color-mix(in srgb,var(--acc) 45%,transparent);background:var(--acc-soft);color:var(--acc)}
+.drow.miss .k{border-color:rgba(255,92,100,.5);background:var(--red-soft);color:var(--red)}
+.drow .lb{color:var(--t2)}
+.drow .vl{margin-left:auto;color:var(--t1);text-align:right}
+.drow .vl.g{color:var(--acc)}.drow .vl.r{color:var(--red)}
+.dtotal{display:flex;align-items:flex-end;justify-content:space-between;padding-top:20px;gap:14px}
+.dtotal .cap{font-size:12.5px;color:var(--t2);max-width:16rem;line-height:1.5}
+.dtotal .cap b{display:block;color:var(--t3);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:5px}
+.dtotal .fig{font-family:'Geist',sans-serif;font-weight:800;letter-spacing:-2px;line-height:1;font-size:60px;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;white-space:nowrap}
+.demo-note{padding:14px 22px;border-top:1px solid var(--border);font-size:12px;color:var(--t3);display:flex;align-items:center;gap:9px}
+.demo-note .dot{width:6px;height:6px;border-radius:50%;flex:none}
+.demo[data-state="pass"] .demo-note .dot{background:var(--acc);box-shadow:0 0 8px var(--acc)}
+.demo[data-state="fail"] .demo-note .dot{background:var(--red);box-shadow:0 0 8px var(--red)}
+@media(max-width:1020px){.usp .wrap{grid-template-columns:1fr;gap:40px}}
+@media(max-width:560px){.dtotal{flex-direction:column;align-items:flex-start;gap:10px}.dtotal .fig{font-size:48px}}
+
 /* reveal */
 .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.3,1),transform .7s cubic-bezier(.2,.7,.3,1)}
 .rv.in{opacity:1;transform:none}
@@ -290,9 +339,9 @@ footer{border-top:1px solid var(--border);padding:66px 0 46px;background:color-m
 <div class="noise"></div>
 
 <div class="ann">
-  <span class="pin">New</span>
-  <span>Routing layers stop at the vendor. <b>Vouch settles only when the work passes.</b></span>
-  <a href="#hierarchy">See the difference →</a>
+  <span class="pin">USP</span>
+  <span>Your agent pays <b>$0 for a wrong answer</b> — verification gates payment, failure slashes the provider.</span>
+  <a href="#guarantee">See the guarantee →</a>
 </div>
 
 <nav class="top">
@@ -373,6 +422,37 @@ footer{border-top:1px solid var(--border);padding:66px 0 46px;background:color-m
     </div>
   </div>
 </div>
+
+<section class="usp" id="guarantee">
+  <div class="wrap">
+    <div class="rv">
+      <div class="kicker">The guarantee</div>
+      <h2>Your agent never pays<br>for a <em>wrong answer.</em></h2>
+      <p class="say">Every other layer settles the moment a vendor responds — a wrong response still clears, and re-paying is your problem. Vouch settles only when the output <strong>passes verification</strong>. When it doesn't, your escrow is refunded in full and the provider's <strong>staked capital is slashed</strong>.</p>
+      <div class="prompt"><b>Try it</b> — flip the outcome <span class="arrow">→</span></div>
+    </div>
+
+    <div class="rv">
+      <div class="demo" id="demo" data-state="pass">
+        <div class="demo-tabs">
+          <button class="demo-tab good" data-set="pass" aria-pressed="true"><span class="ic">✓</span> Provider delivers</button>
+          <button class="demo-tab bad" data-set="fail" aria-pressed="false"><span class="ic">✕</span> Provider ships junk</button>
+        </div>
+        <div class="demo-screen">
+          <div class="dscr-head"><span>vouch · tsk_9f2ce1a4 · text.generate</span><span class="st" id="d-state">SETTLED</span></div>
+          <div class="drow" id="d-verify"><span class="k">✓</span><span class="lb">verification</span><span class="vl g" id="d-verify-v">schema · checks · rubric 3/3</span></div>
+          <div class="drow" id="d-escrow"><span class="k">✓</span><span class="lb" id="d-escrow-l">settlement released</span><span class="vl" id="d-escrow-v">provider paid</span></div>
+          <div class="drow" id="d-stake"><span class="k">✓</span><span class="lb">provider stake</span><span class="vl g" id="d-stake-v">+$0.021 earned</span></div>
+          <div class="dtotal">
+            <div class="cap"><b id="d-cap-l">your agent paid</b><span id="d-cap-t">the committed price — for a verified outcome.</span></div>
+            <div class="fig" id="d-fig">$0.021</div>
+          </div>
+        </div>
+        <div class="demo-note"><span class="dot"></span><span id="d-note">Verified by an independent three-judge panel before a cent moved.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section id="hierarchy">
   <div class="wrap">
@@ -564,6 +644,51 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
   if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
 }), { threshold: 0.12 });
 document.querySelectorAll('.rv').forEach((el) => io.observe(el));
+
+// USP demo — flip between a verified settlement and a failed, slashed task
+(() => {
+  const demo = document.getElementById('demo');
+  if (!demo) return;
+  const S = {
+    pass: {
+      state: 'SETTLED', verifyCls: 'hit', verifyK: '✓', verifyVCls: 'vl g',
+      verify: 'schema · checks · rubric 3/3',
+      escrowCls: 'hit', escrowK: '✓', escrowL: 'settlement released', escrowV: 'provider paid', escrowVCls: 'vl',
+      stakeCls: 'hit', stakeK: '✓', stakeV: '+$0.021 earned', stakeVCls: 'vl g',
+      capL: 'your agent paid', capT: 'the committed price — for a verified outcome.',
+      fig: '$0.021',
+      note: 'Verified by an independent three-judge panel before a cent moved.',
+    },
+    fail: {
+      state: 'REFUNDED', verifyCls: 'miss', verifyK: '✕', verifyVCls: 'vl r',
+      verify: 'rubric 1/3 — below threshold',
+      escrowCls: 'hit', escrowK: '↺', escrowL: 'escrow refunded', escrowV: 'you made whole', escrowVCls: 'vl g',
+      stakeCls: 'miss', stakeK: '✕', stakeV: '−$0.032 stake slashed', stakeVCls: 'vl r',
+      capL: 'your agent paid', capT: 'nothing — the work never passed verification.',
+      fig: '$0.00',
+      note: 'The provider ate the loss. Failure is priced to the party that caused it.',
+    },
+  };
+  const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+  const apply = (k) => {
+    const s = S[k];
+    demo.dataset.state = k;
+    document.querySelectorAll('.demo-tab').forEach((t) => t.setAttribute('aria-pressed', String(t.dataset.set === k)));
+    set('d-state', s.state);
+    document.getElementById('d-verify').className = 'drow ' + s.verifyCls;
+    document.querySelector('#d-verify .k').textContent = s.verifyK;
+    const vv = document.getElementById('d-verify-v'); vv.className = s.verifyVCls; vv.textContent = s.verify;
+    document.getElementById('d-escrow').className = 'drow ' + s.escrowCls;
+    document.querySelector('#d-escrow .k').textContent = s.escrowK;
+    set('d-escrow-l', s.escrowL);
+    const ev = document.getElementById('d-escrow-v'); ev.className = s.escrowVCls; ev.textContent = s.escrowV;
+    document.getElementById('d-stake').className = 'drow ' + s.stakeCls;
+    document.querySelector('#d-stake .k').textContent = s.stakeK;
+    const sv = document.getElementById('d-stake-v'); sv.className = s.stakeVCls; sv.textContent = s.stakeV;
+    set('d-cap-l', s.capL); set('d-cap-t', s.capT); set('d-fig', s.fig); set('d-note', s.note);
+  };
+  document.querySelectorAll('.demo-tab').forEach((t) => t.addEventListener('click', () => apply(t.dataset.set)));
+})();
 
 // Live network stats + capability marquee
 (async () => {
