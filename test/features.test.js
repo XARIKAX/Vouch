@@ -184,6 +184,53 @@ test('workflow: a two-step chain settles and threads the first output into the s
   assert.equal(done.output.result, 42);
 });
 
+// ---- x402 execution adapter ---------------------------------------------
+// A mock x402 resource: first call (no X-PAYMENT) → 402 with requirements;
+// retry with X-PAYMENT → 200 with the output.
+function x402Resource(output) {
+  let sawPayment = false;
+  const server = http.createServer((req, res) => {
+    let raw = '';
+    req.on('data', (c) => { raw += c; });
+    req.on('end', () => {
+      if (!req.headers['x-payment']) {
+        res.writeHead(402, { 'Content-Type': 'application/json' });
+        return res.end(JSON.stringify({ accepts: [{ scheme: 'exact', network: 'base-sepolia', maxAmountRequired: '1000', asset: 'USDC' }] }));
+      }
+      sawPayment = true;
+      res.writeHead(200, { 'Content-Type': 'application/json', 'X-PAYMENT-RESPONSE': 'settled' });
+      res.end(JSON.stringify(output));
+    });
+  });
+  return new Promise((resolve) => server.listen(0, () => resolve({
+    url: `http://localhost:${server.address().port}/x402`,
+    paid: () => sawPayment, close: () => server.close(),
+  })));
+}
+
+test('x402 adapter: pays the 402 challenge, gets output, and it settles through verification', async () => {
+  const resource = await x402Resource({ text: 'A verified answer delivered over x402. '.repeat(6) });
+  try {
+    const engine = createEngine(FAST);
+    engine.state.providers = {};
+    const p = engine.registerProvider({ name: 'x402 vendor', protocol: 'x402', endpoint_url: resource.url, stake: 60,
+      offers: { 'text.generate': { price_ceiling: 0.02, sla_deadline_ms: 8000 } } });
+    assert.equal(engine.getProvider(p.id).protocol, 'x402');
+
+    const key = engine.createKey('t');
+    engine.deposit(key, 1);
+    const { task } = engine.createTask(key, {
+      capability: 'text.generate', input: { prompt: 'hello' },
+      acceptance: { checks: [{ assert: 'length_between', min: 120 }, { assert: 'contains_none', values: ['###'] }] },
+      budget: 0.03, deadline_ms: 8000,
+    });
+    const done = await waitTerminal(engine, task.id);
+    assert.equal(done.status, 'settled', 'x402 output verified and settled');
+    assert.ok(resource.paid(), 'the adapter completed the x402 payment handshake');
+    assert.equal(done.settlement.provider, p.id);
+  } finally { resource.close(); }
+});
+
 // ---- 6. provider reputation ---------------------------------------------
 test('provider reputation: list and detail expose track record and stake', async () => {
   const engine = createEngine(FAST);

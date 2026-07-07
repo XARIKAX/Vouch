@@ -119,7 +119,54 @@ async function executeExternal(provider, task) {
   }
 }
 
+// x402 (HTTP 402 "Payment Required") executor. The provider fronts a
+// pay-per-call resource: POST the task; if the endpoint answers 402 with
+// payment requirements, attach an X-PAYMENT authorization and retry. The JSON
+// the resource returns is submitted for Vouch verification exactly like any
+// other output — so an x402 service becomes Vouch supply with escrow,
+// verification, and slashing layered on top. Real settlement is injected via
+// cfg.x402Payer (wallet + facilitator); the default is a sandbox voucher.
+async function sandboxPayer(requirements) {
+  const payload = {
+    scheme: requirements?.scheme ?? 'exact',
+    network: requirements?.network ?? 'base-sepolia',
+    sandbox: true,
+    authorization: 'sandbox-voucher',
+  };
+  return Buffer.from(JSON.stringify(payload)).toString('base64');
+}
+
+async function executeX402(provider, task, cfg) {
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), task.quote.deadline_ms);
+  const payer = cfg.x402Payer ?? sandboxPayer;
+  const body = JSON.stringify({
+    task_id: task.id, capability: task.capability, input: task.input, deadline_ms: task.quote.deadline_ms,
+  });
+  const post = (extra) => fetch(provider.endpoint_url, {
+    method: 'POST', signal: ctrl.signal,
+    headers: { 'Content-Type': 'application/json', ...extra }, body,
+  });
+  try {
+    let res = await post({});
+    if (res.status === 402) {
+      let requirements = null;
+      try { requirements = (await res.clone().json())?.accepts?.[0] ?? null; } catch { /* header-only 402 */ }
+      const header = await payer(requirements, { provider, task });
+      if (!header) return { error: 'x402: no payment method available for this resource' };
+      res = await post({ 'X-PAYMENT': header });
+    }
+    if (!res.ok) return { error: `x402 endpoint returned ${res.status}` };
+    return await res.json();
+  } catch (e) {
+    return { error: e.name === 'AbortError' ? 'x402 endpoint timed out' : `x402 endpoint unreachable: ${e.message}` };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function execute(provider, task, cfg) {
+  if (provider.protocol === 'x402') return executeX402(provider, task, cfg);
   if (provider.endpoint_url) return executeExternal(provider, task);
   const cap = task.capability;
   const latency = Math.max(5, Math.floor(task.quote.deadline_ms * (0.3 + 0.3 * hash01(provider.id + task.id))));
