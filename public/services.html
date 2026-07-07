@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Services</title>
-<meta name="description" content="The Vouch service catalog: every capability listed with the capital behind it — committed price ceilings, SLA deadlines, provider stakes, and track records.">
+<meta name="description" content="The Vouch service catalog: every capability backed by slashable capital and gated by verification. Guaranteed outcomes, not a list of endpoints.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23e6c988%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23c9a24e%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%231a1509%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@ html{scroll-behavior:smooth}
 body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--t1);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 ::selection{background:rgba(230,201,136,.28)}
 a{color:inherit;text-decoration:none}
-.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 .sky{position:fixed;inset:0;z-index:-2;pointer-events:none;background:
   radial-gradient(58rem 34rem at 78% -8%,rgba(230,201,136,.11),transparent 62%),
   radial-gradient(44rem 30rem at 6% 12%,rgba(201,162,78,.06),transparent 60%)}
@@ -33,7 +33,7 @@ a{color:inherit;text-decoration:none}
   -webkit-mask-image:radial-gradient(70rem 42rem at 50% 0%,#000 30%,transparent 78%);
   mask-image:radial-gradient(70rem 42rem at 50% 0%,#000 30%,transparent 78%)}
 
-nav.top{position:fixed;inset:0 0 auto;z-index:50;height:66px;display:flex;align-items:center;
+nav.top{position:sticky;top:0;z-index:50;height:66px;display:flex;align-items:center;
   background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
 nav.top .wrap{display:flex;align-items:center;gap:28px;width:100%}
 .logo{display:flex;align-items:center;gap:11px;font-weight:750;font-size:18px}
@@ -47,60 +47,85 @@ nav.top .wrap{display:flex;align-items:center;gap:28px;width:100%}
 .btn.acc{background:var(--grad);border:none;color:var(--acc-fg);font-weight:650;box-shadow:0 6px 26px rgba(230,201,136,.32)}
 .btn.acc:hover{color:var(--acc-fg);filter:brightness(1.09)}
 
-.hero{padding:150px 0 46px}
+.hero{padding:132px 0 30px}
 .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12.5px;font-weight:550;color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 32%,transparent);background:var(--acc-soft);border-radius:99px;padding:6px 14px;margin-bottom:22px}
 .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px var(--acc);animation:pulse 2.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-h1{font-size:clamp(34px,4.4vw,54px);font-weight:750;letter-spacing:-.04em;line-height:1.06;margin-bottom:18px;max-width:24ch}
+h1{font-size:clamp(36px,4.6vw,58px);font-weight:800;letter-spacing:-.04em;line-height:1.04;margin-bottom:18px;max-width:20ch}
 h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.lede{color:var(--t2);font-size:17px;max-width:46rem;font-weight:380}
+.lede{color:var(--t2);font-size:17.5px;max-width:48rem;font-weight:380}
+.lede strong{color:var(--t1);font-weight:600}
 
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:42px 0 8px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:40px 0 8px}
 .stat{border:1px solid var(--border);border-radius:16px;padding:22px 24px;background:var(--panel);transition:.25s}
 .stat:hover{border-color:color-mix(in srgb,var(--acc) 34%,transparent);transform:translateY(-2px)}
-.stat .n{font-size:29px;font-weight:700;letter-spacing:-1px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .n{font-size:29px;font-weight:800;letter-spacing:-1px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat .l{font-size:12.5px;color:var(--t3);margin-top:3px}
 
-h3.cat{font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:2.4px;color:var(--acc);margin:52px 0 18px;display:flex;align-items:center;gap:12px}
+/* directory controls */
+.controls{position:sticky;top:66px;z-index:30;padding:18px 0 12px;margin-top:26px;
+  background:linear-gradient(180deg,var(--bg) 72%,transparent)}
+.searchrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.search{flex:1;min-width:260px;display:flex;align-items:center;gap:10px;height:46px;padding:0 16px;border:1px solid var(--border2);border-radius:12px;background:var(--panel);color:var(--t2)}
+.search:focus-within{border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(230,201,136,.1)}
+.search input{flex:1;border:none;outline:none;background:transparent;color:var(--t1);font-family:'Geist Mono',monospace;font-size:13.5px}
+.search input::placeholder{color:var(--t3)}
+.search svg{width:16px;height:16px;color:var(--t3);flex:none}
+.guarantee-note{display:inline-flex;align-items:center;gap:8px;font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 34%,transparent);border-radius:10px;padding:0 14px;height:46px;background:var(--acc-soft);white-space:nowrap}
+.tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.tab{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;border:1px solid var(--border);background:var(--panel);color:var(--t2);font-family:'Geist Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.15s}
+.tab:hover{color:var(--t1);border-color:var(--border2)}
+.tab.on{color:var(--acc-fg);background:var(--grad);border-color:transparent;font-weight:700}
+.tab .c{font-weight:700;opacity:.7}
+.tab.on .c{opacity:.85}
+
+main{padding:12px 0 40px}
+h3.cat{font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:2.4px;color:var(--acc);margin:30px 0 16px;display:flex;align-items:center;gap:12px}
 h3.cat::after{content:"";flex:1;height:1px;background:var(--border)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px}
-.svc{border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);padding:22px 22px 16px;display:flex;flex-direction:column;transition:.25s;position:relative;overflow:hidden}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.svc{border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);padding:20px 20px 15px;display:flex;flex-direction:column;transition:.25s;position:relative;overflow:hidden}
 .svc::before{content:"";position:absolute;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(230,201,136,.09),transparent 70%);top:-70px;right:-50px;pointer-events:none;opacity:0;transition:.3s}
 .svc:hover{border-color:color-mix(in srgb,var(--acc) 40%,transparent);transform:translateY(-3px);box-shadow:0 20px 50px rgba(0,0,0,.35)}
 .svc:hover::before{opacity:1}
+.svc .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .svc .id{font-family:'Geist Mono',monospace;font-size:15.5px;font-weight:600}
+.guaranteed{display:inline-flex;align-items:center;gap:5px;font-family:'Geist Mono',monospace;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);border-radius:6px;padding:3px 8px;background:var(--acc-soft);white-space:nowrap;flex:none}
+.guaranteed svg{width:10px;height:10px}
 .svc .desc{color:var(--t2);font-size:13.5px;margin:5px 0 14px}
-.badges{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
-.b{font-size:11px;font-family:'Geist Mono',monospace;border:1px solid var(--border2);border-radius:7px;padding:3.5px 9px;color:var(--t2)}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.metric{border:1px solid var(--border);border-radius:10px;padding:9px 11px;background:var(--bg)}
+.metric .mv{font-family:'Geist Mono',monospace;font-size:14px;font-weight:600;color:var(--acc)}
+.metric .ml{font-size:10.5px;color:var(--t3);margin-top:1px}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.b{font-size:11px;font-family:'Geist Mono',monospace;border:1px solid var(--border2);border-radius:7px;padding:3px 8px;color:var(--t2)}
 .b strong{color:var(--acc);font-weight:600}
+.b.proto{color:var(--acc2);border-color:color-mix(in srgb,var(--acc2) 40%,transparent)}
 table{width:100%;border-collapse:collapse;font-size:12px;margin-top:auto}
-th,td{text-align:left;padding:6.5px 7px;border-top:1px solid var(--border)}
-th{font-size:9.5px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);font-weight:600;border-top:none}
+th,td{text-align:left;padding:6px 6px;border-top:1px solid var(--border)}
+th{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);font-weight:600;border-top:none}
 td{color:var(--t2);font-family:'Geist Mono',monospace}
 td:first-child{color:var(--t1)}
 .track{color:var(--acc)}
 .svc.empty-lane{border-style:dashed;background:transparent}
 .svc.empty-lane .lane{margin-top:auto;font-size:12.5px;color:var(--t3);border-top:1px solid var(--border);padding-top:12px}
 .svc.empty-lane .lane b{color:var(--acc2);font-weight:600}
+.noresults{color:var(--t3);text-align:center;padding:60px 0;font-size:14px}
 
-.how{margin-top:72px;border:1px solid color-mix(in srgb,var(--acc) 28%,transparent);border-radius:24px;padding:44px 40px;position:relative;overflow:hidden;
+.how{margin-top:64px;border:1px solid color-mix(in srgb,var(--acc) 28%,transparent);border-radius:24px;padding:44px 40px;position:relative;overflow:hidden;
   background:linear-gradient(180deg,rgba(26,25,23,.9),rgba(14,14,15,.94))}
 .how::before{content:"";position:absolute;inset:0;background:radial-gradient(34rem 16rem at 50% -40%,rgba(230,201,136,.2),transparent 68%);pointer-events:none}
-.how h3{font-size:24px;font-weight:700;letter-spacing:-.5px;margin-bottom:10px}
-.how p{color:var(--t2);font-size:15px;max-width:72ch;margin-bottom:22px}
+.how h3{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px}
+.how p{color:var(--t2);font-size:15px;max-width:74ch;margin-bottom:22px}
 .how .cta{display:inline-flex;gap:12px;flex-wrap:wrap}
 
 #err{color:var(--red);font-size:13.5px;margin:18px 0;display:none;border:1px solid rgba(255,92,100,.3);border-radius:12px;padding:12px 16px;background:rgba(255,92,100,.06)}
 
-footer{margin-top:80px;border-top:1px solid var(--border);padding:34px 0 44px;font-size:13px;color:var(--t3);background:color-mix(in srgb,var(--bg2) 55%,transparent)}
+footer{margin-top:70px;border-top:1px solid var(--border);padding:34px 0 44px;font-size:13px;color:var(--t3);background:color-mix(in srgb,var(--bg2) 55%,transparent)}
 footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 footer a{color:var(--t2)}
 footer a:hover{color:var(--acc)}
-.rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
-.rv.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 @media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:680px){.nav-links a:not(.btn){display:none}.hero{padding-top:120px}.stats{grid-template-columns:1fr}.how{padding:32px 24px}}
+@media(max-width:680px){.nav-links a:not(:last-child){display:none}.hero{padding-top:110px}.stats{grid-template-columns:1fr}.how{padding:32px 24px}.controls{position:static}}
 </style>
 </head>
 <body>
@@ -122,19 +147,32 @@ footer a:hover{color:var(--acc)}
 <header class="hero">
   <div class="wrap">
     <span class="eyebrow"><span class="dot"></span>Live catalog — no key needed to browse</span>
-    <h1>Every service here is <em>backed by capital,</em> not a listing fee.</h1>
-    <p class="lede">A routing layer lists vendors. This catalog lists <strong style="color:var(--t1)">commitments</strong> — each capability shows what the network will bond to right now: price ceilings, SLA deadlines, and the stake a provider forfeits if it fails verification.</p>
+    <h1>Not a list of endpoints.<br>A catalog of <em>guarantees.</em></h1>
+    <p class="lede">Anyone can list a thousand services that <em>might</em> work. Every capability here is <strong>backed by slashable capital</strong> and <strong>gated by verification</strong> — the output is checked before you pay, and failure refunds you and slashes the provider. Fewer promises, all of them enforced.</p>
     <div class="stats" id="stats"></div>
     <div id="err"></div>
   </div>
 </header>
 
+<div class="controls">
+  <div class="wrap">
+    <div class="searchrow">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="q" type="text" placeholder="Search capabilities, providers…" autocomplete="off">
+      </label>
+      <span class="guarantee-note">✓ 100% verified-settlement or $0</span>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+</div>
+
 <main class="wrap">
   <div id="catalog"></div>
 
-  <div class="how rv">
+  <div class="how">
     <h3>How a listing becomes a result</h3>
-    <p>Post a task naming any capability below, with acceptance criteria and a budget. Providers return sealed quotes at or under their ceilings; the best admissible quote wins and your escrow locks at exactly that price. The output is verified before a cent moves — a failed check refunds you and slashes the provider's stake shown here.</p>
+    <p>Post a task naming any capability below, with acceptance criteria and a budget. Providers return sealed quotes bonded by stake; the best admissible one wins and your escrow locks at exactly that price. The output is verified before a cent moves — a failed check refunds you and slashes the provider's stake shown here. Add <span class="mono" style="font-family:'Geist Mono',monospace;color:var(--acc)">retry: true</span> and Vouch keeps rerouting until it passes.</p>
     <div class="cta">
       <a class="btn acc" href="/docs#quickstart">Post your first task</a>
       <a class="btn" href="/docs#stakes">How staking works</a>
@@ -145,77 +183,145 @@ footer a:hover{color:var(--acc)}
 <footer>
   <div class="wrap">
     <span>© 2026 Vouch — the outcome layer for AI agents</span>
-    <span>Live from <a href="/v1/offers">/v1/offers</a> · <a href="/v1/capabilities">/v1/capabilities</a></span>
+    <span>Live from <a href="/v1/offers">/v1/offers</a> · <a href="/v1/providers">/v1/providers</a></span>
   </div>
 </footer>
 
 <script>
 const CATEGORY_NAMES = {
   text: 'Text', image: 'Image', audio: 'Audio', embed: 'Embeddings',
-  math: 'Deterministic compute', research: 'Research', web: 'Web', code: 'Code',
+  math: 'Compute', research: 'Research', web: 'Web', code: 'Code',
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const usd = (n) => '$' + n;
+const usd = (n) => '$' + (Math.round(n * 1e6) / 1e6);
 
-const io = new IntersectionObserver((es) => es.forEach((e) => {
-  if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-}), { threshold: 0.08 });
-const reveal = (root) => (root || document).querySelectorAll('.rv:not(.in)').forEach((el) => io.observe(el));
+let CAPS = [], OFFERS = [], PROVIDERS = {};
+let activeCat = 'all', query = '';
 
 async function load() {
   try {
-    const [caps, offers] = await Promise.all([
+    const [caps, offers, provs] = await Promise.all([
       fetch('/v1/capabilities').then((r) => r.json()),
       fetch('/v1/offers').then((r) => r.json()),
+      fetch('/v1/providers').then((r) => r.json()),
     ]);
-    render(caps.capabilities, offers.offers);
+    CAPS = caps.capabilities;
+    OFFERS = offers.offers;
+    PROVIDERS = Object.fromEntries((provs.providers ?? []).map((p) => [p.id, p]));
+    renderStats(); renderTabs(); renderCatalog();
   } catch (e) {
     const el = document.getElementById('err');
     el.style.display = 'block';
     el.textContent = 'Could not load the live catalog: ' + e.message;
   }
-  reveal();
 }
 
-function render(capabilities, offers) {
-  const byCap = {};
-  for (const o of offers) (byCap[o.capability] ??= []).push(o);
+function byCap() {
+  const m = {};
+  for (const o of OFFERS) (m[o.capability] ??= []).push(o);
+  return m;
+}
+function providerIdsFor(capIds) {
+  const ids = new Set();
+  for (const o of OFFERS) if (capIds.has(o.capability)) ids.add(o.provider);
+  return ids;
+}
+function capitalFor(providerIds) {
+  return [...providerIds].reduce((s, id) => s + (PROVIDERS[id]?.stake ?? 0), 0);
+}
+function reliabilityFor(providerIds) {
+  let settled = 0, slashed = 0;
+  for (const id of providerIds) { const p = PROVIDERS[id]; if (p) { settled += p.settled; slashed += p.slashed; } }
+  return settled + slashed > 0 ? settled / (settled + slashed) : null;
+}
 
-  const providers = new Set(offers.map((o) => o.provider));
-  const totalStake = [...providers].map((p) => Math.max(...offers.filter((o) => o.provider === p).map((o) => o.stake_available)))
-    .reduce((a, b) => a + b, 0);
+function renderStats() {
+  const providers = providerIdsFor(new Set(CAPS.map((c) => c.id)));
+  const capital = capitalFor(providers);
   document.getElementById('stats').innerHTML = [
-    [capabilities.length, 'capabilities listed'],
+    [CAPS.length, 'capabilities, all guaranteed'],
     [providers.size, 'staked providers'],
-    [usd(Math.round(totalStake).toLocaleString()), 'capital bonded to the catalog'],
+    ['$' + Math.round(capital).toLocaleString(), 'slashable capital behind them'],
     ['$0', 'what a failed task costs you'],
   ].map(([n, l]) => '<div class="stat"><div class="n">' + n + '</div><div class="l">' + l + '</div></div>').join('');
-
-  const groups = {};
-  for (const c of capabilities) (groups[c.id.split('.')[0]] ??= []).push(c);
-
-  document.getElementById('catalog').innerHTML = Object.entries(groups).map(([cat, caps]) =>
-    '<h3 class="cat">' + esc(CATEGORY_NAMES[cat] ?? cat) + '</h3><div class="grid">' + caps.map((c) => {
-      const rows = (byCap[c.id] ?? []).sort((a, b) => a.price_ceiling - b.price_ceiling);
-      if (!rows.length) {
-        return '<div class="svc empty-lane rv"><div class="id">' + esc(c.id) + '</div><div class="desc">' + esc(c.description) +
-          '</div><div class="lane"><b>Open lane.</b> No provider has staked this capability yet — the first bonded quote owns it.</div></div>';
-      }
-      const floor = Math.min(...rows.map((r) => r.price_ceiling));
-      const bestSla = Math.min(...rows.map((r) => r.sla_deadline_ms));
-      const topTrack = Math.max(...rows.map((r) => r.track));
-      return '<div class="svc rv"><div class="id">' + esc(c.id) + '</div><div class="desc">' + esc(c.description) + '</div>' +
-        '<div class="badges"><span class="b">from <strong>' + usd(floor) + '</strong></span>' +
-        '<span class="b">SLA <strong>' + bestSla + 'ms</strong></span>' +
-        '<span class="b">top track <strong>' + topTrack + '</strong></span>' +
-        '<span class="b">' + rows.length + ' provider' + (rows.length > 1 ? 's' : '') + '</span></div>' +
-        '<table><tr><th>Provider</th><th>Ceiling</th><th>SLA</th><th>Track</th><th>Stake free</th></tr>' +
-        rows.map((r) => '<tr><td>' + esc(r.provider) + '</td><td>' + usd(r.price_ceiling) + '</td><td>' + r.sla_deadline_ms +
-          'ms</td><td class="track">' + r.track + '</td><td>' + usd(r.stake_available) + '</td></tr>').join('') +
-        '</table></div>';
-    }).join('') + '</div>'
-  ).join('');
 }
+
+function renderTabs() {
+  const groups = {};
+  for (const c of CAPS) (groups[c.id.split('.')[0]] ??= []).push(c);
+  const tabs = [['all', 'All', CAPS.length],
+    ...Object.entries(groups).map(([k, v]) => [k, CATEGORY_NAMES[k] ?? k, v.length])];
+  document.getElementById('tabs').innerHTML = tabs.map(([k, label, n]) =>
+    '<button class="tab' + (k === activeCat ? ' on' : '') + '" data-cat="' + k + '">' + esc(label) + ' <span class="c">' + n + '</span></button>'
+  ).join('');
+  document.querySelectorAll('.tab').forEach((t) => t.onclick = () => { activeCat = t.dataset.cat; renderTabs(); renderCatalog(); });
+}
+
+function svcCard(c, rows) {
+  if (!rows.length) {
+    return '<div class="svc empty-lane"><div class="top"><div class="id">' + esc(c.id) + '</div></div><div class="desc">' + esc(c.description) +
+      '</div><div class="lane"><b>Open lane.</b> No provider has staked this capability yet — the first bonded quote owns it.</div></div>';
+  }
+  const ids = new Set(rows.map((r) => r.provider));
+  const floor = Math.min(...rows.map((r) => r.price_ceiling));
+  const bestSla = Math.min(...rows.map((r) => r.sla_deadline_ms));
+  const capital = capitalFor(ids);
+  const rel = reliabilityFor(ids);
+  const protos = [...new Set([...ids].map((id) => PROVIDERS[id]?.protocol).filter((p) => p && p !== 'native'))];
+  const relStr = rel === null ? 'new' : Math.round(rel * 100) + '%';
+  return '<div class="svc" data-search="' + esc((c.id + ' ' + c.description + ' ' + [...ids].join(' ')).toLowerCase()) + '">' +
+    '<div class="top"><div class="id">' + esc(c.id) + '</div>' +
+    '<span class="guaranteed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>Guaranteed</span></div>' +
+    '<div class="desc">' + esc(c.description) + '</div>' +
+    '<div class="metrics">' +
+      '<div class="metric"><div class="mv">$' + Math.round(capital).toLocaleString() + '</div><div class="ml">slashable capital</div></div>' +
+      '<div class="metric"><div class="mv">' + relStr + '</div><div class="ml">verified-settlement rate</div></div>' +
+    '</div>' +
+    '<div class="badges"><span class="b">from <strong>' + usd(floor) + '</strong></span>' +
+    '<span class="b">SLA <strong>' + bestSla + 'ms</strong></span>' +
+    '<span class="b">' + rows.length + ' provider' + (rows.length > 1 ? 's' : '') + '</span>' +
+    protos.map((p) => '<span class="b proto">' + esc(p) + '</span>').join('') + '</div>' +
+    '<table><tr><th>Provider</th><th>Ceiling</th><th>SLA</th><th>Track</th><th>Stake</th></tr>' +
+    rows.sort((a, b) => a.price_ceiling - b.price_ceiling).map((r) =>
+      '<tr><td>' + esc(r.provider) + '</td><td>' + usd(r.price_ceiling) + '</td><td>' + r.sla_deadline_ms +
+      'ms</td><td class="track">' + r.track + '</td><td>' + usd(PROVIDERS[r.provider]?.stake ?? r.stake_available) + '</td></tr>').join('') +
+    '</table></div>';
+}
+
+function renderCatalog() {
+  const bc = byCap();
+  const groups = {};
+  for (const c of CAPS) {
+    const cat = c.id.split('.')[0];
+    if (activeCat !== 'all' && cat !== activeCat) continue;
+    (groups[cat] ??= []).push(c);
+  }
+  let html = Object.entries(groups).map(([cat, caps]) => {
+    const cards = caps.map((c) => svcCard(c, (bc[c.id] ?? []))).join('');
+    return '<h3 class="cat">' + esc(CATEGORY_NAMES[cat] ?? cat) + '</h3><div class="grid">' + cards + '</div>';
+  }).join('');
+  const el = document.getElementById('catalog');
+  el.innerHTML = html || '<div class="noresults">No capabilities in this category yet.</div>';
+  applySearch();
+}
+
+function applySearch() {
+  const q = query.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll('.svc').forEach((card) => {
+    const hit = !q || (card.dataset.search ?? '').includes(q);
+    card.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  document.querySelectorAll('h3.cat').forEach((h) => {
+    const grid = h.nextElementSibling;
+    const any = grid && [...grid.children].some((c) => c.style.display !== 'none');
+    h.style.display = any ? '' : 'none';
+    if (grid) grid.style.display = any ? '' : 'none';
+  });
+}
+
+document.getElementById('q').addEventListener('input', (e) => { query = e.target.value; applySearch(); });
 load();
 </script>
 </body>

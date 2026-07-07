@@ -569,12 +569,15 @@ export function createEngine(cfg = {}) {
   // ---- provider registration ---------------------------------------------
 
   function registerProvider(body) {
-    const { name, endpoint_url, offers: offered, stake } = body ?? {};
+    const { name, endpoint_url, offers: offered, stake, protocol = 'http' } = body ?? {};
     if (!name || typeof name !== 'string') {
       throw new ApiError(400, 'invalid_input', 'name is required');
     }
     if (!/^https?:\/\//.test(endpoint_url ?? '')) {
       throw new ApiError(400, 'invalid_input', 'endpoint_url must be an http(s) URL your provider serves');
+    }
+    if (!['http', 'x402'].includes(protocol)) {
+      throw new ApiError(400, 'invalid_input', 'protocol must be "http" or "x402"');
     }
     if (!offered || typeof offered !== 'object' || !Object.keys(offered).length) {
       throw new ApiError(400, 'invalid_input', 'offers must map at least one capability to { price_ceiling, sla_deadline_ms }');
@@ -589,7 +592,7 @@ export function createEngine(cfg = {}) {
     // Simulated bond, capped like the escrow faucet. On-chain staking replaces this.
     const bonded = Math.min(Math.max(Number(stake) || 0, 1), 1000);
     const provider = {
-      id: id('prv'), name, endpoint_url,
+      id: id('prv'), name, endpoint_url, protocol,
       offers: Object.fromEntries(Object.entries(offered).map(([cap, o]) =>
         [cap, { price_ceiling: money(o.price_ceiling), sla_deadline_ms: o.sla_deadline_ms }])),
       stake: bonded, stakeReserved: 0, earnings: 0,
@@ -606,7 +609,7 @@ export function createEngine(cfg = {}) {
     const reliability = p.settledCount + p.slashedCount > 0
       ? money(p.settledCount / (p.settledCount + p.slashedCount)) : null;
     return {
-      id: p.id, name: p.name, endpoint_url: p.endpoint_url,
+      id: p.id, name: p.name, endpoint_url: p.endpoint_url, protocol: p.protocol ?? 'native',
       track: Math.round(p.track), stake: p.stake, stake_available: money(p.stake - p.stakeReserved),
       earnings: p.earnings, settled: p.settledCount, slashed: p.slashedCount,
       reliability, capabilities: Object.keys(p.offers), offers: p.offers,
