@@ -96,6 +96,28 @@ move to Railway/Fly:
 3. Remove the domain from the old host so it stops answering, and wait out
    the DNS TTL (typically 5–60 min).
 
+## Production hardening checklist
+
+The sandbox defaults (open key minting, in-memory state, heuristic grading)
+make the stack usable out of the box but are **not** production settings.
+Before real traffic:
+
+1. **Persist state.** Serverless: attach Upstash Redis and set
+   `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (without them, state
+   resets on every cold start). Server mode: mount a volume at `/data`.
+2. **Lock signup.** Set `VOUCH_LOCK_SIGNUP=1` and `VOUCH_ADMIN_TOKEN=…` so
+   `POST /v1/keys` and `POST /v1/providers` require an `X-Admin-Token` header.
+   Otherwise anyone can mint faucet-funded keys — fine for a demo, not for real
+   value.
+3. **Real grading.** Set `ANTHROPIC_API_KEY` so rubric verification uses the
+   Claude panel instead of the offline heuristic.
+4. **Stable attestations.** Set `VOUCH_ATTEST_KEY` (a PKCS8 ed25519 PEM) so
+   proof-of-verified-work signatures stay valid across restarts/instances;
+   otherwise a fresh key is generated per boot and old receipts stop verifying.
+5. **On-chain settlement** (optional, when ready): deploy `contracts/VouchEscrow.sol`
+   and wire the engine onto the settlement adapter — see `ONCHAIN.md`. Until
+   then escrow/stake are a simulated bond.
+
 ## Environment variables
 
 | Variable | Purpose | Default |
@@ -104,6 +126,9 @@ move to Railway/Fly:
 | `VOUCH_STATE` | State file path (server mode) | `data/state.json` (Docker: `/data/state.json`) |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Serverless state store (`KV_REST_API_*` also accepted) | unset → in-memory |
 | `VOUCH_STATE_KEY` | Redis key for the state snapshot | `vouch:state` |
+| `VOUCH_LOCK_SIGNUP` | `1` = gate key/provider minting behind `X-Admin-Token` | unset (open) |
+| `VOUCH_ADMIN_TOKEN` | Admin token accepted when signup is locked | unset |
+| `VOUCH_ATTEST_KEY` | PKCS8 ed25519 PEM for stable attestation signing | unset → ephemeral per boot |
 | `ANTHROPIC_API_KEY` | Claude grading panel | unset → offline heuristic |
 | `VOUCH_GRADER_MODEL` | Grader model override | engine default |
 | `VOUCH_GRADER_URL` | Custom webhook grader | unset |

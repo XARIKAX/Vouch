@@ -321,6 +321,28 @@ test('semantic cache: an identical verified task is served instantly and cheaper
   assert.ok(second.task.attestation, 'carries the original signed proof');
 });
 
+// ---- production hardening: signup lock ----------------------------------
+test('signup lock: VOUCH_LOCK_SIGNUP gates key minting behind an admin token', async () => {
+  const { createApp } = await import('../server.js');
+  process.env.VOUCH_LOCK_SIGNUP = '1';
+  process.env.VOUCH_ADMIN_TOKEN = 'secret-admin';
+  const { server } = createApp({ fast: true });
+  await new Promise((r) => server.listen(0, r));
+  const base = `http://localhost:${server.address().port}`;
+  try {
+    const denied = await fetch(base + '/v1/keys', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    assert.equal(denied.status, 403);
+    const ok = await fetch(base + '/v1/keys', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Token': 'secret-admin' }, body: '{}',
+    });
+    assert.equal(ok.status, 201);
+  } finally {
+    server.close();
+    delete process.env.VOUCH_LOCK_SIGNUP;
+    delete process.env.VOUCH_ADMIN_TOKEN;
+  }
+});
+
 // ---- 6. provider reputation ---------------------------------------------
 test('provider reputation: list and detail expose track record and stake', async () => {
   const engine = createEngine(FAST);

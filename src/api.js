@@ -88,6 +88,15 @@ export function createApi(engine) {
     return engine.authenticate(m?.[1] ?? '');
   };
 
+  // Production can lock open key/provider minting: set VOUCH_LOCK_SIGNUP=1 and
+  // gate these behind an admin token. Left open in the sandbox so the stack is
+  // usable out of the box.
+  const adminGate = (req) => {
+    if (process.env.VOUCH_LOCK_SIGNUP !== '1') return;
+    if (req.headers['x-admin-token'] && req.headers['x-admin-token'] === process.env.VOUCH_ADMIN_TOKEN) return;
+    throw new ApiError(403, 'signup_locked', 'Open signup is disabled; an admin token is required to mint here.');
+  };
+
   const escrowHeader = (key) => ({
     'X-Escrow-Ceiling-Remaining': String(engine.balance(key).ceiling_remaining),
   });
@@ -98,6 +107,7 @@ export function createApi(engine) {
     // lives behind the dashboard's own auth; it is open here so the stack is
     // usable out of the box.
     ['POST', /^\/v1\/keys$/, async (req, res) => {
+      adminGate(req);
       const body = await readBody(req);
       const key = engine.createKey(body.name ?? 'default');
       send(res, 201, {
@@ -129,6 +139,7 @@ export function createApi(engine) {
     // Provider registration is open in the dev sandbox (stake is a simulated
     // bond). In production this sits behind provider onboarding + real staking.
     ['POST', /^\/v1\/providers$/, async (req, res) => {
+      adminGate(req);
       const body = await readBody(req);
       const provider = engine.registerProvider(body);
       send(res, 201, provider);
