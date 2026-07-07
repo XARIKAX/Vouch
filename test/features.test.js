@@ -231,6 +231,96 @@ test('x402 adapter: pays the 402 challenge, gets output, and it settles through 
   } finally { resource.close(); }
 });
 
+// ---- consensus / redundant execution ------------------------------------
+test('consensus: parallel providers, the junk one is slashed, a passer settles', async () => {
+  const junk = await fakeProvider({ text: '### ERROR ###' });
+  const good = await fakeProvider({ text: 'A correct, on-topic consensus answer. '.repeat(6) });
+  try {
+    const engine = createEngine(FAST);
+    engine.state.providers = {};
+    const junkP = engine.registerProvider({ name: 'junk', endpoint_url: junk.url, stake: 80,
+      offers: { 'text.generate': { price_ceiling: 0.01, sla_deadline_ms: 8000 } } });
+    const goodP = engine.registerProvider({ name: 'good', endpoint_url: good.url, stake: 80,
+      offers: { 'text.generate': { price_ceiling: 0.02, sla_deadline_ms: 8000 } } });
+    const key = engine.createKey('t');
+    engine.deposit(key, 1);
+    const { task } = engine.createTask(key, {
+      capability: 'text.generate', input: { prompt: 'consensus' },
+      acceptance: { checks: [{ assert: 'length_between', min: 120 }, { assert: 'contains_none', values: ['###'] }] },
+      budget: 0.05, deadline_ms: 8000, consensus: 2,
+    });
+    const done = await waitTerminal(engine, task.id);
+    assert.equal(done.status, 'settled');
+    assert.equal(done.settlement.provider, goodP.id, 'the passing provider settled');
+    assert.equal(done.settlement.consensus.dispatched, 2);
+    assert.ok(engine.state.providers[junkP.id].slashedCount >= 1, 'the failing provider was slashed');
+    assert.equal(engine.state.providers[goodP.id].slashedCount, 0);
+  } finally { junk.close(); good.close(); }
+});
+
+// ---- sub-agent wallets ---------------------------------------------------
+test('sub-agent wallets: capped funding, allowlist enforced, revoke refunds', async () => {
+  const engine = createEngine(FAST);
+  const parent = engine.createKey('parent');
+  engine.deposit(parent, 3);
+  const before = engine.balance(parent).balance;
+
+  const sub = engine.createSubKey(parent, { fund: 1, allow: ['math.eval'] });
+  assert.ok(sub.key.startsWith('vch_'));
+  assert.equal(engine.balance(parent).balance, before - 1, 'funding moved from parent');
+
+  const subKey = engine.authenticate(sub.key);
+  assert.equal(engine.balance(subKey).balance, 1);
+
+  // Allowlisted capability works.
+  const ok = engine.createTask(subKey, {
+    capability: 'math.eval', input: { expression: '2+2' },
+    acceptance: { checks: [{ assert: 'equals', path: 'result', value: 4 }] },
+    budget: 0.01, deadline_ms: 5000,
+  });
+  assert.ok(ok.task.id);
+  // Off-allowlist capability is rejected.
+  assert.throws(() => engine.createTask(subKey, {
+    capability: 'text.generate', input: { prompt: 'x' }, budget: 0.02, deadline_ms: 5000,
+  }), /may not post/);
+
+  // Revoke returns the unspent balance and disables the key.
+  const rev = engine.revokeSubKey(parent, sub.id);
+  assert.equal(rev.revoked, true);
+  assert.ok(rev.refunded > 0);
+  assert.throws(() => engine.authenticate(sub.key), /revoked/);
+  // A sub-key cannot mint its own sub-keys.
+  const sub2 = engine.createSubKey(parent, { fund: 0.5 });
+  assert.throws(() => engine.createSubKey(engine.authenticate(sub2.key), { fund: 0.1 }), /Sub-keys cannot/);
+});
+
+// ---- semantic cache ------------------------------------------------------
+test('semantic cache: an identical verified task is served instantly and cheaper', async () => {
+  const engine = createEngine(FAST);
+  const key = engine.createKey('t');
+  engine.deposit(key, 1);
+  const body = {
+    capability: 'math.eval', input: { expression: '9 * 9' },
+    acceptance: { checks: [{ assert: 'equals', path: 'result', value: 81 }] },
+    budget: 0.02, deadline_ms: 5000, cache: true,
+  };
+  // First run executes normally and populates the cache.
+  const first = engine.createTask(key, body);
+  const done = await waitTerminal(engine, first.task.id);
+  assert.equal(done.status, 'settled');
+  assert.ok(!done.cached);
+  const paidFirst = done.settlement.price;
+
+  // Second identical run is served from cache: instant, cheaper, same proof.
+  const second = engine.createTask(key, body);
+  assert.equal(second.cached, true, 'served from cache synchronously');
+  assert.equal(second.task.status, 'settled');
+  assert.equal(second.task.settlement.provider, 'cache');
+  assert.ok(second.task.settlement.price < paidFirst, 'cache hit costs less than execution');
+  assert.deepEqual(second.task.output, done.output, 'same verified output returned');
+  assert.ok(second.task.attestation, 'carries the original signed proof');
+});
+
 // ---- 6. provider reputation ---------------------------------------------
 test('provider reputation: list and detail expose track record and stake', async () => {
   const engine = createEngine(FAST);

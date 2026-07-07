@@ -106,6 +106,26 @@ export function createApi(engine) {
       });
     }],
 
+    // Sub-agent wallets: a parent key mints capped, policy-bound sub-keys.
+    ['POST', /^\/v1\/keys\/sub$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      send(res, 201, engine.createSubKey(key, body), rl);
+    }],
+
+    ['GET', /^\/v1\/keys\/sub$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      send(res, 200, { sub_keys: engine.listSubKeys(key) }, rl);
+    }],
+
+    ['POST', /^\/v1\/keys\/sub\/([a-z0-9_]+)\/revoke$/, async (req, res, [subId]) => {
+      const key = auth(req);
+      const rl = limit(key);
+      send(res, 200, engine.revokeSubKey(key, subId), rl);
+    }],
+
     // Provider registration is open in the dev sandbox (stake is a simulated
     // bond). In production this sits behind provider onboarding + real staking.
     ['POST', /^\/v1\/providers$/, async (req, res) => {
