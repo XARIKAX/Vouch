@@ -107,5 +107,23 @@ never paid for a wrong answer*. That turns the marketing claim into something
 a third party can verify on-chain — which is exactly the credibility a
 competitor's "settled on Base" badge is trading on.
 
-> Status: design only. The site does not claim on-chain settlement is live —
-> escrow/stake remain a simulated bond until `VouchEscrow` ships.
+## Status
+
+- **`contracts/VouchEscrow.sol`** — the v1 escrow contract: holds USDC escrow +
+  provider stake, and `settle` / `refundAndSlash` act only on a verifier-signed
+  verdict (ECDSA `ecrecover`). Slashed stake accrues to an on-chain insurance
+  pool.
+- **`src/settlement.js`** — the settlement adapter: a secp256k1 verifier
+  (Ethereum's curve) that signs verdicts, plus a `mockChain()` backend that
+  verifies those signatures and moves the ledger exactly as the contract's
+  `ecrecover` would. Fully tested (`test/settlement.test.js`): valid verdicts
+  settle and refund, and a forged signature is rejected with escrow untouched.
+- **Remaining to go live** (needs a chain + funded key — not doable in this
+  sandbox): deploy `VouchEscrow` to Base Sepolia, swap `mockChain()` for a
+  JSON-RPC backend (viem/ethers), point the engine's escrow calls at the
+  adapter, and switch the verdict hash from sha256 to keccak256/EIP-712 to
+  match the contract. The signing + recovery flow is already the real one.
+
+> The site does not claim on-chain settlement is live — escrow/stake remain a
+> simulated bond until `VouchEscrow` is deployed and the engine is switched onto
+> the adapter.
