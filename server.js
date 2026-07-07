@@ -35,6 +35,9 @@ export function createApp(cfgOverrides = {}) {
     if (url.pathname === '/docs' || url.pathname === '/docs/') return staticFile(res, 'docs/index.html', 'text/html; charset=utf-8');
     if (url.pathname === '/dashboard') return staticFile(res, 'public/dashboard.html', 'text/html; charset=utf-8');
     if (url.pathname === '/services') return staticFile(res, 'public/services.html', 'text/html; charset=utf-8');
+    if (url.pathname === '/verify') return staticFile(res, 'public/verify.html', 'text/html; charset=utf-8');
+    if (url.pathname === '/metrics') return staticFile(res, 'public/metrics.html', 'text/html; charset=utf-8');
+    if (url.pathname === '/og.png') return staticFile(res, 'public/og.png', 'image/png');
     if (url.pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: true, tasks: Object.keys(engine.state.tasks).length }));
