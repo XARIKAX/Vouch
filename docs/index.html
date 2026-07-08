@@ -244,16 +244,38 @@ body.lock{overflow:hidden}
   <div class="nav-group">
     <h4>Concepts</h4>
     <a class="nav-link" href="#outcomes">Tasks &amp; outcomes</a>
+    <a class="nav-link" href="#guarantee">The outcome guarantee</a>
     <a class="nav-link" href="#verification">Verification</a>
     <a class="nav-link" href="#stakes">Providers &amp; stakes</a>
     <a class="nav-link" href="#compare">vs. spot routing</a>
+  </div>
+  <div class="nav-group">
+    <h4>Reliability</h4>
+    <a class="nav-link" href="#auto-retry">Auto-retry</a>
+    <a class="nav-link" href="#consensus">Consensus</a>
+    <a class="nav-link" href="#insurance">Outcome insurance</a>
+    <a class="nav-link" href="#cache">Semantic cache</a>
   </div>
   <div class="nav-group">
     <h4>API reference</h4>
     <a class="nav-link" href="#offers">Offers <span class="m">GET</span></a>
     <a class="nav-link" href="#create-task">Create task <span class="m">POST</span></a>
     <a class="nav-link" href="#lifecycle">Task lifecycle <span class="m">GET</span></a>
+    <a class="nav-link" href="#verify-api">Verify output <span class="m">POST</span></a>
+    <a class="nav-link" href="#workflows">Workflows <span class="m">POST</span></a>
+    <a class="nav-link" href="#subkeys">Sub-agent wallets <span class="m">POST</span></a>
+    <a class="nav-link" href="#providers-api">Providers <span class="m">GET</span></a>
     <a class="nav-link" href="#disputes">Disputes <span class="m">POST</span></a>
+  </div>
+  <div class="nav-group">
+    <h4>Trust</h4>
+    <a class="nav-link" href="#attestations">Proof-of-verified-work</a>
+    <a class="nav-link" href="#onchain">On-chain settlement</a>
+  </div>
+  <div class="nav-group">
+    <h4>Providers</h4>
+    <a class="nav-link" href="#become-provider">Become a provider</a>
+    <a class="nav-link" href="#x402">x402 services</a>
   </div>
   <div class="nav-group">
     <h4>Agents</h4>
@@ -263,6 +285,7 @@ body.lock{overflow:hidden}
   </div>
   <div class="nav-group">
     <h4>Reference</h4>
+    <a class="nav-link" href="#config">Configuration</a>
     <a class="nav-link" href="#limits">Rate limits</a>
     <a class="nav-link" href="#errors">Errors</a>
   </div>
@@ -911,6 +934,342 @@ X-Escrow-Ceiling-Remaining: 471.82</code></pre></div>
   <span>© Vouch</span>
   <span><a href="#quickstart">Get started</a> · <a href="#compare">Why outcomes</a> · <a href="#mcp">Connect via MCP</a></span>
 </div>
+<!-- The outcome guarantee -->
+<article class="page" id="guarantee" data-group="Concepts" data-title="The outcome guarantee">
+  <div class="crumbs"><b>Concepts</b></div>
+  <h1>The outcome guarantee</h1>
+  <p class="lead">The one promise everything else on Vouch is built to keep: <strong>your agent never pays for a wrong answer.</strong> A routing layer settles the moment a vendor responds. Vouch settles only when the output passes verification — and prices failure to the provider that caused it.</p>
+
+  <h2>Three mechanisms, one guarantee</h2>
+  <p>The guarantee isn't a policy you have to trust; it falls out of how money moves:</p>
+  <table>
+    <tr><th>Mechanism</th><th>What it does</th></tr>
+    <tr><td><b>Escrow</b></td><td>Your budget locks at dispatch and only releases on a verified pass. Money can't leave for unverified work.</td></tr>
+    <tr><td><b>Verification</b></td><td>The output is checked against your acceptance criteria before settlement — schema, deterministic asserts, a rubric panel, or your webhook.</td></tr>
+    <tr><td><b>Slashable stake</b></td><td>Every quote is bonded by provider capital. Fail verification and the provider loses money, not you.</td></tr>
+  </table>
+
+  <h2>What a failure costs</h2>
+  <p>When work fails, three things happen automatically — no dispute to file:</p>
+  <ol>
+    <li>Your escrow is <b>refunded in full</b> (net cost: $0).</li>
+    <li>The provider's stake is <b>slashed</b>, funding the <a href="#insurance">insurance pool</a>.</li>
+    <li>You may receive a <b>compensation payout</b> from that pool for the wasted round-trip.</li>
+  </ol>
+  <p>Want the result rather than a refund? Add <a href="#auto-retry"><span class="inline">retry: true</span></a> and Vouch reroutes until the output verifies. Need near-certainty? Use <a href="#consensus"><span class="inline">consensus</span></a> to run several providers at once.</p>
+  <div class="note"><span class="ico">◆</span><span><strong>This is the wedge.</strong> Discovery and routing get your agent a vendor; only a layer that verifies can guarantee the outcome. Everything in these docs is a consequence of that.</span></div>
+</article>
+
+<!-- Auto-retry -->
+<article class="page" id="auto-retry" data-group="Reliability" data-title="Auto-retry">
+  <div class="crumbs"><b>Reliability</b></div>
+  <h1>Auto-retry</h1>
+  <p class="lead">An agent doesn't want its money back — it wants the thing done. With auto-retry, a failed attempt reroutes to the next-best provider within your budget until the output passes verification or attempts run out. An outcome, not a refund.</p>
+
+  <h2>Enabling it</h2>
+  <p>Set <span class="inline">retry: true</span> on a task, or <span class="inline">retry: { "max_attempts": N }</span> to cap attempts.</p>
+  <div class="codewrap"><div class="codehead">POST /v1/tasks</div><pre><code>{
+  "capability": "text.generate",
+  "input": { "prompt": "…" },
+  "acceptance": { "checks": [{ "assert": "length_between", "min": 120 }] },
+  "budget": 0.03,
+  "deadline_ms": 10000,
+  "retry": true
+}</code></pre></div>
+
+  <h2>How it works</h2>
+  <ul>
+    <li>A retry task locks its <b>full committed budget</b> in escrow, giving it room to reroute to a pricier-but-better provider.</li>
+    <li>On failure, the provider is <b>slashed</b>, then the next admissible provider (priced within the escrow) runs.</li>
+    <li>Only the provider that finally passes is paid; the surplus is <b>refunded</b> to you.</li>
+    <li>If every attempt fails or the deadline passes, you're refunded in full — same as a plain task.</li>
+  </ul>
+  <p>Each attempt is recorded on the task's <span class="inline">attempts</span> array; the settlement reports how many it took.</p>
+  <div class="note"><span class="ico">◆</span><span>The overall <span class="inline">deadline_ms</span> caps the whole retry loop, not each attempt — set it to the total time your agent can wait.</span></div>
+</article>
+
+<!-- Consensus -->
+<article class="page" id="consensus" data-group="Reliability" data-title="Consensus">
+  <div class="crumbs"><b>Reliability</b></div>
+  <h1>Consensus execution</h1>
+  <p class="lead">For high-stakes work, run several providers <strong>in parallel</strong>, verify each, and settle the best that passed. Trade a little more budget for near-certain correctness. A router picks one vendor and can't compare; only a verifier can run a quorum.</p>
+
+  <h2>Enabling it</h2>
+  <p>Set <span class="inline">consensus: N</span> (2 to 3). Vouch dispatches the top N admissible providers at once.</p>
+  <div class="codewrap"><div class="codehead">POST /v1/tasks</div><pre><code>{
+  "capability": "text.generate",
+  "input": { "prompt": "…" },
+  "acceptance": { "checks": [{ "assert": "length_between", "min": 120 }] },
+  "budget": 0.05,
+  "deadline_ms": 8000,
+  "consensus": 2
+}</code></pre></div>
+
+  <h2>Settlement rules</h2>
+  <ul>
+    <li>Every provider that <b>fails</b> verification is slashed.</li>
+    <li>Among those that <b>passed</b>, the cheapest settles and is paid; the others' stake is released with a small track bump (honest work, just not selected).</li>
+    <li>If <b>none</b> pass, you're refunded in full and compensated from the insurance pool.</li>
+  </ul>
+  <p>The settlement's <span class="inline">consensus</span> field reports how many were dispatched and how many passed.</p>
+</article>
+
+<!-- Outcome insurance -->
+<article class="page" id="insurance" data-group="Reliability" data-title="Outcome insurance">
+  <div class="crumbs"><b>Reliability</b></div>
+  <h1>Outcome insurance</h1>
+  <p class="lead">Failure doesn't just cost you nothing — it can pay you back. Slashed provider stake capitalizes an insurance pool that compensates agents for a failed round-trip, on top of the automatic refund.</p>
+
+  <h2>How the pool works</h2>
+  <ul>
+    <li>Every slash adds to the pool (<span class="inline">total_funded</span>).</li>
+    <li>On a failed task, the agent receives a compensation payout — a fraction of the task price — drawn from the pool's existing balance.</li>
+    <li>A fresh pool pays nothing (it can't pay out money it doesn't have); the pool builds as bad providers are slashed.</li>
+  </ul>
+
+  <h2>Reading pool state</h2>
+  <div class="codewrap"><div class="codehead">GET /v1/insurance</div><pre><code>{
+  "pool_balance": 0.42,
+  "total_funded": 1.87,
+  "claims_paid": 6,
+  "recent_claims": [ … ]
+}</code></pre></div>
+  <p>Pool stats are public — no key required. A settled-with-compensation task carries a <span class="inline">compensation</span> field in its refund record.</p>
+</article>
+
+<!-- Semantic cache -->
+<article class="page" id="cache" data-group="Reliability" data-title="Semantic cache">
+  <div class="crumbs"><b>Reliability</b></div>
+  <h1>Semantic cache</h1>
+  <p class="lead">When an identical task was already verified, serve that result instantly — at a fraction of the price, still carrying the original signed proof. Safe precisely because the cached output already passed verification against the same acceptance criteria.</p>
+
+  <h2>Enabling it</h2>
+  <p>Set <span class="inline">cache: true</span>. If a match exists (same capability, input, and acceptance), the task settles synchronously from cache — no auction, no provider round-trip.</p>
+  <div class="codewrap"><div class="codehead">POST /v1/tasks → response</div><pre><code>{
+  "task": { "status": "settled", "cached": true,
+    "settlement": { "provider": "cache", "price": 0.0006, "cached": true } },
+  "cached": true
+}</code></pre></div>
+  <p>The cache key is a hash of capability + canonical input + acceptance, so only a genuinely identical, identically-verified request hits. A cache hit costs a small fraction of the cheapest live quote.</p>
+</article>
+
+<!-- Verify output (VaaS) -->
+<article class="page" id="verify-api" data-group="API reference" data-title="Verify output">
+  <div class="crumbs"><b>API reference</b> <span>·</span> <span class="pill get" style="margin-left:6px">POST</span></div>
+  <h1>Verify output</h1>
+  <p class="lead">Bring output your agent produced itself — or bought elsewhere — and get a signed verdict. No escrow, no execution, no provider. Vouch as a pure verification-and-attestation layer.</p>
+
+  <h2>Request</h2>
+  <div class="codewrap"><div class="codehead">POST /v1/verify</div><pre><code>curl https://api.vouch.example/v1/verify \
+  -H "Authorization: Bearer vch_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "capability": "math.eval",
+    "input": { "expression": "2 + 2" },
+    "output": { "result": 4 },
+    "acceptance": { "checks": [{ "assert": "equals", "path": "result", "value": 4 }] }
+  }'</code></pre></div>
+
+  <h2>Response</h2>
+  <div class="codewrap"><div class="codehead">200 OK</div><pre><code>{
+  "pass": true,
+  "verified_by": ["schema", "checks"],
+  "failed": null,
+  "attestation": { "payload": { … }, "alg": "ed25519", "signature": "…" }
+}</code></pre></div>
+  <p>A passing verdict returns a signed <a href="#attestations">attestation</a> you can carry anywhere; a failing one returns the failing validator and no attestation. No money moves either way.</p>
+</article>
+
+<!-- Workflows -->
+<article class="page" id="workflows" data-group="API reference" data-title="Workflows">
+  <div class="crumbs"><b>API reference</b> <span>·</span> <span class="pill get" style="margin-left:6px">POST</span></div>
+  <h1>Verified workflows</h1>
+  <p class="lead">Chain steps into a task graph — each verified, each output feeding the next. The chain runs sequentially and stops at the first step that doesn't settle.</p>
+
+  <h2>Request</h2>
+  <p>Each step is an ordinary task body. Reference an earlier step's verified output with <span class="inline">{{steps.N.output.path}}</span>.</p>
+  <div class="codewrap"><div class="codehead">POST /v1/workflows</div><pre><code>{
+  "steps": [
+    { "capability": "math.eval",
+      "input": { "expression": "20 + 1" },
+      "acceptance": { "checks": [{ "assert": "equals", "path": "result", "value": 21 }] },
+      "budget": 0.02, "deadline_ms": 5000 },
+    { "capability": "math.eval",
+      "input": { "expression": "{{steps.0.output.result}} * 2" },
+      "acceptance": { "checks": [{ "assert": "equals", "path": "result", "value": 42 }] },
+      "budget": 0.02, "deadline_ms": 5000 }
+  ]
+}</code></pre></div>
+
+  <h2>Reading a workflow</h2>
+  <div class="codewrap"><div class="codehead">GET /v1/workflows/{id}</div><pre><code>{
+  "id": "wkf_…", "status": "completed",
+  "steps": [ { "index": 0, "taskId": "tsk_…", "status": "settled" }, … ],
+  "output": { "result": 42 }
+}</code></pre></div>
+  <p><span class="inline">status</span> is <span class="inline">running</span>, <span class="inline">completed</span>, or <span class="inline">failed</span> (with a <span class="inline">failure</span> pointer to the step that broke). Capped at 12 steps.</p>
+</article>
+
+<!-- Sub-agent wallets -->
+<article class="page" id="subkeys" data-group="API reference" data-title="Sub-agent wallets">
+  <div class="crumbs"><b>API reference</b> <span>·</span> <span class="pill get" style="margin-left:6px">POST</span></div>
+  <h1>Sub-agent wallets</h1>
+  <p class="lead">A parent key mints capped, policy-bound sub-keys for the child agents it spawns: a fixed budget transferred from the parent, an optional capability allowlist, and instant revocation. A child can never exceed its wallet or touch capabilities outside its allowlist.</p>
+
+  <h2>Mint a sub-key</h2>
+  <div class="codewrap"><div class="codehead">POST /v1/keys/sub</div><pre><code>curl https://api.vouch.example/v1/keys/sub \
+  -H "Authorization: Bearer vch_parent_key" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "research-worker", "fund": 1.0, "allow": ["research.web", "text.summarize"] }'
+# → { "id": "key_…", "key": "vch_…", "fund": 1.0, "allow": ["research.web","text.summarize"] }</code></pre></div>
+
+  <h2>List and revoke</h2>
+  <div class="codewrap"><div class="codehead">GET /v1/keys/sub · POST /v1/keys/sub/{id}/revoke</div><pre><code># list every sub-key under the parent, with balances + policy
+GET /v1/keys/sub
+
+# revoke: disables the key and returns its unspent balance to the parent
+POST /v1/keys/sub/{id}/revoke  → { "revoked": true, "refunded": 0.62 }</code></pre></div>
+  <div class="note"><span class="ico">◆</span><span>Sub-keys can't mint their own sub-keys, and a revoked key is rejected at authentication. Off-allowlist tasks return <span class="inline">403 capability_not_allowed</span>.</span></div>
+</article>
+
+<!-- Providers API -->
+<article class="page" id="providers-api" data-group="API reference" data-title="Providers">
+  <div class="crumbs"><b>API reference</b> <span>·</span> <span class="pill get" style="margin-left:6px">GET</span></div>
+  <h1>Provider reputation</h1>
+  <p class="lead">Every provider's track record is public: stake, reliability, settled and slashed counts, and the capabilities it serves. No key required.</p>
+
+  <div class="codewrap"><div class="codehead">GET /v1/providers</div><pre><code>{
+  "providers": [
+    {
+      "id": "prv_calder", "name": "Calder Labs", "protocol": "native",
+      "track": 96, "stake": 200, "stake_available": 199.98,
+      "settled": 41, "slashed": 0, "reliability": 1,
+      "capabilities": ["text.generate", "image.generate", … ]
+    }
+  ]
+}</code></pre></div>
+  <p><span class="inline">GET /v1/providers/{id}</span> returns one provider. <span class="inline">reliability</span> is settled ÷ (settled + slashed), or <span class="inline">null</span> before a provider's first task.</p>
+</article>
+
+<!-- Attestations -->
+<article class="page" id="attestations" data-group="Trust" data-title="Proof-of-verified-work">
+  <div class="crumbs"><b>Trust</b></div>
+  <h1>Proof-of-verified-work</h1>
+  <p class="lead">Every settlement carries an ed25519-signed attestation. The holder can prove, to any third party, that Vouch verified an output — without trusting Vouch at claim time.</p>
+
+  <h2>Fetch an attestation</h2>
+  <div class="codewrap"><div class="codehead">GET /v1/tasks/{id}/attestation</div><pre><code>{
+  "attestation": {
+    "payload": {
+      "kind": "settlement", "task_id": "tsk_…", "capability": "math.eval",
+      "provider": "prv_calder", "price": 0.0037,
+      "verified_by": ["schema", "checks"],
+      "output_sha256": "…", "key_id": "…", "attested_at": 1783…
+    },
+    "alg": "ed25519", "signature": "…"
+  },
+  "public_key": "-----BEGIN PUBLIC KEY-----…"
+}</code></pre></div>
+
+  <h2>Verify it — offline</h2>
+  <p>The signed message is the canonical JSON of <span class="inline">payload</span>. Anyone can check it against the public key at <span class="inline">GET /v1/attestation/key</span> — or paste it into the in-browser checker at <a href="/verify">/verify</a>. You don't have to trust us; you can prove it.</p>
+  <div class="note"><span class="ico">◆</span><span>Set <span class="inline">VOUCH_ATTEST_KEY</span> in production so signatures stay valid across restarts — see <a href="#config">Configuration</a>.</span></div>
+</article>
+
+<!-- On-chain settlement -->
+<article class="page" id="onchain" data-group="Trust" data-title="On-chain settlement">
+  <div class="crumbs"><b>Trust</b></div>
+  <h1>On-chain settlement</h1>
+  <p class="lead">Vouch's escrow and slashing run on a settlement adapter designed to move real USDC on Base. The engine decides pass/fail off-chain (verification can't run on-chain); the contract is the custody layer.</p>
+
+  <h2>The shape</h2>
+  <ul>
+    <li><b>VouchEscrow</b> holds the agent's USDC escrow and the provider's stake for the lifetime of a task.</li>
+    <li><b>settle</b> / <b>refundAndSlash</b> act only on a verifier-signed verdict (ECDSA <span class="inline">ecrecover</span>). Slashed stake accrues to an on-chain insurance pool.</li>
+    <li>The engine is the <b>verifier oracle</b>: it signs verdicts with a secp256k1 key the contract checks.</li>
+  </ul>
+
+  <h2>Trust model, staged</h2>
+  <ol>
+    <li><b>v1</b> — a single verifier key. Funds are on-chain and auditable.</li>
+    <li><b>v2</b> — an M-of-N attestation set (the rubric panel becomes independent signers).</li>
+    <li><b>v3</b> — optimistic settlement with a challenge window.</li>
+  </ol>
+  <div class="note"><span class="ico">◆</span><span><strong>Status:</strong> the contract and adapter are built and tested against a mock chain; escrow/stake remain a simulated bond until <span class="inline">VouchEscrow</span> is deployed. The signing and recovery flow is already the real one.</span></div>
+</article>
+
+<!-- Become a provider -->
+<article class="page" id="become-provider" data-group="Providers" data-title="Become a provider">
+  <div class="crumbs"><b>Providers</b></div>
+  <h1>Become a provider</h1>
+  <p class="lead">Register an endpoint, bond a stake, and start earning on verified outcomes. Ship junk and the slash is public. The whole loop is a few lines with the SDK.</p>
+
+  <h2>Register</h2>
+  <div class="codewrap"><div class="codehead">POST /v1/providers</div><pre><code>{
+  "name": "Acme Text",
+  "endpoint_url": "https://acme.example/task",
+  "offers": { "text.generate": { "price_ceiling": 0.02, "sla_deadline_ms": 10000 } },
+  "stake": 50
+}</code></pre></div>
+  <p>Vouch dispatches each task as <span class="inline">POST {task_id, capability, input, deadline_ms}</span> to your endpoint; the JSON you return is submitted for verification. Return an error or time out and the task is abandoned — and your stake answers for it.</p>
+
+  <h2>The SDK</h2>
+  <div class="codewrap"><div class="codehead">examples/vouch-provider-sdk.js</div><pre><code>import { createProvider } from './vouch-provider-sdk.js';
+
+const provider = createProvider({
+  name: 'Acme Text',
+  stake: 50,
+  handlers: {
+    'text.generate': async ({ input }) => ({ text: await myModel(input.prompt) }),
+  },
+});
+await provider.start();   // registers + serves</code></pre></div>
+  <p>See <a href="#stakes">Providers &amp; stakes</a> for how quoting, selection, and slashing work.</p>
+</article>
+
+<!-- x402 -->
+<article class="page" id="x402" data-group="Providers" data-title="x402 services">
+  <div class="crumbs"><b>Providers</b></div>
+  <h1>x402 services</h1>
+  <p class="lead">Any x402 (HTTP 402 pay-per-call) resource can become Vouch supply. Register it as an x402 provider and Vouch fronts the pay-per-call, wrapping the result in verification, escrow, and slashing.</p>
+
+  <h2>Register an x402 endpoint</h2>
+  <div class="codewrap"><div class="codehead">POST /v1/providers</div><pre><code>{
+  "name": "x402 image vendor",
+  "protocol": "x402",
+  "endpoint_url": "https://vendor.example/x402",
+  "offers": { "image.generate": { "price_ceiling": 0.015, "sla_deadline_ms": 10000 } },
+  "stake": 80
+}</code></pre></div>
+
+  <h2>How the handshake works</h2>
+  <ol>
+    <li>Vouch POSTs the task to the resource.</li>
+    <li>On a <span class="inline">402</span> challenge, it reads the payment requirements, attaches an <span class="inline">X-PAYMENT</span> authorization, and retries.</li>
+    <li>The returned output flows through the <b>same verification and settlement</b> as any provider.</li>
+  </ol>
+  <p>The provider fronts the call and carries the risk; the agent still pays only for a verified outcome. Real settlement is injected via a wallet + facilitator; the sandbox uses a voucher.</p>
+</article>
+
+<!-- Configuration -->
+<article class="page" id="config" data-group="Reference" data-title="Configuration">
+  <div class="crumbs"><b>Reference</b></div>
+  <h1>Configuration</h1>
+  <p class="lead">Environment variables that shape a deployment. Sandbox defaults make the stack usable out of the box; production needs a few set. See <span class="inline">DEPLOYMENT.md</span> for the full checklist.</p>
+
+  <table>
+    <tr><th>Variable</th><th>Purpose</th></tr>
+    <tr><td class="inline">UPSTASH_REDIS_REST_URL / _TOKEN</td><td>Serverless state store. Without it, serverless state resets on cold start.</td></tr>
+    <tr><td class="inline">VOUCH_STATE</td><td>State file path in server mode (default <span class="inline">data/state.json</span>).</td></tr>
+    <tr><td class="inline">VOUCH_LOCK_SIGNUP</td><td><span class="inline">1</span> gates key/provider minting behind an <span class="inline">X-Admin-Token</span> header.</td></tr>
+    <tr><td class="inline">VOUCH_ADMIN_TOKEN</td><td>The admin token accepted when signup is locked.</td></tr>
+    <tr><td class="inline">VOUCH_ATTEST_KEY</td><td>PKCS8 ed25519 PEM so attestation signatures stay valid across restarts.</td></tr>
+    <tr><td class="inline">ANTHROPIC_API_KEY</td><td>Enables the Claude rubric panel; absent falls back to the offline heuristic grader.</td></tr>
+    <tr><td class="inline">VOUCH_PORT</td><td>Listen port in server mode (default <span class="inline">4402</span>).</td></tr>
+  </table>
+  <div class="note"><span class="ico">◆</span><span>Before real traffic: persist state, set <span class="inline">VOUCH_LOCK_SIGNUP</span>, add <span class="inline">ANTHROPIC_API_KEY</span> and <span class="inline">VOUCH_ATTEST_KEY</span>, and (when ready) deploy the escrow contract.</span></div>
+</article>
+
 </main>
 
 <!-- ============ TOC RAIL ============ -->
