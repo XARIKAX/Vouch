@@ -40,6 +40,30 @@ export const CAPABILITIES = {
     output: { result: 'number' },
     primary: 'result',
   },
+  'code.generate': {
+    description: 'Generate code from a prompt in a target language',
+    input: { prompt: 'string', language: 'string?' },
+    output: { code: 'string' },
+    primary: 'code',
+  },
+  'translate.text': {
+    description: 'Translate text into a target language',
+    input: { text: 'string', target_lang: 'string' },
+    output: { translation: 'string' },
+    primary: 'translation',
+  },
+  'extract.structured': {
+    description: 'Extract structured JSON data from freeform text',
+    input: { text: 'string', fields: 'string?' },
+    output: { data: 'object' },
+    primary: 'data',
+  },
+  'classify.text': {
+    description: 'Classify text into exactly one of the provided labels',
+    input: { text: 'string', labels: 'object' },
+    output: { label: 'string' },
+    primary: 'label',
+  },
   // In the catalog but served by no seeded provider — posting against it
   // demonstrates the 409 no_quotes path.
   'research.web': {
