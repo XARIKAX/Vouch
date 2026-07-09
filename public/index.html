@@ -161,6 +161,38 @@ nav.top .wrap{display:flex;align-items:center;gap:26px;width:100%}
   box-shadow:0 18px 44px rgba(12,13,11,.14);opacity:0;transform:translateY(6px) rotate(-1.2deg);animation:rise .6s 3.1s forwards}
 .slash-note b{font-weight:600}.slash-note .sub{color:rgba(210,60,66,.7);font-size:10.5px}
 
+/* ---------- hero live console ---------- */
+.console{border:1px solid rgba(12,13,11,.14);border-radius:16px;overflow:hidden;background:#0b0c0a;color:#e9eadf;font-family:var(--mono);
+  box-shadow:0 34px 80px rgba(12,13,11,.20),0 4px 14px rgba(12,13,11,.06)}
+.cs-bar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(244,245,239,.09);font-size:11.5px;color:#8a8c82}
+.cs-bar .dots{display:flex;gap:6px}.cs-bar .dots i{width:9px;height:9px;border-radius:50%;background:rgba(244,245,239,.14)}
+.cs-bar .cs-title{letter-spacing:.3px}
+.cs-state{margin-left:auto;display:inline-flex;align-items:center;gap:7px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc-bright)}
+.cs-state i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor;animation:pulse 1.7s infinite}
+.cs-state.warn{color:#e6b74e}
+.cs-status{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(244,245,239,.07);font-size:11px;color:#71736a;letter-spacing:.4px}
+.cs-status #cs-phase{color:var(--acc-bright);text-transform:uppercase;letter-spacing:1.5px}
+.cs-status.warn #cs-phase{color:#e6b74e}
+.cs-mid{color:#5c5e56}.cs-timer{margin-left:auto;color:#8a8c82;font-variant-numeric:tabular-nums}
+.cs-body{padding:14px 16px 8px;min-height:296px;font-size:12.6px;line-height:1.9}
+.cs-line{opacity:0;transform:translateY(3px);animation:csrise .34s forwards;white-space:pre-wrap;display:flex;gap:8px;padding:1.5px 0}
+@keyframes csrise{to{opacity:1;transform:none}}
+.cs-line .pf{color:var(--acc-deep);flex:none}
+.cs-dim{color:#6e7066}.cs-g{color:var(--acc-bright)}.cs-r{color:#e0787c}.cs-y{color:#e6d98a}
+.cs-cursor{display:inline-block;width:7px;height:14px;background:var(--acc-bright);vertical-align:-2px;margin-left:1px;animation:csblink 1s steps(1) infinite}
+@keyframes csblink{50%{opacity:0}}
+.cs-tbl{width:100%;border-collapse:collapse;font-size:11.8px;margin:5px 0 3px;opacity:0;transform:translateY(3px);animation:csrise .34s forwards}
+.cs-tbl th{text-align:left;color:#5c5e56;font-weight:400;letter-spacing:.6px;padding:3px 0;border-bottom:1px solid rgba(244,245,239,.09)}
+.cs-tbl td{padding:4.5px 0;color:#c7c9be;border-bottom:1px solid rgba(244,245,239,.045)}
+.cs-tbl .num{text-align:right;font-variant-numeric:tabular-nums;padding-left:14px}
+.cs-tbl tr{opacity:0;transform:translateY(2px);animation:csrise .3s forwards}
+.cs-tbl tr.win td{color:var(--acc-bright)}
+.cs-tbl .tag{font-size:9px;letter-spacing:.5px;padding:1px 6px;border-radius:5px;background:rgba(244,245,239,.08);color:#8a8c82}
+.cs-tbl tr.win .tag{background:var(--acc);color:var(--acc-ink);font-weight:600}
+.cs-tbl tr.down .tag{color:#e0787c;background:rgba(224,120,124,.12)}
+.cs-foot{padding:11px 16px;border-top:1px dashed rgba(244,245,239,.14);font-size:10.5px;color:#5c5e56;letter-spacing:.3px}
+.cs-foot b{color:#8a8c82;font-weight:500}
+
 /* ---------- marquee (dark strip) ---------- */
 .marquee{padding:20px 0;overflow:hidden;position:relative;border-block:1px solid var(--line);
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
@@ -394,29 +426,20 @@ footer{padding:66px 0 44px;border-top:1px solid var(--line)}
     </div>
 
     <div class="stage">
-      <div class="panel-card" role="img" aria-label="A Vouch task: vendor auction, winning committed quote, escrow, verification, and settlement">
-        <div class="pc-head">
+      <div class="console" id="console" role="img" aria-label="A live Vouch task: escrow lock, sealed provider auction, verification, and settlement — replaying continuously.">
+        <div class="cs-bar">
           <span class="dots"><i></i><i></i><i></i></span>
-          <span class="path">vouch · tsk_9f2ce1a4 · text.generate</span>
-          <span class="live"><i></i>LIVE</span>
+          <span class="cs-title">vouch · router</span>
+          <span class="cs-state" id="cs-state"><i></i><span id="cs-state-t">live</span></span>
         </div>
-        <div class="pc-body">
-          <div class="stagebar"><span class="sg"><i></i></span><span class="sg"><i></i></span><span class="sg"><i></i></span><span class="sg"><i></i></span><span class="sg"><i></i></span></div>
-          <div class="auction">
-            <div class="at"><span>sealed vendor auction</span><span><b>3</b> bids</span></div>
-            <div class="bid"><span class="pv">prv_shade</span><span class="track"><i style="width:44%"></i></span><span class="px">$0.031</span></div>
-            <div class="bid"><span class="pv">prv_norn</span><span class="track"><i style="width:30%"></i></span><span class="px">$0.024</span></div>
-            <div class="bid win"><span class="pv">prv_calder<span class="tag">WON</span></span><span class="track"><i style="width:26%"></i></span><span class="px">$0.021</span></div>
-          </div>
-          <div class="receipt-rows">
-            <div class="rrow"><span class="tk">✓</span><span class="lb">escrow locked · USDC</span><span class="vl">0xa41f…9c2e</span></div>
-            <div class="rrow"><span class="tk">✓</span><span class="lb">verification · schema · checks · rubric</span><span class="vl">3/3 pass</span></div>
-            <div class="rrow"><span class="tk">✓</span><span class="lb">settlement released</span><span class="vl">provider paid</span></div>
-          </div>
+        <div class="cs-status" id="cs-status">
+          <span id="cs-phase">idle</span>
+          <span class="cs-mid" id="cs-mid">tsk_9f2ce1a4</span>
+          <span class="cs-timer" id="cs-timer">00:00.00</span>
         </div>
-        <div class="pc-foot"><span class="s">you paid for the outcome</span><span class="amt">$0.021</span></div>
+        <div class="cs-body" id="cs-body"></div>
+        <div class="cs-foot"><b>Vouch verifies every result before a cent moves</b> · sealed auction · &lt;800ms round-trip</div>
       </div>
-      <div class="slash-note"><b>failed verification?</b> −$0.021 refunded to you<br><span class="sub">provider stake slashed −$0.032</span></div>
     </div>
   </div>
 </header>
@@ -744,6 +767,116 @@ document.querySelectorAll('.rv').forEach((el) => io.observe(el));
     set('d-cap-l', s.capL); set('d-cap-t', s.capT); set('d-fig', s.fig); set('d-note', s.note);
   };
   document.querySelectorAll('.demo-tab').forEach((t) => t.addEventListener('click', () => apply(t.dataset.set)));
+})();
+
+// Hero live console — a continuously replaying task: escrow → sealed auction
+// → verification → settle (or fail → refund + slash). Types like a terminal.
+(() => {
+  const body = document.getElementById('cs-body');
+  if (!body) return;
+  const phaseEl = document.getElementById('cs-phase');
+  const midEl = document.getElementById('cs-mid');
+  const timerEl = document.getElementById('cs-timer');
+  const stateT = document.getElementById('cs-state-t');
+  const statusEl = document.getElementById('cs-status');
+  const stateEl = document.getElementById('cs-state');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let timers = [];
+  const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+  const clearAll = () => { timers.forEach(clearTimeout); timers = []; };
+
+  const setPhase = (txt, warn) => {
+    phaseEl.textContent = txt; stateT.textContent = txt;
+    statusEl.classList.toggle('warn', !!warn);
+    stateEl.classList.toggle('warn', !!warn);
+  };
+  const line = (html) => { const d = document.createElement('div'); d.className = 'cs-line'; d.innerHTML = html; body.appendChild(d); return d; };
+  // typewriter into a fresh line, with a trailing cursor
+  const type = (prefix, text, speed, done) => {
+    const d = line('<span class="pf">' + prefix + '</span><span class="tw"></span><span class="cs-cursor"></span>');
+    const tw = d.querySelector('.tw'); const cur = d.querySelector('.cs-cursor');
+    let i = 0;
+    const step = () => { tw.textContent = text.slice(0, i); i++;
+      if (i <= text.length) at(speed, step); else { cur.remove(); done && done(); } };
+    step();
+  };
+  const table = (head, rows) => {
+    const t = document.createElement('table'); t.className = 'cs-tbl';
+    t.innerHTML = '<thead><tr>' + head + '</tr></thead><tbody></tbody>';
+    body.appendChild(t);
+    const tb = t.querySelector('tbody');
+    rows.forEach((r, i) => at(180 * (i + 1), () => {
+      const tr = document.createElement('tr'); tr.className = r.cls || ''; tr.innerHTML = r.html; tb.appendChild(tr);
+    }));
+  };
+
+  const CYCLE = 8600;
+  const runTimer = () => {
+    const start = performance.now();
+    const tick = () => {
+      const s = (performance.now() - start) / 1000;
+      timerEl.textContent = '00:' + s.toFixed(2).padStart(5, '0');
+      if (s < CYCLE / 1000) at(0, () => requestAnimationFrame(tick));
+    };
+    requestAnimationFrame(tick);
+  };
+
+  // one full narrative; `pass` picks settled vs refunded/slashed
+  const cycle = (pass) => {
+    clearAll(); body.innerHTML = '';
+    midEl.textContent = pass ? 'text.generate · tsk_9f2ce1a4' : 'code.generate · tsk_b7d0e6c1';
+    if (!reduce) runTimer();
+
+    at(0, () => setPhase('posting'));
+    type('›', pass ? 'vouch.post text.generate("launch tweet")' : 'vouch.post code.generate("auth middleware")', 22);
+    at(1050, () => line('<span class="cs-dim">acceptance · rubric + checks · budget $0.03</span>'));
+    at(1550, () => { setPhase('escrow'); type('›', 'escrow.lock 0.03 USDC', 20, () => {}); });
+    at(2050, () => line('<span class="cs-dim">locked →</span> <span class="cs-g">0xa41f…9c2e</span>'));
+    at(2450, () => { setPhase('auction'); line('<span class="pf">›</span><span>sealed auction · broadcast → mesh</span>'); });
+    at(2850, () => line('<span class="cs-dim">3 sealed bids · ranking price · latency · track</span>'));
+    at(3150, () => {
+      if (pass) table('<th>#</th><th>vendor</th><th class="num">usdc</th><th class="num">track</th><th class="num">state</th>', [
+        { html: '<td>01</td><td>prv_shade</td><td class="num">0.031</td><td class="num">94</td><td class="num"><span class="tag">bid</span></td>' },
+        { html: '<td>02</td><td>prv_norn</td><td class="num">0.024</td><td class="num">88</td><td class="num"><span class="tag">bid</span></td>' },
+        { cls: 'win', html: '<td>03</td><td>prv_calder</td><td class="num">0.021</td><td class="num">96</td><td class="num"><span class="tag">won</span></td>' },
+      ]);
+      else table('<th>#</th><th>vendor</th><th class="num">usdc</th><th class="num">track</th><th class="num">state</th>', [
+        { html: '<td>01</td><td>prv_shade</td><td class="num">0.030</td><td class="num">71</td><td class="num"><span class="tag">bid</span></td>' },
+        { cls: 'win', html: '<td>02</td><td>prv_norn</td><td class="num">0.022</td><td class="num">82</td><td class="num"><span class="tag">won</span></td>' },
+      ]);
+    });
+    at(4200, () => setPhase('verifying'));
+    if (pass) {
+      at(4250, () => line('<span class="pf">›</span><span>verify · <span class="cs-g">schema ✓</span> · <span class="cs-g">checks ✓</span> · <span class="cs-g">rubric 3/3</span></span>'));
+      at(5100, () => { setPhase('settled'); line('<span class="pf">›</span><span class="cs-g">settle → prv_calder · $0.021 released</span>'); });
+      at(5700, () => line('<span class="cs-dim">you paid for the outcome ·</span> <span class="cs-g">$0.021</span>'));
+    } else {
+      at(4250, () => line('<span class="pf">›</span><span>verify · <span class="cs-r">rubric 1/3 · below bar ✕</span></span>'));
+      at(5100, () => { setPhase('refunded', true); line('<span class="pf">›</span><span class="cs-g">refund 0.022 → you · made whole</span>'); });
+      at(5550, () => line('<span class="pf">›</span><span class="cs-r">slash −0.031 → prv_norn stake</span>'));
+      at(6050, () => line('<span class="cs-dim">you paid ·</span> <span class="cs-g">$0.00</span>'));
+    }
+    at(CYCLE, () => cycle(!pass));
+  };
+
+  if (reduce) {
+    // Static settled snapshot — no motion, no timer.
+    setPhase('settled'); midEl.textContent = 'text.generate · tsk_9f2ce1a4'; timerEl.textContent = '00:06.67';
+    line('<span class="pf">›</span><span>vouch.post text.generate("launch tweet")</span>');
+    line('<span class="cs-dim">acceptance · rubric + checks · budget $0.03</span>');
+    line('<span class="cs-dim">locked →</span> <span class="cs-g">0xa41f…9c2e</span> · <span class="cs-dim">3 sealed bids</span>');
+    const t = document.createElement('table'); t.className = 'cs-tbl';
+    t.innerHTML = '<thead><tr><th>#</th><th>vendor</th><th class="num">usdc</th><th class="num">track</th><th class="num">state</th></tr></thead>'
+      + '<tbody><tr><td>01</td><td>prv_shade</td><td class="num">0.031</td><td class="num">94</td><td class="num"><span class="tag">bid</span></td></tr>'
+      + '<tr><td>02</td><td>prv_norn</td><td class="num">0.024</td><td class="num">88</td><td class="num"><span class="tag">bid</span></td></tr>'
+      + '<tr class="win"><td>03</td><td>prv_calder</td><td class="num">0.021</td><td class="num">96</td><td class="num"><span class="tag">won</span></td></tr></tbody>';
+    t.style.animation = 'none'; t.querySelectorAll('tr').forEach((r) => { r.style.animation = 'none'; r.style.opacity = 1; });
+    body.appendChild(t);
+    const r = line('<span class="pf">›</span><span>verify · <span class="cs-g">schema ✓ · checks ✓ · rubric 3/3</span></span>');
+    const s = line('<span class="pf">›</span><span class="cs-g">settle → prv_calder · $0.021 released</span>');
+    body.querySelectorAll('.cs-line').forEach((el) => { el.style.animation = 'none'; el.style.opacity = 1; el.style.transform = 'none'; });
+  } else cycle(true);
 })();
 
 // Live network stats + capability marquee
