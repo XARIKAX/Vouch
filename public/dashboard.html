@@ -11,21 +11,21 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#101012;--bg2:#17181b;--bg3:#202127;--panel:#141519;
-  --border:rgba(232,222,197,.07);--border2:rgba(232,222,197,.14);
+  --border:rgba(236,238,230,.07);--border2:rgba(236,238,230,.14);
   --t1:#f3f0e9;--t2:#a8a49a;--t3:#6c6a62;
-  --acc:#e6c988;--acc2:#c9a24e;--acc-fg:#1a1509;
-  --acc-soft:rgba(230,201,136,.09);--red:#ff5c64;
+  --acc:#d2ee1c;--acc2:#a4c200;--acc-fg:#11140a;
+  --acc-soft:rgba(210,238,28,.09);--red:#ff5c64;
   --grad:linear-gradient(100deg,var(--acc) 10%,var(--acc2) 90%);
 }
 body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--t1);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
-::selection{background:rgba(230,201,136,.28)}
+::selection{background:rgba(210,238,28,.28)}
 a{color:inherit;text-decoration:none}
 .wrap{max-width:1140px;margin:0 auto;padding:0 24px}
 .sky{position:fixed;inset:0;z-index:-2;pointer-events:none;background:
-  radial-gradient(58rem 34rem at 78% -8%,rgba(230,201,136,.1),transparent 62%),
-  radial-gradient(44rem 30rem at 6% 12%,rgba(201,162,78,.05),transparent 60%)}
+  radial-gradient(58rem 34rem at 78% -8%,rgba(210,238,28,.1),transparent 62%),
+  radial-gradient(44rem 30rem at 6% 12%,rgba(164,194,0,.05),transparent 60%)}
 .grid-lines{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.4;
-  background-image:linear-gradient(rgba(232,222,197,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,222,197,.028) 1px,transparent 1px);
+  background-image:linear-gradient(rgba(236,238,230,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(236,238,230,.028) 1px,transparent 1px);
   background-size:56px 56px;
   -webkit-mask-image:radial-gradient(70rem 40rem at 50% 0%,#000 30%,transparent 78%);
   mask-image:radial-gradient(70rem 40rem at 50% 0%,#000 30%,transparent 78%)}
@@ -34,11 +34,11 @@ nav.top{position:sticky;top:0;z-index:50;height:66px;display:flex;align-items:ce
   background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
 nav.top .wrap{display:flex;align-items:center;gap:14px;width:100%}
 .logo{display:flex;align-items:center;gap:11px;font-weight:750;font-size:18px}
-.mark{width:29px;height:29px;display:grid;place-items:center;flex:none;filter:drop-shadow(0 0 10px rgba(230,201,136,.38))}.mark svg{width:100%;height:100%}
+.mark{width:29px;height:29px;display:grid;place-items:center;flex:none;filter:drop-shadow(0 0 10px rgba(210,238,28,.38))}.mark svg{width:100%;height:100%}
 .pagechip{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:6px;padding:3px 9px;background:var(--acc-soft)}
 .nav-links{margin-left:auto;display:flex;gap:4px;align-items:center}
 .nav-links a{color:var(--t2);font-size:14px;padding:8px 13px;border-radius:9px;transition:.18s}
-.nav-links a:hover{color:var(--t1);background:rgba(232,222,197,.05)}
+.nav-links a:hover{color:var(--t1);background:rgba(236,238,230,.05)}
 
 main{padding:38px 0 90px}
 .headline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:26px}
@@ -48,11 +48,11 @@ main{padding:38px 0 90px}
 .console{border:1px solid var(--border);border-radius:18px;background:var(--panel);padding:18px;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
 input,button{font-family:'Geist',sans-serif;font-size:13.5px;border-radius:11px;border:1px solid var(--border2);background:var(--bg2);color:var(--t1);padding:11px 14px;transition:.18s}
 input{flex:1;min-width:260px;font-family:'Geist Mono',monospace}
-input:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(230,201,136,.12)}
+input:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(210,238,28,.12)}
 input::placeholder{color:var(--t3)}
 button{cursor:pointer;font-weight:550}
 button:hover{border-color:var(--acc);color:var(--acc);transform:translateY(-1px)}
-button.acc{background:var(--grad);color:var(--acc-fg);border:none;font-weight:650;box-shadow:0 6px 22px rgba(230,201,136,.3)}
+button.acc{background:var(--grad);color:var(--acc-fg);border:none;font-weight:650;box-shadow:0 6px 22px rgba(210,238,28,.3)}
 button.acc:hover{color:var(--acc-fg);filter:brightness(1.09)}
 #msg{font-size:12.5px;color:var(--t3);margin:8px 4px 20px;min-height:18px;font-family:'Geist Mono',monospace}
 #msg.err{color:var(--red)}
@@ -69,16 +69,16 @@ h2::after{content:"";flex:1;height:1px;background:var(--border)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{text-align:left;padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:top}
 tr:last-child td{border-bottom:none}
-th{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);font-weight:600;background:rgba(232,222,197,.025)}
+th{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--t3);font-weight:600;background:rgba(236,238,230,.025)}
 td{color:var(--t2)}
 tbody tr{transition:background .15s}
-tbody tr:hover{background:rgba(232,222,197,.025)}
+tbody tr:hover{background:rgba(236,238,230,.025)}
 td.mono{font-family:'Geist Mono',monospace;font-size:12px;color:var(--t1);white-space:nowrap}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-family:'Geist Mono',monospace;padding:3px 10px;border-radius:99px;border:1px solid var(--border2);color:var(--t2)}
 .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .pill.settled{color:var(--acc);border-color:color-mix(in srgb,var(--acc) 40%,transparent);background:var(--acc-soft)}
 .pill.refunded{color:var(--red);border-color:rgba(255,92,100,.4);background:rgba(255,92,100,.08)}
-.pill.dispatched,.pill.verifying,.pill.submitted,.pill.disputed{color:var(--acc2);border-color:rgba(201,162,78,.35);background:rgba(201,162,78,.07)}
+.pill.dispatched,.pill.verifying,.pill.submitted,.pill.disputed{color:var(--acc2);border-color:rgba(164,194,0,.35);background:rgba(164,194,0,.07)}
 .pill.dispatched::before,.pill.verifying::before,.pill.submitted::before{animation:pulse 1.6s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .empty{color:var(--t3);padding:26px 16px;font-size:13px;text-align:center}
@@ -94,7 +94,7 @@ td.mono{font-family:'Geist Mono',monospace;font-size:12px;color:var(--t1);white-
 select,.composer input,.composer textarea{font-family:'Geist',sans-serif;font-size:13.5px;border-radius:11px;border:1px solid var(--border2);background:var(--bg2);color:var(--t1);padding:11px 12px;width:100%}
 select{cursor:pointer}
 .composer textarea{min-height:62px;resize:vertical;font-family:'Geist',sans-serif}
-select:focus,.composer input:focus,.composer textarea:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(230,201,136,.12)}
+select:focus,.composer input:focus,.composer textarea:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(210,238,28,.12)}
 .toggles{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .tg{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;cursor:pointer;user-select:none;transition:.15s;background:var(--bg2)}
 .tg:hover{color:var(--t1)}
@@ -116,7 +116,7 @@ select:focus,.composer input:focus,.composer textarea:focus{outline:none;border-
 
 <nav class="top">
   <div class="wrap">
-    <a class="logo" href="/"><span class="mark"><svg class="vmark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#e6c988"/><stop offset="1" stop-color="#c9a24e"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#1a1509" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark"><svg class="vmark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#d2ee1c"/><stop offset="1" stop-color="#a4c200"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#11140a" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <span class="pagechip">Dashboard</span>
     <div class="nav-links">
       <a href="/services">Services</a>

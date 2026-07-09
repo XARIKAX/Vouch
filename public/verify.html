@@ -12,29 +12,29 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#101012;--bg2:#17181b;--bg3:#202127;--panel:#141519;
-  --border:rgba(232,222,197,.07);--border2:rgba(232,222,197,.14);
+  --border:rgba(236,238,230,.07);--border2:rgba(236,238,230,.14);
   --t1:#f3f0e9;--t2:#a8a49a;--t3:#6c6a62;
-  --acc:#e6c988;--acc2:#c9a24e;--acc-fg:#1a1509;
-  --acc-soft:rgba(230,201,136,.09);--red:#ff5c64;--green:#4bd888;
+  --acc:#d2ee1c;--acc2:#a4c200;--acc-fg:#11140a;
+  --acc-soft:rgba(210,238,28,.09);--red:#ff5c64;--green:#4bd888;
   --grad:linear-gradient(100deg,var(--acc) 10%,var(--acc2) 90%);
 }
 body{font-family:'Geist',sans-serif;background:var(--bg);color:var(--t1);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh}
-::selection{background:rgba(230,201,136,.28)}
+::selection{background:rgba(210,238,28,.28)}
 a{color:inherit;text-decoration:none}
 .mono{font-family:'Geist Mono',monospace}
 .wrap{max-width:820px;margin:0 auto;padding:0 24px}
-.sky{position:fixed;inset:0;z-index:-2;pointer-events:none;background:radial-gradient(58rem 34rem at 78% -8%,rgba(230,201,136,.11),transparent 62%)}
+.sky{position:fixed;inset:0;z-index:-2;pointer-events:none;background:radial-gradient(58rem 34rem at 78% -8%,rgba(210,238,28,.11),transparent 62%)}
 .grid-lines{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.5;
-  background-image:linear-gradient(rgba(232,222,197,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(232,222,197,.028) 1px,transparent 1px);
+  background-image:linear-gradient(rgba(236,238,230,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(236,238,230,.028) 1px,transparent 1px);
   background-size:56px 56px;-webkit-mask-image:radial-gradient(70rem 42rem at 50% 0%,#000 30%,transparent 78%);mask-image:radial-gradient(70rem 42rem at 50% 0%,#000 30%,transparent 78%)}
 nav.top{height:66px;display:flex;align-items:center;border-bottom:1px solid var(--border)}
 nav.top .wrap{display:flex;align-items:center;gap:14px;width:100%;max-width:1140px}
 .logo{display:flex;align-items:center;gap:11px;font-weight:750;font-size:18px}
-.mark{width:29px;height:29px;display:grid;place-items:center;flex:none;filter:drop-shadow(0 0 10px rgba(230,201,136,.38))}.mark svg{width:100%;height:100%}
+.mark{width:29px;height:29px;display:grid;place-items:center;flex:none;filter:drop-shadow(0 0 10px rgba(210,238,28,.38))}.mark svg{width:100%;height:100%}
 .pagechip{font-family:'Geist Mono',monospace;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:6px;padding:3px 9px;background:var(--acc-soft)}
 .nav-links{margin-left:auto;display:flex;gap:4px}
 .nav-links a{color:var(--t2);font-size:14px;padding:8px 13px;border-radius:9px}
-.nav-links a:hover{color:var(--t1);background:rgba(232,222,197,.05)}
+.nav-links a:hover{color:var(--t1);background:rgba(236,238,230,.05)}
 main{padding:64px 0 80px}
 .eyebrow{font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:2.4px;text-transform:uppercase;color:var(--acc);margin-bottom:16px;display:flex;align-items:center;gap:12px}
 .eyebrow::before{content:"";width:26px;height:1px;background:var(--acc)}
@@ -42,9 +42,9 @@ h1{font-size:clamp(30px,4vw,44px);font-weight:800;letter-spacing:-.03em;line-hei
 h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lede{color:var(--t2);font-size:16.5px;max-width:52ch;margin-bottom:34px}
 textarea{width:100%;min-height:180px;border:1px solid var(--border2);border-radius:14px;background:var(--panel);color:var(--t1);padding:16px;font-family:'Geist Mono',monospace;font-size:12.5px;line-height:1.6;resize:vertical}
-textarea:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(230,201,136,.1)}
+textarea:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(210,238,28,.1)}
 .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;align-items:center}
-.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:12px;font-size:14.5px;font-weight:650;border:none;cursor:pointer;background:var(--grad);color:var(--acc-fg);box-shadow:0 6px 22px rgba(230,201,136,.3)}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:12px;font-size:14.5px;font-weight:650;border:none;cursor:pointer;background:var(--grad);color:var(--acc-fg);box-shadow:0 6px 22px rgba(210,238,28,.3)}
 .btn:hover{filter:brightness(1.08)}
 .btn.ghost{background:transparent;border:1px solid var(--border2);color:var(--t1);font-weight:550;box-shadow:none}
 .btn.ghost:hover{border-color:var(--acc);color:var(--acc)}
@@ -76,7 +76,7 @@ footer .wrap{max-width:1140px}
 
 <nav class="top">
   <div class="wrap">
-    <a class="logo" href="/"><span class="mark"><svg class="vmark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#e6c988"/><stop offset="1" stop-color="#c9a24e"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#1a1509" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark"><svg class="vmark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#d2ee1c"/><stop offset="1" stop-color="#a4c200"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#11140a" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <span class="pagechip">Verify</span>
     <div class="nav-links"><a href="/services">Services</a><a href="/docs">Docs</a><a href="/dashboard">Dashboard</a></div>
   </div>
