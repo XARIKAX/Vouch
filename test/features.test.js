@@ -231,6 +231,42 @@ test('x402 adapter: pays the 402 challenge, gets output, and it settles through 
   } finally { resource.close(); }
 });
 
+// ---- real model execution -----------------------------------------------
+test('real execution: an honest provider does actual work through Claude when keyed', async () => {
+  const original = globalThis.fetch;
+  let called = null;
+  globalThis.fetch = async (url, opts) => {
+    called = { url: String(url), body: JSON.parse(opts.body) };
+    return new Response(JSON.stringify({
+      content: [{ type: 'text', text: 'A genuinely generated, on-topic answer of real substance that comfortably clears any length floor for verification.' }],
+      stop_reason: 'end_turn',
+    }), { status: 200 });
+  };
+  try {
+    const engine = createEngine({ fast: true, anthropicKey: 'sk-test', graderModel: 'claude-x' });
+    // isolate a single honest native provider so it (not the seeded unreliable
+    // one) wins and takes the real-execution path
+    engine.state.providers = { prv_real: {
+      id: 'prv_real', name: 'Real', stake: 100, stakeReserved: 0, earnings: 0,
+      track: 90, settledCount: 0, slashedCount: 0, reliability: 1,
+      offers: { 'text.generate': { price_ceiling: 0.02, sla_deadline_ms: 8000 } },
+    } };
+    // keep verification offline/deterministic: no rubric, just a length check
+    const key = engine.createKey('t');
+    engine.deposit(key, 1);
+    const { task } = engine.createTask(key, {
+      capability: 'text.generate', input: { prompt: 'explain escrow in one paragraph' },
+      acceptance: { checks: [{ assert: 'length_between', min: 40 }] },
+      budget: 0.05, deadline_ms: 8000,
+    });
+    const done = await waitTerminal(engine, task.id);
+    assert.equal(done.status, 'settled');
+    assert.match(called.url, /\/v1\/messages$/, 'called the Anthropic messages API');
+    assert.equal(called.body.model, 'claude-x', 'used the configured model');
+    assert.match(done.output.text, /genuinely generated/, 'the real model output was delivered and verified');
+  } finally { globalThis.fetch = original; }
+});
+
 // ---- consensus / redundant execution ------------------------------------
 test('consensus: parallel providers, the junk one is slashed, a passer settles', async () => {
   const junk = await fakeProvider({ text: '### ERROR ###' });

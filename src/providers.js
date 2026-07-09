@@ -1,4 +1,5 @@
 import { hash01, sleep } from './util.js';
+import { claudeExecute } from './execute-claude.js';
 
 // ---------------------------------------------------------------------------
 // Safe arithmetic evaluator (numbers, + - * / and parentheses only).
@@ -169,10 +170,19 @@ async function execute(provider, task, cfg) {
   if (provider.protocol === 'x402') return executeX402(provider, task, cfg);
   if (provider.endpoint_url) return executeExternal(provider, task);
   const cap = task.capability;
+  const honest = hash01(provider.id + task.id + 'roll') < provider.reliability;
+
+  // Real model execution: an honest native provider does actual work through
+  // Claude when a key is configured. The unreliable path stays simulated so
+  // slashing remains demonstrable, and math.eval is computed for real below.
+  if (honest && cfg.anthropicKey) {
+    const real = await claudeExecute(task, cfg);
+    if (real) return real;
+  }
+
+  // Simulated execution (offline / sandbox): deterministic latency + output.
   const latency = Math.max(5, Math.floor(task.quote.deadline_ms * (0.3 + 0.3 * hash01(provider.id + task.id))));
   await sleep(cfg.fast ? Math.min(latency, 60) : latency);
-
-  const honest = hash01(provider.id + task.id + 'roll') < provider.reliability;
 
   if (cap === 'math.eval') {
     let result;

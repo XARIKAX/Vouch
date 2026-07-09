@@ -62,9 +62,12 @@ test('claude grader panel: PASS verdicts settle, FAIL verdicts refund', async ()
     const settled = await waitTerminal(engine, good.task.id);
     assert.equal(settled.status, 'settled');
     assert.ok(settled.settlement.verified_by.includes('rubric:3/3'));
-    assert.equal(calls.length, 3); // one call per panel seat
+    // With a key set, an honest provider also executes via Claude; isolate the
+    // three grader-panel calls by their verdict-rules system prompt.
+    const graderCalls = calls.filter((c) => /PASS or FAIL/.test(c.system));
+    assert.equal(graderCalls.length, 3); // one call per panel seat
     assert.ok(calls.every((c) => c.path === '/v1/messages'));
-    assert.equal(new Set(calls.map((c) => c.system)).size, 3); // distinct personas
+    assert.equal(new Set(graderCalls.map((c) => c.system)).size, 3); // distinct personas
 
     verdict = 'FAIL';
     const bad = engine.createTask(key, {

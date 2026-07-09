@@ -87,6 +87,8 @@ post task → sealed quotes → escrow locks → provider delivers → verify �
 
 **Auto-retry** (`retry: true` or `retry: { max_attempts }`) locks the full budget in escrow, reroutes past any provider that fails verification, pays only the one that passes, and refunds the surplus. **Outcome insurance**: slashed stake capitalizes a pool that compensates the agent on a failed task, on top of the automatic refund. **Attestations** are ed25519-signed so any holder can verify verified-work offline. A zero-dep **provider SDK** lives in `examples/vouch-provider-sdk.js`.
 
+**Real execution.** With `ANTHROPIC_API_KEY` set, honest native providers do actual work through Claude for text capabilities (`text.generate`, `text.summarize`) — post a task and get a real, verified AI answer. Without a key the deterministic simulator runs, so the sandbox stays fully offline. `math.eval` is always computed for real. `VOUCH_EXEC_MODEL` overrides the execution model.
+
 **Provider protocols.** Register with `protocol: "http"` (default — Vouch POSTs the task, the endpoint returns the output) or `protocol: "x402"` — Vouch speaks the HTTP-402 pay-per-call handshake (handles the `402` challenge, attaches an `X-PAYMENT` authorization, retries), so any x402 resource becomes Vouch supply. Either way the output flows through the same verification, escrow, and slashing — the provider fronts the call and carries the risk. Real x402 settlement is injected via `cfg.x402Payer` (wallet + facilitator); the default is a sandbox voucher.
 
 Errors follow the docs: `no_quotes` (409, with the nearest miss attached), `escrow_insufficient` (402), `rate_limited` (429 + `Retry-After`), `dispute_window_closed` (410). Rate-limit and escrow-ceiling headers ride on every response.
