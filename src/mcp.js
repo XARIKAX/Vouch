@@ -39,6 +39,57 @@ const TOOLS = [
         deadline_ms: { type: 'integer' },
         min_track: { type: 'number' },
         idempotency_key: { type: 'string' },
+        retry: { description: 'true (or { max_attempts }) to reroute past failures until verified' },
+        consensus: { type: 'integer', description: 'Run N providers in parallel (2-3); settle the best that passes' },
+        cache: { type: 'boolean', description: 'Serve an identical, already-verified task instantly from cache' },
+      },
+    },
+  },
+  {
+    name: 'vouch_verify',
+    description: 'Verify output you already have against acceptance criteria — no escrow, no execution. Returns a signed attestation on pass.',
+    inputSchema: {
+      type: 'object', required: ['capability', 'output'],
+      properties: {
+        capability: { type: 'string' },
+        input: { type: 'object' },
+        output: { type: 'object' },
+        acceptance: { type: 'object' },
+      },
+    },
+  },
+  {
+    name: 'vouch_create_workflow',
+    description: 'Run a verified multi-step task graph. Later steps reference earlier verified output via {{steps.N.output.path}}.',
+    inputSchema: {
+      type: 'object', required: ['steps'],
+      properties: { steps: { type: 'array', items: { type: 'object' } } },
+    },
+  },
+  {
+    name: 'vouch_workflow_status',
+    description: 'Check a workflow: per-step status and the final output once completed.',
+    inputSchema: { type: 'object', required: ['workflow_id'], properties: { workflow_id: { type: 'string' } } },
+  },
+  {
+    name: 'vouch_list_providers',
+    description: 'List providers with track record, reliability, and slashable stake.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'vouch_get_attestation',
+    description: 'Fetch the ed25519 proof-of-verified-work for a settled task, plus the public key to verify it.',
+    inputSchema: { type: 'object', required: ['task_id'], properties: { task_id: { type: 'string' } } },
+  },
+  {
+    name: 'vouch_create_subkey',
+    description: 'Mint a capped, policy-bound sub-key for a child agent: fund it from the parent, optionally restrict to an allowlist of capabilities.',
+    inputSchema: {
+      type: 'object', required: ['fund'],
+      properties: {
+        fund: { type: 'number', description: 'USDC to transfer from the parent to the sub-key' },
+        allow: { type: 'array', items: { type: 'string' }, description: 'Capability allowlist' },
+        name: { type: 'string' },
       },
     },
   },
@@ -70,13 +121,19 @@ const TOOLS = [
 ];
 
 export function createMcp(engine) {
-  function callTool(key, name, args = {}) {
+  async function callTool(key, name, args = {}) {
     switch (name) {
       case 'vouch_find_offers': return { offers: engine.offers(args) };
       case 'vouch_post_task': return engine.createTask(key, args).task;
       case 'vouch_task_status': return engine.getTask(key, args.task_id);
       case 'vouch_dispute': return engine.openDispute(key, args.task_id, args);
       case 'vouch_balance': return engine.balance(key);
+      case 'vouch_verify': return engine.verifyOutput(key, args);
+      case 'vouch_create_workflow': return engine.createWorkflow(key, args);
+      case 'vouch_workflow_status': return engine.getWorkflow(key, args.workflow_id);
+      case 'vouch_list_providers': return { providers: engine.listProviders() };
+      case 'vouch_get_attestation': return engine.getAttestation(key, args.task_id);
+      case 'vouch_create_subkey': return engine.createSubKey(key, args);
       default: throw new ApiError(404, 'unknown_tool', `No tool "${name}".`);
     }
   }
@@ -120,7 +177,7 @@ export function createMcp(engine) {
         case 'tools/call': {
           const m = /^Bearer\s+(\S+)$/.exec(req.headers.authorization ?? '');
           const key = engine.authenticate(m?.[1] ?? '');
-          const result = callTool(key, params.name, params.arguments);
+          const result = await callTool(key, params.name, params.arguments);
           return ok({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
         }
         default:

@@ -139,7 +139,9 @@ test('MCP: tools/list is open, tools/call requires a key and works end to end', 
     const list = await rpc({ method: 'tools/list' });
     const names = list.result.tools.map((t) => t.name);
     assert.deepEqual(names.sort(), [
-      'vouch_balance', 'vouch_dispute', 'vouch_find_offers', 'vouch_post_task', 'vouch_task_status',
+      'vouch_balance', 'vouch_create_subkey', 'vouch_create_workflow', 'vouch_dispute',
+      'vouch_find_offers', 'vouch_get_attestation', 'vouch_list_providers', 'vouch_post_task',
+      'vouch_task_status', 'vouch_verify', 'vouch_workflow_status',
     ]);
 
     const KEY = (await call('POST', '/v1/keys', { body: {} })).body.key;
@@ -164,6 +166,21 @@ test('MCP: tools/list is open, tools/call requires a key and works end to end', 
     const done = JSON.parse(status.result.content[0].text);
     assert.equal(done.status, 'settled');
     assert.equal(done.output.result, 2.5);
+
+    // a new tool: verify-as-a-service over MCP
+    const verified = await rpc({
+      method: 'tools/call',
+      params: {
+        name: 'vouch_verify',
+        arguments: {
+          capability: 'math.eval', input: { expression: '2+2' }, output: { result: 4 },
+          acceptance: { checks: [{ assert: 'equals', path: 'result', value: 4 }] },
+        },
+      },
+    }, KEY);
+    const vres = JSON.parse(verified.result.content[0].text);
+    assert.equal(vres.pass, true);
+    assert.ok(vres.attestation);
 
     const unauth = await rpc({
       method: 'tools/call',
