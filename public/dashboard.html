@@ -57,7 +57,7 @@ button.acc:hover{color:var(--acc-fg);filter:brightness(1.09)}
 #msg{font-size:12.5px;color:var(--t3);margin:8px 4px 20px;min-height:18px;font-family:'Geist Mono',monospace}
 #msg.err{color:var(--red)}
 
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:34px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:34px}
 .stat{border:1px solid var(--border);border-radius:16px;padding:20px 22px;background:var(--panel);transition:.25s}
 .stat:hover{border-color:color-mix(in srgb,var(--acc) 30%,transparent);transform:translateY(-2px)}
 .stat .n{font-size:26px;font-weight:700;letter-spacing:-.8px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -82,6 +82,30 @@ td.mono{font-family:'Geist Mono',monospace;font-size:12px;color:var(--t1);white-
 .pill.dispatched::before,.pill.verifying::before,.pill.submitted::before{animation:pulse 1.6s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .empty{color:var(--t3);padding:26px 16px;font-size:13px;text-align:center}
+.linkbtn{color:var(--acc);cursor:pointer;font-family:'Geist Mono',monospace;font-size:11.5px;text-decoration:underline;text-underline-offset:2px;margin-left:8px}
+.linkbtn:hover{filter:brightness(1.1)}
+/* composer */
+.composer{border:1px solid var(--border);border-radius:18px;background:var(--panel);padding:20px;margin-bottom:22px;box-shadow:0 20px 50px rgba(0,0,0,.2)}
+.composer h3{font-size:14px;font-weight:650;letter-spacing:-.2px;margin-bottom:16px;display:flex;align-items:center;gap:9px}
+.composer h3 .k{font-family:'Geist Mono',monospace;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent);border-radius:5px;padding:2px 7px;background:var(--acc-soft)}
+.crow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:150px}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);font-weight:600}
+select,.composer input,.composer textarea{font-family:'Geist',sans-serif;font-size:13.5px;border-radius:11px;border:1px solid var(--border2);background:var(--bg2);color:var(--t1);padding:11px 12px;width:100%}
+select{cursor:pointer}
+.composer textarea{min-height:62px;resize:vertical;font-family:'Geist',sans-serif}
+select:focus,.composer input:focus,.composer textarea:focus{outline:none;border-color:color-mix(in srgb,var(--acc) 55%,transparent);box-shadow:0 0 0 3px rgba(230,201,136,.12)}
+.toggles{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tg{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2);border:1px solid var(--border2);border-radius:10px;padding:9px 12px;cursor:pointer;user-select:none;transition:.15s;background:var(--bg2)}
+.tg:hover{color:var(--t1)}
+.tg.on{color:var(--acc);border-color:color-mix(in srgb,var(--acc) 50%,transparent);background:var(--acc-soft)}
+.tg .dot{width:15px;height:15px;border-radius:5px;border:1px solid currentColor;display:grid;place-items:center;font-size:10px;font-weight:700}
+.tg.on .dot::after{content:"✓"}
+.seg{display:inline-flex;border:1px solid var(--border2);border-radius:10px;overflow:hidden;background:var(--bg2)}
+.seg button{border:none;border-radius:0;background:transparent;color:var(--t2);padding:9px 13px;font-size:12.5px;transform:none}
+.seg button:hover{color:var(--t1);border:none;transform:none}
+.seg button.on{background:var(--acc-soft);color:var(--acc)}
+.seg button:not(:last-child){border-right:1px solid var(--border2)}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.tablecard{overflow-x:auto}}
 @media(max-width:600px){.grid{grid-template-columns:1fr}.nav-links a:not(:last-child){display:none}}
 </style>
@@ -112,15 +136,39 @@ td.mono{font-family:'Geist Mono',monospace;font-size:12px;color:var(--t1);white-
       <input id="key" placeholder="vch_… (paste a key, or mint one)" autocomplete="off">
       <button id="mint">Mint sandbox key</button>
       <button id="deposit">Deposit $2</button>
-      <button id="sample" class="acc">Post sample task</button>
+      <button id="sample">Quick sample</button>
     </div>
     <div id="msg"></div>
+
+    <div class="composer">
+      <h3>Compose a task <span class="k">live</span></h3>
+      <div class="crow">
+        <div class="field" style="flex:0 0 210px"><label>Capability</label><select id="c-cap"></select></div>
+        <div class="field"><label id="c-input-label">Input</label><textarea id="c-input" placeholder="Describe what you want done…"></textarea></div>
+      </div>
+      <div class="crow">
+        <div class="field" style="flex:0 0 140px"><label>Budget (USDC)</label><input id="c-budget" value="0.03"></div>
+        <div class="field" style="flex:0 0 150px"><label>Deadline (ms)</label><input id="c-deadline" value="10000"></div>
+        <div class="field"><label>Acceptance rubric (optional)</label><input id="c-rubric" placeholder="e.g. substantive, on-topic, no filler"></div>
+      </div>
+      <div class="crow" style="justify-content:space-between;align-items:center">
+        <div class="toggles">
+          <span class="tg" id="tg-retry"><span class="dot"></span>Auto-retry</span>
+          <span class="tg" id="tg-cache"><span class="dot"></span>Cache</span>
+          <span class="seg" id="seg-consensus">
+            <button data-n="1" class="on">Single</button><button data-n="2">Consensus ×2</button><button data-n="3">×3</button>
+          </span>
+        </div>
+        <button id="c-post" class="acc">Post task →</button>
+      </div>
+    </div>
 
     <div class="grid">
       <div class="stat"><div class="n" id="s-balance">—</div><div class="l">escrow balance</div></div>
       <div class="stat"><div class="n" id="s-locked">—</div><div class="l">locked in open tasks</div></div>
       <div class="stat"><div class="n" id="s-settled">—</div><div class="l">settled</div></div>
       <div class="stat"><div class="n" id="s-refunded">—</div><div class="l">refunded (you paid $0)</div></div>
+      <div class="stat"><div class="n" id="s-insurance">—</div><div class="l">insurance pool</div></div>
     </div>
 
     <h2>Tasks</h2>
@@ -198,32 +246,102 @@ $('sample').onclick = async () => {
 };
 keyInput.addEventListener('change', () => { localStorage.setItem('vouch_key', keyInput.value); refresh(); });
 
+/* ---------- task composer ---------- */
+const INPUT_FIELD = { 'math.eval': 'expression', 'text.summarize': 'text', 'audio.speak': 'text', 'embed.text': 'text' };
+const inputKey = (cap) => INPUT_FIELD[cap] || 'prompt';
+let consensusN = 1;
+
+async function loadCaps() {
+  try {
+    const c = await (await fetch('/v1/capabilities')).json();
+    $('c-cap').innerHTML = c.capabilities.map((x) => '<option value="' + x.id + '">' + x.id + '</option>').join('');
+    updateInputLabel();
+  } catch { /* offline */ }
+}
+function updateInputLabel() {
+  const key = inputKey($('c-cap').value);
+  $('c-input-label').textContent = key[0].toUpperCase() + key.slice(1);
+  $('c-input').placeholder = key === 'expression' ? '19 * (2 + 3)'
+    : key === 'text' ? 'Paste text to process…' : 'Describe what you want done…';
+}
+$('c-cap').onchange = updateInputLabel;
+['tg-retry', 'tg-cache'].forEach((id) => $(id).onclick = () => $(id).classList.toggle('on'));
+document.querySelectorAll('#seg-consensus button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('#seg-consensus button').forEach((x) => x.classList.remove('on'));
+  b.classList.add('on'); consensusN = Number(b.dataset.n);
+});
+
+function acceptanceFor(cap, rubric) {
+  const a = {};
+  if (cap.startsWith('text')) a.checks = [{ assert: 'length_between', min: 60 }];
+  if (rubric && cap.startsWith('text')) a.rubric = rubric;
+  return a;
+}
+$('c-post').onclick = async () => {
+  if (!keyInput.value) return note('Mint or paste a key first.', true);
+  const cap = $('c-cap').value;
+  const raw = $('c-input').value.trim();
+  if (!raw) return note('Enter an input first.', true);
+  const body = {
+    capability: cap, input: { [inputKey(cap)]: raw },
+    acceptance: acceptanceFor(cap, $('c-rubric').value.trim()),
+    budget: Number($('c-budget').value) || 0.03,
+    deadline_ms: Number($('c-deadline').value) || 10000,
+  };
+  if ($('tg-retry').classList.contains('on')) body.retry = true;
+  if ($('tg-cache').classList.contains('on')) body.cache = true;
+  if (consensusN > 1) body.consensus = consensusN;
+  try {
+    const t = await api('POST', '/v1/tasks', body);
+    if (t.status === 'settled' && !t.quote) note('Served instantly from cache — you paid $' + t.settlement.price);
+    else note('Posted ' + t.id + ' — ' + t.quote.provider + ' committed $' + t.quote.price + (body.consensus ? ' (consensus ×' + body.consensus + ')' : '') + (body.retry ? ' · auto-retry on' : ''));
+    refresh();
+  } catch (e) { note(e.message, true); refresh(); }
+};
+
+async function showProof(id) {
+  try {
+    const a = await api('GET', '/v1/tasks/' + id + '/attestation');
+    await navigator.clipboard.writeText(JSON.stringify(a.attestation, null, 2));
+    note('Attestation copied — opening Verify to check the signature.');
+    window.open('/verify', '_blank');
+  } catch (e) { note(e.message, true); }
+}
+loadCaps();
+
 const pill = (s) => '<span class="pill ' + s + '">' + s + '</span>';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 async function refresh() {
   if (!keyInput.value) return;
   try {
-    const [bal, tasks, offers] = await Promise.all([
+    const [bal, tasks, offers, ins] = await Promise.all([
       api('GET', '/v1/balance'),
       api('GET', '/v1/tasks?limit=25'),
       api('GET', '/v1/offers'),
+      api('GET', '/v1/insurance'),
     ]);
     $('s-balance').textContent = '$' + bal.balance;
     $('s-locked').textContent = '$' + bal.locked;
     $('s-settled').textContent = tasks.tasks.filter((t) => t.status === 'settled').length;
     $('s-refunded').textContent = tasks.tasks.filter((t) => t.status === 'refunded').length;
+    $('s-insurance').textContent = '$' + (Math.round((ins.pool_balance ?? 0) * 1e6) / 1e6);
 
     $('tasks').innerHTML = tasks.tasks.length ? tasks.tasks.map((t) => {
       const detail = t.status === 'settled'
         ? 'verified by [' + t.settlement.verified_by.join(', ') + ']'
+          + (t.settlement.consensus ? ' · consensus ' + t.settlement.consensus.passed + '/' + t.settlement.consensus.dispatched : '')
+          + (t.settlement.provider === 'cache' ? ' · cached' : '')
+          + (t.attestation ? '<span class="linkbtn" data-proof="' + esc(t.id) + '">proof ↗</span>' : '')
         : t.status === 'refunded'
           ? esc(t.refund.reason) + (t.refund.detail ? ' — ' + esc(t.refund.detail) : '')
+            + (t.refund.compensation ? ' · +$' + t.refund.compensation.amount + ' insured' : '')
           : '';
       return '<tr><td class="mono">' + esc(t.id) + '</td><td class="mono">' + esc(t.capability) + '</td><td>' +
-        pill(t.status) + '</td><td class="mono">' + esc(t.quote?.provider ?? '') + '</td><td class="mono">$' +
-        (t.quote?.price ?? '') + '</td><td>' + detail + '</td></tr>';
-    }).join('') : '<tr><td colspan="6" class="empty">No tasks yet — post a sample.</td></tr>';
+        pill(t.status) + '</td><td class="mono">' + esc(t.quote?.provider ?? (t.settlement?.provider ?? '')) + '</td><td class="mono">$' +
+        (t.quote?.price ?? t.settlement?.price ?? '') + '</td><td>' + detail + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="empty">No tasks yet — compose one above.</td></tr>';
+    $('tasks').querySelectorAll('[data-proof]').forEach((el) => el.onclick = () => showProof(el.dataset.proof));
 
     $('offers').innerHTML = offers.offers.map((o) =>
       '<tr><td class="mono">' + esc(o.capability) + '</td><td class="mono">' + esc(o.provider) + '</td><td class="mono">$' +
