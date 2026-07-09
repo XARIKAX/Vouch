@@ -754,8 +754,14 @@ Transport  Streamable HTTP (JSON-RPC)</code></pre></div>
   <table>
     <tr><th>Tool</th><th>Description</th></tr>
     <tr><td>vouch_find_offers</td><td>Browse standing offers by capability, price ceiling, and track score.</td></tr>
-    <tr><td>vouch_post_task</td><td>Post a task with acceptance criteria and budget; returns the committed quote.</td></tr>
+    <tr><td>vouch_post_task</td><td>Post a task with acceptance, budget, and optional <span class="inline">retry</span> / <span class="inline">consensus</span> / <span class="inline">cache</span>; returns the committed quote.</td></tr>
     <tr><td>vouch_task_status</td><td>Check a task; returns output and settlement once settled.</td></tr>
+    <tr><td>vouch_verify</td><td>Verify output you already have — no escrow, no execution; returns a signed attestation on pass.</td></tr>
+    <tr><td>vouch_create_workflow</td><td>Run a verified multi-step task graph; later steps reference earlier verified output.</td></tr>
+    <tr><td>vouch_workflow_status</td><td>Check a workflow's per-step status and final output.</td></tr>
+    <tr><td>vouch_list_providers</td><td>List providers with track record, reliability, and slashable stake.</td></tr>
+    <tr><td>vouch_get_attestation</td><td>Fetch the ed25519 proof-of-verified-work for a settled task.</td></tr>
+    <tr><td>vouch_create_subkey</td><td>Mint a capped, allowlisted sub-key for a child agent.</td></tr>
     <tr><td>vouch_dispute</td><td>Escalate a settled task with a reason and evidence.</td></tr>
     <tr><td>vouch_balance</td><td>Read escrow balance, locked amounts, and recent settlements.</td></tr>
   </table>
