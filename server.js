@@ -35,6 +35,7 @@ export function createApp(cfgOverrides = {}) {
     if (url.pathname === '/docs' || url.pathname === '/docs/') return staticFile(res, 'docs/index.html', 'text/html; charset=utf-8');
     if (url.pathname === '/dashboard') return staticFile(res, 'public/dashboard.html', 'text/html; charset=utf-8');
     if (url.pathname === '/services') return staticFile(res, 'public/services.html', 'text/html; charset=utf-8');
+    if (url.pathname === '/providers') return staticFile(res, 'public/providers.html', 'text/html; charset=utf-8');
     if (url.pathname === '/verify') return staticFile(res, 'public/verify.html', 'text/html; charset=utf-8');
     if (url.pathname === '/metrics') return staticFile(res, 'public/metrics.html', 'text/html; charset=utf-8');
     if (url.pathname === '/og.png') return staticFile(res, 'public/og.png', 'image/png');
