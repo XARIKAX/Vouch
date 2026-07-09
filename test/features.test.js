@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { createEngine } from '../src/engine.js';
 import { verifyAttestation } from '../src/attest.js';
+import { verify } from '../src/verification.js';
 import { sleep } from '../src/util.js';
 
 const FAST = { fast: true };
@@ -355,6 +356,48 @@ test('semantic cache: an identical verified task is served instantly and cheaper
   assert.ok(second.task.settlement.price < paidFirst, 'cache hit costs less than execution');
   assert.deepEqual(second.task.output, done.output, 'same verified output returned');
   assert.ok(second.task.attestation, 'carries the original signed proof');
+});
+
+// ---- new capabilities ----------------------------------------------------
+test('new capabilities: code/translate/extract/classify quote, execute, and settle', async () => {
+  const engine = createEngine(FAST);
+  const key = engine.createKey('t');
+  engine.deposit(key, 2);
+  const cases = [
+    { capability: 'code.generate', input: { prompt: 'reverse a string', language: 'js' },
+      acceptance: { checks: [{ assert: 'length_between', min: 5 }] } },
+    { capability: 'translate.text', input: { text: 'hello world', target_lang: 'French' },
+      acceptance: { checks: [{ assert: 'contains_all', values: ['French'] }] } },
+    { capability: 'extract.structured', input: { text: 'The order total was $42.' },
+      acceptance: { checks: [{ assert: 'json_parseable', path: 'data' }] } },
+    { capability: 'classify.text', input: { text: 'I love this!', labels: ['positive', 'negative'] },
+      acceptance: { checks: [{ assert: 'one_of', path: 'label', values: ['positive', 'negative'] }] } },
+  ];
+  for (const c of cases) {
+    const { task } = engine.createTask(key, { ...c, budget: 0.05, deadline_ms: 16000 });
+    const done = await waitTerminal(engine, task.id);
+    assert.equal(done.status, 'settled', `${c.capability} settled`);
+  }
+});
+
+// ---- richer validators ---------------------------------------------------
+test('validators: word_count, numeric_between, one_of, json_parseable', async () => {
+  const engine = createEngine(FAST);
+  const cap = 'text.generate';
+  const run = (output, check) => verify({ capability: cap, input: {}, acceptance: { checks: [check] } }, output, engine.cfg);
+
+  // outputs carry a `text` field so the base text.generate schema passes first
+  assert.equal((await run({ text: 'one two three four five' }, { assert: 'word_count', min: 3, max: 10 })).pass, true);
+  assert.equal((await run({ text: 'too short' }, { assert: 'word_count', min: 5 })).pass, false);
+
+  assert.equal((await run({ text: 'x', result: 7 }, { assert: 'numeric_between', path: 'result', min: 1, max: 10 })).pass, true);
+  assert.equal((await run({ text: 'x', result: 42 }, { assert: 'numeric_between', path: 'result', max: 10 })).pass, false);
+
+  assert.equal((await run({ text: 'x', label: 'b' }, { assert: 'one_of', path: 'label', values: ['a', 'b', 'c'] })).pass, true);
+  assert.equal((await run({ text: 'x', label: 'z' }, { assert: 'one_of', path: 'label', values: ['a', 'b'] })).pass, false);
+
+  assert.equal((await run({ text: 'x', data: { a: 1, b: 2 } }, { assert: 'json_parseable', path: 'data', has: ['a', 'b'] })).pass, true);
+  assert.equal((await run({ text: 'not json {' }, { assert: 'json_parseable' })).pass, false);
 });
 
 // ---- production hardening: signup lock ----------------------------------

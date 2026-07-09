@@ -10,6 +10,7 @@ import { claudeGrade } from './grader.js';
 
 export const KNOWN_ASSERTS = new Set([
   'length_between', 'contains_none', 'contains_all', 'regex', 'equals', 'links_resolve',
+  'word_count', 'numeric_between', 'one_of', 'json_parseable',
 ]);
 
 const atPath = (output, path) => (path ? output?.[path] : undefined);
@@ -47,6 +48,34 @@ async function runCheck(check, task, output, cfg) {
         ? Math.abs(actual - check.value) <= tol
         : actual === check.value;
       return ok ? null : `expected ${check.path}=${JSON.stringify(check.value)}, got ${JSON.stringify(actual)}`;
+    }
+    case 'word_count': {
+      const words = text.trim().split(/\s+/).filter(Boolean).length;
+      if (check.min !== undefined && words < check.min) return `word count ${words} < min ${check.min}`;
+      if (check.max !== undefined && words > check.max) return `word count ${words} > max ${check.max}`;
+      return null;
+    }
+    case 'numeric_between': {
+      const actual = check.path !== undefined ? atPath(output, check.path) : Number(text);
+      if (typeof actual !== 'number' || !Number.isFinite(actual)) return `value at "${check.path ?? 'output'}" is not numeric`;
+      if (check.min !== undefined && actual < check.min) return `value ${actual} < min ${check.min}`;
+      if (check.max !== undefined && actual > check.max) return `value ${actual} > max ${check.max}`;
+      return null;
+    }
+    case 'one_of': {
+      const actual = check.path !== undefined ? atPath(output, check.path) : text;
+      const set = check.values || [];
+      return set.some((v) => v === actual) ? null : `value ${JSON.stringify(actual)} is not one of ${JSON.stringify(set)}`;
+    }
+    case 'json_parseable': {
+      const src = check.path !== undefined ? atPath(output, check.path) : text;
+      let parsed;
+      try { parsed = typeof src === 'object' ? src : JSON.parse(String(src)); }
+      catch { return 'output is not valid JSON'; }
+      for (const key of check.has ?? []) {
+        if (parsed == null || !(key in parsed)) return `parsed JSON missing key "${key}"`;
+      }
+      return null;
     }
     case 'links_resolve': {
       const urls = [...text.matchAll(/https?:\/\/[^\s)"'<>\]]+/g)].map((m) => m[0]);

@@ -216,6 +216,22 @@ async function execute(provider, task, cfg) {
       Math.round((hash01(task.input.text + ':' + i) * 2 - 1) * 1e4) / 1e4);
     return { vector };
   }
+  if (cap === 'code.generate') {
+    const fn = (String(task.input.prompt).match(/[a-z]{3,}/i) || ['solve'])[0];
+    return { code: `function ${fn}(input) {\n  // ${task.input.prompt}\n  return input;\n}` };
+  }
+  if (cap === 'translate.text') {
+    return { translation: `[${task.input.target_lang}] ${task.input.text}` };
+  }
+  if (cap === 'extract.structured') {
+    const src = String(task.input.text);
+    return { data: { summary: src.slice(0, 60).trim(), length: src.length } };
+  }
+  if (cap === 'classify.text') {
+    const labels = Array.isArray(task.input.labels) ? task.input.labels : Object.values(task.input.labels || {});
+    const pick = labels.length ? labels[Math.floor(hash01(task.id) * labels.length)] : 'unknown';
+    return { label: String(pick) };
+  }
   return { error: `provider ${provider.id} cannot serve ${cap}` };
 }
 
@@ -234,6 +250,10 @@ export function seedProviders(state) {
         'audio.speak': { price_ceiling: 0.012, sla_deadline_ms: 9000 },
         'embed.text': { price_ceiling: 0.001, sla_deadline_ms: 1500 },
         'math.eval': { price_ceiling: 0.005, sla_deadline_ms: 2000 },
+        'code.generate': { price_ceiling: 0.025, sla_deadline_ms: 12000 },
+        'translate.text': { price_ceiling: 0.01, sla_deadline_ms: 6000 },
+        'extract.structured': { price_ceiling: 0.012, sla_deadline_ms: 8000 },
+        'classify.text': { price_ceiling: 0.006, sla_deadline_ms: 4000 },
       },
     },
     {
@@ -244,6 +264,9 @@ export function seedProviders(state) {
         'image.generate': { price_ceiling: 0.022, sla_deadline_ms: 15000 },
         'audio.speak': { price_ceiling: 0.009, sla_deadline_ms: 12000 },
         'embed.text': { price_ceiling: 0.0008, sla_deadline_ms: 2500 },
+        'code.generate': { price_ceiling: 0.02, sla_deadline_ms: 14000 },
+        'translate.text': { price_ceiling: 0.008, sla_deadline_ms: 7000 },
+        'classify.text': { price_ceiling: 0.005, sla_deadline_ms: 5000 },
       },
     },
     {
