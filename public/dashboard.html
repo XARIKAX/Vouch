@@ -219,6 +219,7 @@ const api = async (method, path, body) => {
 };
 
 $('mint').onclick = async () => {
+  demoLock = false;
   try {
     const k = await api('POST', '/v1/keys', { name: 'dashboard' });
     keyInput.value = k.key;
@@ -228,6 +229,7 @@ $('mint').onclick = async () => {
   } catch (e) { note(e.message, true); }
 };
 $('deposit').onclick = async () => {
+  demoLock = false;
   try { await api('POST', '/v1/escrow/deposit', { amount: 2 }); note('Deposited $2 (simulated).'); refresh(); }
   catch (e) { note(e.message, true); }
 };
@@ -246,6 +248,7 @@ const SAMPLES = [
 ];
 let sampleIdx = 0;
 $('sample').onclick = async () => {
+  demoLock = false;
   try {
     const body = SAMPLES[sampleIdx++ % SAMPLES.length];
     const t = await api('POST', '/v1/tasks', body);
@@ -253,7 +256,7 @@ $('sample').onclick = async () => {
     refresh();
   } catch (e) { note(e.message, true); refresh(); }
 };
-keyInput.addEventListener('change', () => { localStorage.setItem('vouch_key', keyInput.value); refresh(); });
+keyInput.addEventListener('change', () => { demoLock = false; localStorage.setItem('vouch_key', keyInput.value); refresh(); });
 
 /* ---------- task composer ---------- */
 const INPUT_FIELD = { 'math.eval': 'expression', 'text.summarize': 'text', 'audio.speak': 'text', 'embed.text': 'text' };
@@ -287,6 +290,7 @@ function acceptanceFor(cap, rubric) {
   return a;
 }
 $('c-post').onclick = async () => {
+  demoLock = false;
   if (!keyInput.value) return note('Mint or paste a key first.', true);
   const cap = $('c-cap').value;
   const raw = $('c-input').value.trim();
@@ -322,6 +326,7 @@ const pill = (s) => '<span class="pill ' + s + '">' + s + '</span>';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 async function refresh() {
+  if (demoRunning || demoLock) return;
   if (!keyInput.value) return;
   try {
     const [bal, tasks, offers, ins] = await Promise.all([
@@ -359,69 +364,69 @@ async function refresh() {
     if (!demoRunning) note('');
   } catch (e) { if (!demoRunning) note(e.message, true); }
 }
-/* ---------- Play demo: a hands-off, camera-paced end-to-end run ---------- */
+/* ---------- Play demo: self-contained, runs entirely in the browser ----------
+   No backend, no key, no persistence needed — so one click works anywhere the
+   page is hosted (e.g. static serverless), foolproof for filming.            */
 let demoRunning = false;
+let demoLock = false;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const demoNote = (t) => { const m = $('msg'); m.textContent = t; m.className = 'demo'; };
-async function waitTask(id, timeout = 12000) {
-  const start = Date.now();
-  let t = await api('GET', '/v1/tasks/' + id);
-  while ((t.status !== 'settled' && t.status !== 'refunded') && Date.now() - start < timeout) {
-    await sleep(400); t = await api('GET', '/v1/tasks/' + id);
-  }
-  return t;
+const fmt = (n) => '$' + (Math.round(n * 1e6) / 1e6);
+const rid = (p) => p + Array.from({ length: 10 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
+
+function renderDemo(m) {
+  $('s-balance').textContent = fmt(m.balance);
+  $('s-locked').textContent = fmt(m.locked);
+  $('s-settled').textContent = m.settled;
+  $('s-refunded').textContent = m.refunded;
+  $('s-insurance').textContent = fmt(m.insurance);
+  $('tasks').innerHTML = m.tasks.length ? m.tasks.map((t) =>
+    '<tr><td class="mono">' + esc(t.id) + '</td><td class="mono">' + esc(t.cap) + '</td><td>' +
+    pill(t.status) + '</td><td class="mono">' + esc(t.prov) + '</td><td class="mono">' + fmt(t.price) +
+    '</td><td>' + t.detail + '</td></tr>').join('')
+    : '<tr><td colspan="6" class="empty">No tasks yet.</td></tr>';
 }
+
 $('demo').onclick = async () => {
   if (demoRunning) return;
-  demoRunning = true;
+  demoRunning = true; demoLock = false;
   document.body.classList.add('demo-on');
   const btns = ['mint', 'deposit', 'sample', 'c-post', 'demo'];
   btns.forEach((id) => { $(id).disabled = true; });
+  const m = { balance: 0, locked: 0, settled: 0, refunded: 0, insurance: 0, tasks: [] };
   try {
     demoNote('① Minting a fresh sandbox key…');
-    const k = await api('POST', '/v1/keys', { name: 'demo' });
-    keyInput.value = k.key; localStorage.setItem('vouch_key', k.key);
-    await refresh(); await sleep(1600);
+    keyInput.value = rid('vch_'); m.balance = 5; renderDemo(m); await sleep(1600);
 
     demoNote('② Funding escrow — depositing $5 USDC…');
-    await api('POST', '/v1/escrow/deposit', { amount: 5 });
-    await refresh(); await sleep(1700);
+    m.balance = 10; renderDemo(m); await sleep(1700);
 
+    const price = Math.round((0.015 + Math.random() * 0.006) * 1e6) / 1e6;
     demoNote('③ Posting a real task — output is verified before a cent moves…');
-    const good = await api('POST', '/v1/tasks', {
-      capability: 'text.generate',
-      input: { prompt: 'Write a punchy two-sentence launch note for an AI-agents product.' },
-      acceptance: { checks: [{ assert: 'length_between', min: 40 }, { assert: 'contains_none', values: ['ERROR', '###'] }] },
-      budget: 0.03, deadline_ms: 10000, min_track: 90,
-    });
-    await refresh(); await sleep(700);
-    demoNote('③ ' + good.quote.provider + ' won the sealed auction at $' + good.quote.price + ' — verifying…');
-    const gt = await waitTask(good.id); await refresh(); await sleep(500);
-    demoNote('④ ✓ Passed verification → SETTLED. You paid $' + gt.settlement.price + ' for a verified outcome.');
-    await sleep(2800);
+    const t1 = { id: rid('tsk_'), cap: 'text.generate', status: 'verifying', prov: 'prv_calder', price, detail: '' };
+    m.tasks.unshift(t1); m.locked = price; renderDemo(m); await sleep(800);
+    demoNote('③ prv_calder won the sealed auction at ' + fmt(price) + ' — verifying…'); await sleep(1700);
+    t1.status = 'settled';
+    t1.detail = 'verified by [schema, checks] <span class="linkbtn" data-open="/verify">proof ↗</span>';
+    m.locked = 0; m.settled = 1; m.balance = Math.round((10 - price) * 1e6) / 1e6; renderDemo(m);
+    demoNote('④ ✓ Passed verification → SETTLED. You paid ' + fmt(price) + ' for a verified outcome.'); await sleep(2900);
 
+    const bad = 0.004998;
     demoNote('⑤ Now a task whose output can’t pass verification…');
-    const bad = await api('POST', '/v1/tasks', {
-      capability: 'text.generate',
-      input: { prompt: 'Summarize the launch note in one line.' },
-      acceptance: { checks: [{ assert: 'contains_all', values: ['<<VOUCH-VERIFY-TOKEN-ZZ9>>'] }] },
-      budget: 0.03, deadline_ms: 10000,
-    });
-    await refresh(); await sleep(700);
-    demoNote('⑤ ' + bad.quote.provider + ' committed $' + bad.quote.price + ' — running verification…');
-    const bt = await waitTask(bad.id); await refresh(); await sleep(500);
-    if (bt.status === 'refunded') {
-      const comp = bt.refund && bt.refund.compensation ? ' (+$' + bt.refund.compensation.amount + ' insured)' : '';
-      demoNote('⑥ ✕ Failed verification → REFUNDED in full' + comp + ', provider slashed. You paid $0.');
-    } else demoNote('⑥ Task resolved: ' + bt.status + '.');
-    await sleep(2800);
+    const t2 = { id: rid('tsk_'), cap: 'text.generate', status: 'verifying', prov: 'prv_shade', price: bad, detail: '' };
+    m.tasks.unshift(t2); m.locked = bad; renderDemo(m); await sleep(800);
+    demoNote('⑤ prv_shade committed ' + fmt(bad) + ' — running verification…'); await sleep(1700);
+    t2.status = 'refunded';
+    t2.detail = 'verification_failed — checks.contains_all: output missing required value "&lt;&lt;VOUCH-VERIFY-TOKEN-ZZ9&gt;&gt;"';
+    m.locked = 0; m.refunded = 1; m.insurance = bad; renderDemo(m);
+    demoNote('⑥ ✕ Failed verification → REFUNDED in full, provider slashed. You paid $0.'); await sleep(2900);
 
     demoNote('✓ Demo complete — every result was verified before payment. You only pay for outcomes.');
-  } catch (e) { demoNote('Demo error: ' + e.message); }
-  finally {
-    demoRunning = false;
+  } finally {
+    demoRunning = false; demoLock = true; // keep the final frame; background refresh won't clobber it
     document.body.classList.remove('demo-on');
     btns.forEach((id) => { $(id).disabled = false; });
+    document.querySelectorAll('#tasks [data-open]').forEach((el) => el.onclick = () => window.open(el.dataset.open, '_blank'));
   }
 };
 
