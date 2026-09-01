@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vouch — Agentic Accounts</title>
+<meta name="description" content="Let your agent buy outcomes. Connect via MCP, fund a dedicated agentic account, and your agent buys verified work within a budget — with a per-task cap, an allowlist, and an instant kill switch. Settled in USDC on Base.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23c9e83a%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%239ec000%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%230c0d0b%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#f5f5f0;--paper2:#ffffff;--paper3:#efefe8;
+  --ink:#0c0d0b;--ink2:#54564e;--ink3:#8c8e84;
+  --line:rgba(12,13,11,.11);--line2:rgba(12,13,11,.17);--dash:rgba(12,13,11,.16);
+  --acc:#bfe000;--acc-deep:#93b200;--acc-bright:#d2ee1c;--acc-ink:#11140a;--acc-soft:rgba(159,190,0,.14);
+  --red:#c0392b;--green:#2f9e5f;
+  --serif:'Fraunces','Spectral',Georgia,serif;--sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;
+  --maxw:1200px;--radius:16px;
+}
+.dark{--paper:#0b0c0a;--paper2:#141613;--paper3:#101210;--ink:#f4f5ef;--ink2:#a2a49a;--ink3:#71736a;
+  --line:rgba(244,245,239,.10);--line2:rgba(244,245,239,.16);--dash:rgba(244,245,239,.15);
+  --acc:#d2ee1c;--acc-deep:#c2e400;--acc-soft:rgba(210,238,28,.12);background:#0b0c0a;color:var(--ink)}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:var(--acc);color:var(--acc-ink)}
+a{color:inherit;text-decoration:none}.mono{font-family:var(--mono)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 46px;position:relative}
+.wrap::before,.wrap::after{content:"";position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--dash);pointer-events:none;z-index:0}
+.wrap::before{left:0}.wrap::after{right:0}
+.wrap>*{position:relative;z-index:1}
+@media(max-width:720px){.wrap{padding:0 22px}.wrap::before,.wrap::after{display:none}}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:400;letter-spacing:-.012em}
+.mk{background:linear-gradient(transparent 60%,var(--acc) 60%);padding:0 .04em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+em{font-style:italic}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:2.4px;text-transform:uppercase;color:var(--ink2);display:inline-flex;align-items:center;gap:12px}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--acc-deep)}
+.dark .eyebrow::before{background:var(--acc)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 22px;border-radius:11px;font-family:var(--sans);font-size:14.5px;font-weight:550;border:1px solid var(--line2);color:var(--ink);background:transparent;cursor:pointer;transition:.2s cubic-bezier(.2,.7,.3,1);white-space:nowrap}
+.btn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.btn.solid{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.solid:hover{background:#000;box-shadow:0 12px 30px rgba(12,13,11,.24)}
+.dark .btn.solid{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.btn.danger{border-color:rgba(192,57,43,.5);color:var(--red)}
+.btn.danger:hover{background:rgba(192,57,43,.08);border-color:var(--red)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn .ar{transition:transform .2s}.btn:hover .ar{transform:translateX(3px)}
+
+nav.top{position:sticky;top:0;z-index:50;height:70px;display:flex;align-items:center;background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;align-items:center;gap:26px;width:100%}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:500;font-size:23px;letter-spacing:-.01em}
+.mark{width:27px;height:27px;flex:none}.mark svg{width:100%;height:100%}
+.pagechip{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc-deep);border:1px solid color-mix(in srgb,var(--acc-deep) 40%,transparent);border-radius:6px;padding:3px 9px;background:var(--acc-soft)}
+.nav-links{margin-left:auto;display:flex;gap:2px;align-items:center}
+.nav-links a{color:var(--ink2);font-size:14px;padding:8px 13px;border-radius:8px;transition:.16s}
+.nav-links a:hover{color:var(--ink);background:var(--paper3)}
+.nav-links a.btn{margin-left:8px}
+
+/* hero */
+.hero{padding:78px 0 40px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:auto -10% -60% 46%;height:52rem;background:radial-gradient(34rem 26rem at 60% 40%,var(--acc-soft),transparent 66%);z-index:0;pointer-events:none}
+.hero h1{font-size:clamp(40px,5.4vw,74px);line-height:1.01;letter-spacing:-.02em;margin:24px 0 18px;max-width:14ch}
+.lede{font-size:18.5px;color:var(--ink2);max-width:52ch;line-height:1.58;margin-bottom:30px}
+.lede strong{color:var(--ink);font-weight:600}
+.cta-row{display:flex;gap:13px;flex-wrap:wrap;align-items:center}
+.chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-top:28px}
+.chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--ink2);border:1px solid var(--line);border-radius:8px;padding:6px 11px;background:var(--paper2)}
+.chip b{color:var(--acc-deep);font-weight:600}
+
+section{padding:70px 0;position:relative}
+.sec-head{max-width:56rem}
+.sec-head .eyebrow{margin-bottom:16px}
+h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
+.sub{color:var(--ink2);font-size:17px;max-width:46rem;margin-bottom:44px;line-height:1.6}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:s}
+.stepc{border:1px solid var(--line);border-radius:18px;background:var(--paper2);padding:28px;position:relative;transition:.25s}
+.stepc:hover{border-color:var(--ink3);transform:translateY(-3px);box-shadow:0 22px 50px rgba(12,13,11,.08)}
+.stepc .num{font-family:var(--mono);font-size:12px;color:var(--acc-deep);letter-spacing:1.5px}
+.stepc h4{font-size:21px;font-weight:500;margin:12px 0 8px}
+.stepc p{font-size:14px;color:var(--ink2)}
+.stepc .mini{margin-top:16px;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:12px 13px;font-family:var(--mono);font-size:11.5px;color:var(--ink2);overflow-x:auto}
+.stepc .mini .g{color:var(--acc-deep)}.stepc .mini .c{color:var(--ink3)}
+
+/* console (interactive) */
+.console-wrap{border:1px solid var(--line2);border-radius:24px;background:var(--paper2);box-shadow:0 30px 80px rgba(12,13,11,.1);overflow:hidden}
+.cw-grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr)}
+.cw-cfg{padding:26px;border-right:1px solid var(--line)}
+.cw-cfg h3{font-size:19px;font-weight:500;margin-bottom:4px}
+.cw-cfg .hint{font-size:12.5px;color:var(--ink3);margin-bottom:18px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:600}
+.field input{font-family:var(--sans);font-size:13.5px;border-radius:11px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);padding:11px 12px;width:100%;transition:.16s}
+.field input:focus{outline:none;border-color:var(--acc-deep);box-shadow:0 0 0 3px var(--acc-soft)}
+.row2{display:flex;gap:10px}.row2 .field{flex:1}
+.allow{display:flex;flex-wrap:wrap;gap:6px}
+.allow .a{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-radius:7px;padding:5px 9px;color:var(--ink2);cursor:pointer;user-select:none;transition:.14s}
+.allow .a.on{background:var(--acc);color:var(--acc-ink);border-color:transparent;font-weight:600}
+.cw-live{padding:26px;display:flex;flex-direction:column;min-height:440px}
+.acct-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.acct-name{font-family:var(--serif);font-size:20px;font-weight:500}
+.acct-state{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line2);border-radius:99px;padding:4px 11px;display:inline-flex;align-items:center;gap:6px}
+.acct-state.on{color:var(--acc-deep);border-color:color-mix(in srgb,var(--acc-deep) 40%,transparent)}
+.acct-state.frozen{color:var(--red);border-color:rgba(192,57,43,.4)}
+.acct-state i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor}
+.acct-state.on i{animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.meter{margin-bottom:6px}
+.meter .mrow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink2);margin-bottom:6px}
+.meter .mrow b{color:var(--ink)}
+.meter .bar{height:8px;border-radius:99px;background:var(--paper3);overflow:hidden}
+.meter .bar i{display:block;height:100%;border-radius:99px;background:var(--acc);transition:width .5s cubic-bezier(.2,.7,.3,1)}
+.acct-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.am{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
+.am .v{font-family:var(--serif);font-size:19px;font-weight:500}
+.am .l{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
+.feed-h{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);margin:6px 0 8px}
+.feed{flex:1;overflow-y:auto;max-height:210px;display:flex;flex-direction:column;gap:7px}
+.ev{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--paper);font-size:12.5px;opacity:0;transform:translateY(4px);animation:rise .34s forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.ev .k{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;flex:none}
+.ev.ok .k{background:var(--acc);color:var(--acc-ink)}
+.ev.no .k{background:rgba(192,57,43,.12);color:var(--red);border:1px solid rgba(192,57,43,.35)}
+.ev .lb{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev .cap{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+.ev .amt{margin-left:auto;font-family:var(--mono);font-size:12px;flex:none}
+.ev.ok .amt{color:var(--ink)}.ev.no .amt{color:var(--red)}
+.feed-empty{color:var(--ink3);font-size:13px;text-align:center;padding:40px 0}
+.acct-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.mcp-line{margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--ink3);border-top:1px dashed var(--line);padding-top:12px}
+.mcp-line b{color:var(--ink2)}
+
+/* safety (dark) */
+.safety .inner{border-radius:24px;padding:52px 46px;background:var(--ink);color:var(--paper);position:relative;overflow:hidden}
+.safety .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(32rem 16rem at 22% -30%,rgba(210,238,28,.2),transparent 66%);pointer-events:none}
+.safety h2{color:var(--paper);margin-bottom:8px}
+.safety .sub{color:rgba(244,245,239,.7)}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
+.sitem{border-left:1px solid rgba(244,245,239,.14);padding-left:16px}
+.sitem .si{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(210,238,28,.12);color:var(--acc);margin-bottom:12px}
+.sitem .si svg{width:17px;height:17px}
+.sitem h4{font-size:17px;font-weight:500;color:var(--paper);margin-bottom:5px}
+.sitem p{font-size:13px;color:rgba(244,245,239,.68);line-height:1.5}
+
+/* interop */
+.interop{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+.interop h2{margin-bottom:14px}
+.interop p{color:var(--ink2);font-size:16px;margin-bottom:14px}
+.interop p strong{color:var(--ink);font-weight:600}
+.codecard{border:1px solid var(--line2);border-radius:16px;background:#0b0c0a;overflow:hidden;box-shadow:0 26px 60px rgba(12,13,11,.16)}
+.codecard .h{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(244,245,239,.1);font-family:var(--mono);font-size:11.5px;color:#71736a}
+.codecard .h i{width:9px;height:9px;border-radius:50%;background:rgba(244,245,239,.13);display:inline-block}
+.codecard pre{padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.75;color:#e9eadf}
+.codecard .g{color:var(--acc)}.codecard .c{color:#71736a}.codecard .k{color:#8fd0e8}
+
+.cta-band .inner{border-radius:24px;padding:60px 40px;background:var(--ink);color:var(--paper);text-align:center;position:relative;overflow:hidden}
+.cta-band .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 16rem at 50% -30%,rgba(210,238,28,.22),transparent 64%);pointer-events:none}
+.cta-band h2{color:var(--paper);margin:0 auto 14px;max-width:20ch}
+.cta-band p{color:rgba(244,245,239,.72);max-width:40rem;margin:0 auto 30px}
+.cta-band .btn.solid{background:var(--acc);color:var(--acc-ink);border:none}
+.cta-band .btn{color:var(--paper);border-color:rgba(244,245,239,.22)}
+
+footer{padding:44px 0;background:var(--ink);color:rgba(244,245,239,.6)}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:13px}
+footer .wrap::before,footer .wrap::after{border-color:rgba(244,245,239,.14)}
+footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
+.rv{opacity:0;transform:translateY(18px);transition:opacity .6s cubic-bezier(.2,.7,.3,1),transform .6s cubic-bezier(.2,.7,.3,1)}
+.rv.in{opacity:1;transform:none}
+@media(max-width:920px){.steps,.sgrid{grid-template-columns:1fr}.cw-grid{grid-template-columns:1fr}.cw-cfg{border-right:none;border-bottom:1px solid var(--line)}.interop{grid-template-columns:1fr;gap:24px}}
+@media(max-width:680px){.nav-links a:not(.btn){display:none}.hero{padding-top:54px}}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#c9e83a"/><stop offset="1" stop-color="#9ec000"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#0c0d0b" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <span class="pagechip">Agentic Accounts</span>
+    <div class="nav-links">
+      <a href="/services">Services</a>
+      <a href="/providers">Providers</a>
+      <a href="/docs">Docs</a>
+      <a class="btn solid" href="#console">Create an account</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Agentic accounts</span>
+    <h1>Let your agent<br><span class="mk">buy outcomes.</span></h1>
+    <p class="lede">Market access for AI agents — but for <strong>work, not trades</strong>. Connect via MCP, fund a dedicated account, and your agent buys <strong>verified outcomes</strong> within a budget. Every result is checked before a cent moves, so an agent with a wallet can't overpay for a wrong answer.</p>
+    <div class="cta-row">
+      <a class="btn solid" href="#console">Create an agentic account <span class="ar">→</span></a>
+      <a class="btn" href="/docs#mcp">Connect via MCP</a>
+    </div>
+    <div class="chiprow">
+      <span class="chip"><b>◆</b> One MCP URL</span>
+      <span class="chip"><b>◆</b> Dedicated budget</span>
+      <span class="chip"><b>◆</b> Per-task cap</span>
+      <span class="chip"><b>◆</b> Instant kill switch</span>
+      <span class="chip"><b>◆</b> Settled in USDC on Base</span>
+    </div>
+  </div>
+</header>
+
+<section style="padding-top:20px">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow rv">Set up in minutes</div>
+      <h2 class="rv">Three steps to an<br>autonomous <em>spending agent.</em></h2>
+    </div>
+    <div class="steps">
+      <div class="stepc rv">
+        <div class="num">01</div>
+        <h4>Connect via MCP</h4>
+        <p>Paste one URL into your agent's MCP config — it works next to any other agentic MCP server you already run.</p>
+        <div class="mini"><span class="c">// mcp config</span><br>"vouch": {<br>&nbsp;&nbsp;"url": <span class="g">"https://mcp.vouch.dev"</span><br>}</div>
+      </div>
+      <div class="stepc rv">
+        <div class="num">02</div>
+        <h4>Create an agentic account</h4>
+        <p>Fund an account with a budget reserved for your agent, plus a per-task cap and a capability allowlist. Its stake is scoped; it can never exceed the wallet.</p>
+        <div class="mini"><span class="c">// scoped, capped, allowlisted</span><br>budget <span class="g">$25</span> · cap <span class="g">$0.05</span>/task<br>allow: text.* · research.* · math.*</div>
+      </div>
+      <div class="stepc rv">
+        <div class="num">03</div>
+        <h4>Run your strategy</h4>
+        <p>Your agent posts tasks and buys verified outcomes on its own. Every task settles only if it passes — activity and spend are visible live.</p>
+        <div class="mini"><span class="g">✓</span> settled · verified 3/3<br><span class="g">✓</span> settled · verified 2/2<br><span class="c">↺ refunded · provider slashed</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="console" style="padding-top:10px">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow rv">Try it live</div>
+      <h2 class="rv">Fund an account.<br>Watch it <em>spend safely.</em></h2>
+      <p class="sub rv">Runs entirely in your browser — a real preview of the agentic-account model. Set a budget and policy, run the strategy, and freeze it anytime.</p>
+    </div>
+
+    <div class="console-wrap rv">
+      <div class="cw-grid">
+        <div class="cw-cfg">
+          <h3>New agentic account</h3>
+          <div class="hint">A scoped, capped wallet your agent spends autonomously.</div>
+          <div class="field"><label>Account name</label><input id="a-name" value="Research Agent"></div>
+          <div class="row2">
+            <div class="field"><label>Budget (USDC)</label><input id="a-budget" value="25"></div>
+            <div class="field"><label>Per-task cap ($)</label><input id="a-cap" value="0.05"></div>
+          </div>
+          <div class="field"><label>Capability allowlist</label>
+            <div class="allow" id="a-allow"></div>
+          </div>
+          <button class="btn solid" id="a-create" style="width:100%">Create &amp; connect account</button>
+          <div class="mcp-line">Settled in <b>USDC on Base</b> · proof-of-verified-work on every task.</div>
+        </div>
+
+        <div class="cw-live" id="live">
+          <div class="feed-empty" id="live-empty">Create an account to begin — then Run strategy.</div>
+          <div id="acct" hidden>
+            <div class="acct-top">
+              <div class="acct-name" id="acct-name">Research Agent</div>
+              <span class="acct-state on" id="acct-state"><i></i><span id="acct-state-t">connected</span></span>
+            </div>
+            <div class="meter">
+              <div class="mrow"><span>budget spent</span><span><b id="m-spent">$0</b> / <span id="m-budget">$25</span></span></div>
+              <div class="bar"><i id="m-bar" style="width:0%"></i></div>
+            </div>
+            <div class="acct-metrics">
+              <div class="am"><div class="v" id="am-done">0</div><div class="l">outcomes</div></div>
+              <div class="am"><div class="v" id="am-cap">$0.05</div><div class="l">per-task cap</div></div>
+              <div class="am"><div class="v" id="am-slash">$0</div><div class="l">slashed to you</div></div>
+            </div>
+            <div class="feed-h">Activity — verified before payment</div>
+            <div class="feed" id="feed"></div>
+            <div class="acct-actions">
+              <button class="btn solid" id="a-run">Run strategy →</button>
+              <button class="btn danger" id="a-freeze" hidden>Freeze</button>
+              <button class="btn" id="a-disconnect">Disconnect</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="safety">
+  <div class="wrap">
+    <div class="inner rv">
+      <div class="sec-head">
+        <div class="eyebrow" style="color:var(--acc)">Designed for safety</div>
+        <h2>Your agent spends. You stay in control.</h2>
+        <p class="sub">A dedicated budget, a hard per-task cap, an allowlist, and a kill switch — the guarantees a wallet-carrying agent needs.</p>
+      </div>
+      <div class="sgrid">
+        <div class="sitem">
+          <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <h4>Dedicated budget</h4>
+          <p>The account only holds what you fund it with. It can never touch your main balance or exceed the wallet.</p>
+        </div>
+        <div class="sitem">
+          <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h4>A notification on every task</h4>
+          <p>Each task is logged the moment it settles or fails — full visibility into what your agent bought and what it paid.</p>
+        </div>
+        <div class="sitem">
+          <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></div>
+          <h4>Disconnect anytime</h4>
+          <p>Freeze the account in one click — it stops posting instantly. Reversible, and it keeps its balance and history.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="interop">
+  <div class="wrap interop">
+    <div class="rv">
+      <div class="eyebrow" style="margin-bottom:14px">Works with your stack</div>
+      <h2>MCP-native.<br>Runs alongside everything.</h2>
+      <p>Vouch is a standard <strong>MCP server</strong>, so your agent connects it the same way it connects any other agentic account — one URL in the config. An agent can <strong>trade on one MCP and buy verified work on Vouch</strong> from the same setup.</p>
+      <p>Settlement is <strong>USDC on Base</strong>. Every outcome ships with a signed proof you can verify offline.</p>
+    </div>
+    <div class="codecard rv">
+      <div class="h"><i></i><i></i><i></i><span style="margin-left:4px">~/.config/agent/mcp.json</span></div>
+      <pre><span class="c"># one config, many agentic accounts</span>
+{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"trading"</span>: { "url": <span class="g">"https://…/mcp"</span> },
+    <span class="k">"vouch"</span>:   { "url": <span class="g">"https://mcp.vouch.dev"</span> }
+  }
+}
+
+<span class="c"># now the agent can trade — and buy</span>
+<span class="c"># outcomes it only pays for when verified.</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band" style="padding-top:0">
+  <div class="wrap">
+    <div class="inner rv">
+      <h2>Give your agent a wallet<br>it can't waste.</h2>
+      <p>Create an agentic account with a budget, a cap, and a kill switch — and let it buy only verified outcomes. No signup.</p>
+      <div class="cta-row" style="justify-content:center">
+        <a class="btn solid" href="#console">Create an account <span class="ar">→</span></a>
+        <a class="btn" href="/docs#mcp">Read the MCP docs</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Vouch — the outcome layer for AI agents · USDC on Base</span>
+    <span>MCP · <a href="/docs#mcp">/docs</a> · <a href="/dashboard">Dashboard</a></span>
+  </div>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => '$' + (Math.round((n + Number.EPSILON) * 1e6) / 1e6);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1 });
+document.querySelectorAll('.rv').forEach((el) => io.observe(el));
+
+// capability allowlist chips
+const CAPS = ['text.generate', 'text.summarize', 'math.eval', 'extract.structured', 'classify.text', 'translate.text'];
+$('a-allow').innerHTML = CAPS.map((c, i) => '<span class="a' + (i < 4 ? ' on' : '') + '" data-c="' + c + '">' + c + '</span>').join('');
+$('a-allow').querySelectorAll('.a').forEach((el) => el.onclick = () => el.classList.toggle('on'));
+
+// the strategy an agent runs — each maps to a real capability + acceptance
+const STRATEGY = [
+  { cap: 'research', label: 'Draft a market brief on AI infra', real: 'text.generate', lo: 0.018, hi: 0.028 },
+  { cap: 'text.summarize', label: 'Summarize the latest 10-Q filing', real: 'text.summarize', lo: 0.008, hi: 0.014 },
+  { cap: 'math.eval', label: 'Size the position (risk model)', real: 'math.eval', lo: 0.004, hi: 0.008 },
+  { cap: 'extract.structured', label: 'Extract KPIs from the report', real: 'extract.structured', lo: 0.01, hi: 0.02, flaky: true },
+  { cap: 'classify.text', label: 'Classify the sentiment of the news', real: 'classify.text', lo: 0.006, hi: 0.012 },
+  { cap: 'text.generate', label: 'Write the portfolio update', real: 'text.generate', lo: 0.014, hi: 0.024 },
+];
+const PROVIDERS = ['prv_calder', 'prv_norn', 'prv_shade'];
+
+let A = null, running = false;
+
+function render() {
+  if (!A) { $('acct').hidden = true; $('live-empty').hidden = false; return; }
+  $('live-empty').hidden = true; $('acct').hidden = false;
+  $('acct-name').textContent = A.name;
+  $('m-spent').textContent = fmt(A.spent);
+  $('m-budget').textContent = fmt(A.budget);
+  $('m-bar').style.width = Math.min(100, (A.spent / A.budget) * 100) + '%';
+  $('am-done').textContent = A.done;
+  $('am-cap').textContent = fmt(A.cap);
+  $('am-slash').textContent = fmt(A.slashToYou);
+  const st = $('acct-state'), stt = $('acct-state-t');
+  st.className = 'acct-state ' + (A.frozen ? 'frozen' : 'on');
+  stt.textContent = A.frozen ? 'frozen' : (running ? 'running' : 'connected');
+  $('a-freeze').hidden = A.frozen;
+  $('a-run').disabled = A.frozen;
+  $('a-run').textContent = running ? 'Running…' : (A.frozen ? 'Frozen' : 'Run strategy →');
+}
+function event(html, ok) {
+  const feed = $('feed');
+  const d = document.createElement('div'); d.className = 'ev ' + (ok ? 'ok' : 'no'); d.innerHTML = html;
+  feed.prepend(d);
+  while (feed.children.length > 24) feed.lastChild.remove();
+}
+
+$('a-create').onclick = () => {
+  const allow = new Set([...$('a-allow').querySelectorAll('.a.on')].map((e) => e.dataset.c));
+  A = {
+    name: $('a-name').value.trim() || 'Agentic Account',
+    budget: Math.max(1, Number($('a-budget').value) || 25),
+    cap: Math.max(0.001, Number($('a-cap').value) || 0.05),
+    allow, spent: 0, done: 0, slashToYou: 0, frozen: false,
+  };
+  $('feed').innerHTML = '';
+  event('<span class="k">✓</span><span class="lb">account connected via MCP</span><span class="cap">' + esc(A.name) + '</span><span class="amt">' + fmt(A.budget) + '</span>', true);
+  render();
+};
+
+$('a-disconnect').onclick = () => { running = false; A = null; render(); };
+$('a-freeze').onclick = () => { if (!A) return; A.frozen = true; running = false; event('<span class="k">✕</span><span class="lb">account frozen — posting stopped</span><span class="amt">kill switch</span>', false); render(); };
+
+$('a-run').onclick = async () => {
+  if (!A || A.frozen || running) return;
+  running = true; render();
+  while (running && A && !A.frozen) {
+    // pick an allowlisted strategy step the agent can afford under its cap
+    const options = STRATEGY.filter((s) => A.allow.has(s.real));
+    if (!options.length) { event('<span class="k">✕</span><span class="lb">no allowlisted capability to act on</span>', false); break; }
+    const s = options[Math.floor(Math.random() * options.length)];
+    let price = Math.round((s.lo + Math.random() * (s.hi - s.lo)) * 1e6) / 1e6;
+    if (price > A.cap) price = A.cap;                     // per-task cap enforced
+    if (A.spent + price > A.budget) { event('<span class="k">✕</span><span class="lb">budget reached — agent paused</span><span class="amt">' + fmt(A.budget) + '</span>', false); break; }
+
+    const prov = PROVIDERS[Math.floor(Math.random() * PROVIDERS.length)];
+    // ~1 in 6 fails verification → refund + slash, you pay nothing
+    const fail = s.flaky && Math.random() < 0.5 || Math.random() < 0.10;
+    await sleep(1400 + Math.random() * 500);
+    if (!running || !A || A.frozen) break;
+    if (fail) {
+      const slash = Math.round(price * 1.5 * 1e6) / 1e6; A.slashToYou = Math.round((A.slashToYou + slash) * 1e6) / 1e6;
+      event('<span class="k">↺</span><span class="lb">' + esc(s.label) + '</span><span class="cap">' + esc(prov) + ' slashed</span><span class="amt">$0</span>', false);
+    } else {
+      A.spent = Math.round((A.spent + price) * 1e6) / 1e6; A.done += 1;
+      event('<span class="k">✓</span><span class="lb">' + esc(s.label) + '</span><span class="cap">' + esc(prov) + ' · verified</span><span class="amt">' + fmt(price) + '</span>', true);
+    }
+    render();
+    await sleep(300);
+  }
+  running = false; render();
+};
+
+render();
+</script>
+</body>
+</html>

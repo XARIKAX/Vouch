@@ -83,12 +83,13 @@ const TOOLS = [
   },
   {
     name: 'vouch_create_subkey',
-    description: 'Mint a capped, policy-bound sub-key for a child agent: fund it from the parent, optionally restrict to an allowlist of capabilities.',
+    description: 'Open an agentic account (capped, policy-bound sub-key) for a child agent: fund it from the parent, optionally restrict to a capability allowlist and a per-task spend cap.',
     inputSchema: {
       type: 'object', required: ['fund'],
       properties: {
-        fund: { type: 'number', description: 'USDC to transfer from the parent to the sub-key' },
+        fund: { type: 'number', description: 'USDC to transfer from the parent to the account (its dedicated budget)' },
         allow: { type: 'array', items: { type: 'string' }, description: 'Capability allowlist' },
+        per_task_cap: { type: 'number', description: 'Maximum USDC any single task may spend' },
         name: { type: 'string' },
       },
     },
