@@ -136,6 +136,14 @@ export function createApi(engine) {
       send(res, 200, engine.revokeSubKey(key, subId), rl);
     }],
 
+    // Freeze / unfreeze an agentic account (instant, reversible kill switch).
+    ['POST', /^\/v1\/keys\/sub\/([a-z0-9_]+)\/freeze$/, async (req, res, [subId]) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      send(res, 200, engine.freezeSubKey(key, subId, body.frozen !== false), rl);
+    }],
+
     // Provider registration is open in the dev sandbox (stake is a simulated
     // bond). In production this sits behind provider onboarding + real staking.
     ['POST', /^\/v1\/providers$/, async (req, res) => {
