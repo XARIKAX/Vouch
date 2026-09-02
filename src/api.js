@@ -1,5 +1,6 @@
 import { ApiError } from './engine.js';
 import { CAPABILITIES } from './catalog.js';
+import * as broker from './broker.js';
 
 const MAX_BODY = 256 * 1024;
 
@@ -76,8 +77,10 @@ export function createApi(engine) {
   };
 
   const fail = (res, err) => {
-    const status = err instanceof ApiError ? err.status : 500;
-    const code = err instanceof ApiError ? err.code : 'internal_error';
+    const status = err instanceof ApiError ? err.status : (Number(err?.status) || 500);
+    const code = err instanceof ApiError ? err.code
+      : status === 503 ? 'broker_unconfigured' : status === 502 ? 'broker_unreachable'
+      : status < 500 ? 'broker_error' : 'internal_error';
     const extra = err instanceof ApiError ? err.extra : {};
     const headers = code === 'rate_limited' && extra.retry_after ? { 'Retry-After': String(extra.retry_after) } : {};
     send(res, status, { error: { code, message: err.message, ...extra } }, headers);
@@ -142,6 +145,21 @@ export function createApi(engine) {
       const rl = limit(key);
       const body = await readBody(req);
       send(res, 200, engine.freezeSubKey(key, subId, body.frozen !== false), rl);
+    }],
+
+    // Broker (Alpaca paper) — real market data + real *paper* orders when the
+    // deployer sets ALPACA keys. Reads are open; order placement is gated by an
+    // optional BROKER_ORDER_TOKEN so the public can't trade in your account.
+    ['GET', /^\/v1\/broker\/status$/, async (req, res) => send(res, 200, broker.brokerStatus())],
+    ['GET', /^\/v1\/broker\/account$/, async (req, res) => send(res, 200, await broker.account())],
+    ['GET', /^\/v1\/broker\/positions$/, async (req, res) => send(res, 200, { positions: await broker.positions() })],
+    ['GET', /^\/v1\/broker\/quote$/, async (req, res, _p, query) => send(res, 200, await broker.quote(query.get('symbol')))],
+    ['POST', /^\/v1\/broker\/order$/, async (req, res) => {
+      if (!broker.orderTokenOk(req.headers['x-broker-token'])) {
+        throw new ApiError(403, 'forbidden', 'A valid x-broker-token header is required to place orders.');
+      }
+      const body = await readBody(req);
+      send(res, 201, await broker.placeOrder(body));
     }],
 
     // Provider registration is open in the dev sandbox (stake is a simulated

@@ -172,7 +172,7 @@ footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
     <span class="eyebrow">Agentic trading · verified first</span>
     <h1>Agent, meet <span class="mk">verified markets.</span></h1>
     <p class="lede">Give your agent a portfolio and a strategy. It analyzes the market and places trades on its own — but <strong>every trade is gated by a Vouch-verified thesis</strong>, so it can never act on analysis that didn't pass. Budget, per-trade cap, and a kill switch included.</p>
-    <span class="paper-tag">● Paper trading · simulated prices · no real money, no real orders</span>
+    <span class="paper-tag">● Paper trading · no real money</span>
   </div>
 </header>
 
@@ -241,7 +241,11 @@ footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
         </div>
       </div>
     </div>
-    <p class="disc">Paper trading, simulated. Prices are randomly generated, not real market quotes; no orders are placed and no money changes hands. Vouch is not a broker-dealer and does not offer securities trading or investment advice.</p>
+<<<<<<< Updated upstream
+    <p class="disc">Simulated demonstration only. Prices are randomly generated, not real market quotes; no orders are placed and no money changes hands. Vouch is not a broker-dealer and does not offer securities trading or investment advice.</p>
+=======
+    <p class="disc">Paper trading — no real money. Simulated mode uses randomly generated prices; connect Alpaca (paper) for real market data and real paper orders. Vouch is not a broker-dealer and does not provide investment advice.</p>
+>>>>>>> Stashed changes
   </div>
 </section>
 
@@ -309,13 +313,46 @@ function verifyThesis(t) {
 }
 
 let D = null, running = false;
+let SRC = 'sim', brokerGuard = false, brokerToken = null;
 
 // universe chips
 $('t-uni').innerHTML = UNIVERSE.map((t, i) => '<span class="u' + (i < 5 ? ' on' : '') + '" data-s="' + t.sym + '">' + t.sym + '</span>').join('');
 $('t-uni').querySelectorAll('.u').forEach((el) => el.onclick = () => el.classList.toggle('on'));
-document.querySelectorAll('#t-src button:not([disabled])').forEach((b) => b.onclick = () => {
-  document.querySelectorAll('#t-src button').forEach((x) => x.classList.remove('on')); b.classList.add('on');
-});
+function bindSrc() {
+  document.querySelectorAll('#t-src button').forEach((b) => b.onclick = () => {
+    if (b.disabled) return;
+    document.querySelectorAll('#t-src button').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on'); SRC = b.dataset.s;
+  });
+}
+bindSrc();
+// Enable the real Alpaca (paper) source only when the deployer has set keys.
+fetch('/v1/broker/status').then((r) => r.json()).then((s) => {
+  if (s && s.configured) {
+    const a = document.querySelector('#t-src button[data-s="alpaca"]');
+    if (a) a.disabled = false;
+    brokerGuard = !!s.order_guard;
+    const note = document.querySelector('.soon');
+    if (note) note.textContent = 'Alpaca paper connected — real market data & real paper orders.';
+    document.querySelector('.paper-tag').textContent = '● Alpaca paper · real market data · no real money';
+  }
+}).catch(() => {});
+
+// --- real broker calls (used when SRC === 'alpaca') ----------------------
+const jget = (u) => fetch(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ? d.error.message : r.status); return d; });
+const apiQuote = (s) => jget('/v1/broker/quote?symbol=' + encodeURIComponent(s));
+const apiAccount = () => jget('/v1/broker/account');
+const apiPositions = async () => (await jget('/v1/broker/positions')).positions || [];
+async function apiOrder(s, qty, side) {
+  if (brokerGuard && !brokerToken) brokerToken = prompt('Enter your BROKER_ORDER_TOKEN to place paper orders:') || '';
+  const r = await fetch('/v1/broker/order', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(brokerToken ? { 'x-broker-token': brokerToken } : {}) }, body: JSON.stringify({ symbol: s, qty, side }) });
+  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ? d.error.message : r.status); return d;
+}
+async function syncBroker() {
+  const a = await apiAccount(); D.cash = a.cash;
+  const ps = await apiPositions(); D.pos = {};
+  ps.forEach((p) => { D.pos[p.symbol] = { sym: p.symbol, qty: p.qty, avg: p.avg }; MARKET.px[p.symbol] = p.price; });
+}
 
 function equity() {
   let inv = 0;
@@ -357,16 +394,31 @@ function ev(cls, k, lb, cap, amt) {
   $('feed').prepend(d); while ($('feed').children.length > 30) $('feed').lastChild.remove();
 }
 
-$('t-create').onclick = () => {
+$('t-create').onclick = async () => {
   const uni = [...$('t-uni').querySelectorAll('.u.on')].map((e) => e.dataset.s);
   const universe = UNIVERSE.filter((t) => uni.includes(t.sym));
   if (!universe.length) return;
   MARKET.seed(universe);
   const start = Math.max(1000, Number($('t-cash').value) || 10000);
   D = { name: $('t-name').value.trim() || 'Trading Desk', start, cash: start, cap: Math.max(50, Number($('t-cap').value) || 1500),
-    universe: universe.map((t) => t.sym), pos: {}, trades: 0, frozen: false, hist: [start] };
+    universe: universe.map((t) => t.sym), pos: {}, trades: 0, frozen: false, hist: [start], src: SRC };
   $('feed').innerHTML = '';
-  ev('thesis', '✓', 'desk opened · connected via MCP', esc(D.name), usd(start));
+  if (SRC === 'alpaca') {
+    try {
+      const a = await apiAccount();
+      D.start = a.equity; D.cash = a.cash; D.hist = [a.equity];
+      await syncBroker();
+      ev('thesis', '✓', 'desk opened · Alpaca paper account', esc(D.name), usd(a.equity));
+    } catch (e) {
+      D.src = 'sim'; SRC = 'sim';
+      document.querySelectorAll('#t-src button').forEach((x) => x.classList.remove('on'));
+      document.querySelector('#t-src button[data-s="sim"]').classList.add('on');
+      ev('reject', '✕', 'Alpaca connect failed — using simulated', '', esc(e.message));
+      ev('thesis', '✓', 'desk opened · connected via MCP', esc(D.name), usd(start));
+    }
+  } else {
+    ev('thesis', '✓', 'desk opened · connected via MCP', esc(D.name), usd(start));
+  }
   drawCurve(); render();
 };
 $('t-reset').onclick = () => { running = false; D = null; render(); };
@@ -376,6 +428,35 @@ $('t-run').onclick = async () => {
   if (!D || D.frozen || running) return;
   running = true; render();
   while (running && D && !D.frozen) {
+    // --- real Alpaca (paper) path: real quotes, real paper orders ---------
+    if (D.src === 'alpaca') {
+      const sym = D.universe[Math.floor(Math.random() * D.universe.length)];
+      let q; try { q = await apiQuote(sym); } catch (e) { ev('reject', '✕', 'quote failed ' + sym, '', esc(e.message)); await sleep(1600); continue; }
+      if (q && q.price) MARKET.px[sym] = q.price;
+      const t = formThesis(sym);
+      await sleep(1500 + Math.random() * 500);
+      if (!running || !D || D.frozen) break;
+      if (!verifyThesis(t)) { ev('reject', '↺', 'thesis rejected · ' + sym + ' ' + t.direction, 'provider slashed', '$0'); }
+      else {
+        ev('thesis', '✓', 'thesis verified · ' + sym + ' ' + t.direction + ' · conf ' + t.confidence.toFixed(2), 'schema · rubric', '');
+        await sleep(400);
+        const px = MARKET.px[sym] || (q && q.price) || 0;
+        try {
+          if (t.direction === 'buy' && px > 0) {
+            const qty = Math.floor(Math.min(D.cap, D.cash) / px);
+            if (qty >= 1) { const o = await apiOrder(sym, qty, 'buy'); await syncBroker(); D.trades += 1; ev('buy', '▲', 'bought ' + qty + ' ' + sym + ' (paper)', '@ ' + usd(px), o.status || 'submitted'); }
+            else ev('sell', '○', 'skip ' + sym + ' — under per-trade size', '', '');
+          } else if (t.direction === 'sell' && D.pos[sym] && D.pos[sym].qty > 0) {
+            const qty = D.pos[sym].qty; const o = await apiOrder(sym, qty, 'sell'); await syncBroker(); D.trades += 1;
+            ev('sell', '▼', 'sold ' + qty + ' ' + sym + ' (paper)', '@ ' + usd(px), o.status || 'submitted');
+          } else ev('sell', '○', 'hold ' + sym + ' — no action', '', '');
+        } catch (e) { ev('reject', '✕', 'order failed ' + sym, '', esc(e.message)); }
+      }
+      D.hist.push(equity().total); if (D.hist.length > 80) D.hist.shift();
+      drawCurve(); render(); await sleep(300);
+      continue;
+    }
+    // --- simulated path ---------------------------------------------------
     MARKET.tick(D.universe);
     const sym = D.universe[Math.floor(Math.random() * D.universe.length)];
     const t = formThesis(sym);

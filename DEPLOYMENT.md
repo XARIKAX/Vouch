@@ -135,3 +135,13 @@ Before real traffic:
 | `VOUCH_ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
 | `VOUCH_EPHEMERAL` | `1` = in-memory state (dev only) | unset |
 | `VOUCH_FAST` | `1` = fast timings (dev only) | unset |
+| `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` | Alpaca **paper** API keys — enables real market data + real paper orders on `/trade` | unset → simulated only |
+| `ALPACA_BASE_URL` | Alpaca trading host (must be the **paper** host) | `https://paper-api.alpaca.markets` |
+| `ALPACA_DATA_URL` | Alpaca market-data host | `https://data.alpaca.markets` |
+| `BROKER_ORDER_TOKEN` | If set, `POST /v1/broker/order` requires a matching `x-broker-token` (stops the public trading in your account) | unset → order route open |
+
+### Enabling real (paper) trading on `/trade`
+
+1. Create a free Alpaca account and generate **paper** API keys (no real money, no funding needed).
+2. Set `ALPACA_KEY_ID` and `ALPACA_SECRET_KEY` in your host's env vars, and (recommended) a `BROKER_ORDER_TOKEN`.
+3. Redeploy. The **Alpaca (paper)** data source on `/trade` unlocks itself; the agent then trades real market data with real paper orders — still gated by a verified thesis. Leave `ALPACA_BASE_URL` on the paper host: the adapter refuses to run against the live (real-money) endpoint. Vouch is not a broker-dealer; live real-money trading is out of scope here.
