@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vouch — Agentic Trading</title>
+<meta name="description" content="Paper-trading portfolio for AI agents. Your agent runs a strategy on simulated markets — and every trade is gated by a Vouch-verified thesis. No real money, no real orders.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23c9e83a%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%239ec000%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%230c0d0b%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#f5f5f0;--paper2:#ffffff;--paper3:#efefe8;
+  --ink:#0c0d0b;--ink2:#54564e;--ink3:#8c8e84;
+  --line:rgba(12,13,11,.11);--line2:rgba(12,13,11,.17);--dash:rgba(12,13,11,.16);
+  --acc:#bfe000;--acc-deep:#93b200;--acc-bright:#d2ee1c;--acc-ink:#11140a;--acc-soft:rgba(159,190,0,.14);
+  --red:#c0392b;--up:#2f9e5f;--down:#c0392b;
+  --serif:'Fraunces','Spectral',Georgia,serif;--sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;
+  --maxw:1200px;
+}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:var(--acc);color:var(--acc-ink)}
+a{color:inherit;text-decoration:none}.mono{font-family:var(--mono)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 46px;position:relative}
+.wrap::before,.wrap::after{content:"";position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--dash);pointer-events:none;z-index:0}
+.wrap::before{left:0}.wrap::after{right:0}
+.wrap>*{position:relative;z-index:1}
+@media(max-width:720px){.wrap{padding:0 22px}.wrap::before,.wrap::after{display:none}}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:400;letter-spacing:-.012em}
+.mk{background:linear-gradient(transparent 60%,var(--acc) 60%);padding:0 .04em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+em{font-style:italic}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:2.4px;text-transform:uppercase;color:var(--ink2);display:inline-flex;align-items:center;gap:12px}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--acc-deep)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 22px;border-radius:11px;font-family:var(--sans);font-size:14.5px;font-weight:550;border:1px solid var(--line2);color:var(--ink);background:transparent;cursor:pointer;transition:.2s cubic-bezier(.2,.7,.3,1);white-space:nowrap}
+.btn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.btn.solid{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.solid:hover{background:#000;box-shadow:0 12px 30px rgba(12,13,11,.24)}
+.btn.danger{border-color:rgba(192,57,43,.5);color:var(--red)}
+.btn.danger:hover{background:rgba(192,57,43,.08);border-color:var(--red)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn .ar{transition:transform .2s}.btn:hover .ar{transform:translateX(3px)}
+
+nav.top{position:sticky;top:0;z-index:50;height:70px;display:flex;align-items:center;background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;align-items:center;gap:26px;width:100%}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:500;font-size:23px;letter-spacing:-.01em}
+.mark{width:27px;height:27px;flex:none}.mark svg{width:100%;height:100%}
+.pagechip{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc-deep);border:1px solid color-mix(in srgb,var(--acc-deep) 40%,transparent);border-radius:6px;padding:3px 9px;background:var(--acc-soft)}
+.nav-links{margin-left:auto;display:flex;gap:2px;align-items:center}
+.nav-links a{color:var(--ink2);font-size:14px;padding:8px 13px;border-radius:8px;transition:.16s}
+.nav-links a:hover{color:var(--ink);background:var(--paper3)}
+.nav-links a.btn{margin-left:8px}
+
+.hero{padding:70px 0 26px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:auto -10% -60% 48%;height:48rem;background:radial-gradient(32rem 24rem at 60% 40%,var(--acc-soft),transparent 66%);z-index:0;pointer-events:none}
+.hero h1{font-size:clamp(38px,5vw,66px);line-height:1.02;letter-spacing:-.02em;margin:20px 0 16px;max-width:15ch}
+.lede{font-size:18px;color:var(--ink2);max-width:52ch;line-height:1.55;margin-bottom:22px}
+.lede strong{color:var(--ink);font-weight:600}
+.paper-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#9a6a00;background:rgba(214,164,0,.12);border:1px solid rgba(214,164,0,.35);border-radius:8px;padding:6px 11px}
+
+/* console */
+.twrap{border:1px solid var(--line2);border-radius:22px;background:var(--paper2);box-shadow:0 30px 80px rgba(12,13,11,.1);overflow:hidden;margin-top:14px}
+.tgrid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr)}
+.tcfg{padding:24px;border-right:1px solid var(--line)}
+.tcfg h3{font-size:18px;font-weight:500;margin-bottom:4px}
+.tcfg .hint{font-size:12px;color:var(--ink3);margin-bottom:16px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:600}
+.field input{font-family:var(--sans);font-size:13.5px;border-radius:11px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);padding:11px 12px;width:100%;transition:.16s}
+.field input:focus{outline:none;border-color:var(--acc-deep);box-shadow:0 0 0 3px var(--acc-soft)}
+.row2{display:flex;gap:10px}.row2 .field{flex:1}
+.uni{display:flex;flex-wrap:wrap;gap:6px}
+.uni .u{font-family:var(--mono);font-size:11.5px;border:1px solid var(--line2);border-radius:7px;padding:5px 9px;color:var(--ink2);cursor:pointer;user-select:none;transition:.14s}
+.uni .u.on{background:var(--acc);color:var(--acc-ink);border-color:transparent;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden;width:100%}
+.seg button{flex:1;border:none;background:transparent;color:var(--ink2);padding:9px 10px;font-size:12px;cursor:pointer;font-family:var(--sans);transition:.14s}
+.seg button.on{background:var(--acc);color:var(--acc-ink);font-weight:600}
+.seg button:disabled{color:var(--ink3);cursor:not-allowed}
+.seg button:not(:last-child){border-right:1px solid var(--line2)}
+.soon{font-size:10.5px;color:var(--ink3);margin-top:6px;font-family:var(--mono)}
+.tcfg .btn{width:100%;margin-top:6px}
+.note-base{margin-top:14px;font-family:var(--mono);font-size:10.5px;color:var(--ink3);border-top:1px dashed var(--line);padding-top:12px}
+.note-base b{color:var(--ink2)}
+
+.tlive{padding:24px;display:flex;flex-direction:column;min-height:520px}
+.pf-empty{color:var(--ink3);font-size:13px;text-align:center;padding:60px 0}
+.pf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.pf-eq{font-family:var(--serif);font-size:34px;font-weight:440;letter-spacing:-.02em;line-height:1}
+.pf-eql{font-size:11px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px}
+.pf-pnl{font-family:var(--mono);font-size:14px;font-weight:500;margin-top:4px}
+.pf-pnl.up{color:var(--up)}.pf-pnl.down{color:var(--down)}
+.pf-state{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line2);border-radius:99px;padding:4px 11px;display:inline-flex;align-items:center;gap:6px}
+.pf-state.on{color:var(--acc-deep);border-color:color-mix(in srgb,var(--acc-deep) 40%,transparent)}
+.pf-state.frozen{color:var(--red);border-color:rgba(192,57,43,.4)}
+.pf-state i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor}
+.pf-state.on i{animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.curve{border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:10px;margin-bottom:14px}
+.curve svg{display:block;width:100%;height:88px}
+.cash-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.cash{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--paper)}
+.cash .v{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ink)}
+.cash .l{font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;min-height:0}
+@media(max-width:1080px){.cols2{grid-template-columns:1fr}}
+.subh{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.postbl{border:1px solid var(--line);border-radius:12px;overflow:hidden;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:none}
+th{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);font-weight:600;background:var(--paper3)}
+td{color:var(--ink2);font-family:var(--mono)}
+td.sym{color:var(--ink);font-weight:600}
+td.up{color:var(--up)}td.down{color:var(--down)}
+.no-pos{color:var(--ink3);text-align:center;padding:22px;font-size:12px}
+.feed{display:flex;flex-direction:column;gap:6px;overflow-y:auto;max-height:260px}
+.ev{border:1px solid var(--line);border-radius:9px;padding:7px 10px;background:var(--paper);font-size:12px;display:flex;align-items:center;gap:9px;opacity:0;transform:translateY(3px);animation:rise .3s forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.ev .k{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:10px;flex:none}
+.ev.buy .k{background:var(--acc);color:var(--acc-ink)}
+.ev.sell .k{background:var(--paper3);color:var(--ink);border:1px solid var(--line2)}
+.ev.thesis .k{background:rgba(47,158,95,.14);color:var(--up);border:1px solid rgba(47,158,95,.35)}
+.ev.reject .k{background:rgba(192,57,43,.12);color:var(--red);border:1px solid rgba(192,57,43,.35)}
+.ev .lb{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev .cap{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.ev .amt{margin-left:auto;font-family:var(--mono);font-size:11.5px;flex:none}
+.pf-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+
+.how{padding:64px 0}
+.how .inner{border-radius:22px;padding:44px 46px;background:var(--ink);color:var(--paper);position:relative;overflow:hidden}
+.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 14rem at 20% -30%,rgba(210,238,28,.2),transparent 66%);pointer-events:none}
+.how h2{color:var(--paper);font-size:clamp(26px,3vw,40px);margin-bottom:10px}
+.how .sub{color:rgba(244,245,239,.7);margin-bottom:26px;max-width:60ch}
+.hsteps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.hstep{border-left:1px solid rgba(244,245,239,.14);padding-left:16px}
+.hstep .num{font-family:var(--mono);font-size:11px;color:var(--acc);letter-spacing:1px}
+.hstep h4{font-family:var(--serif);font-size:16px;font-weight:500;color:var(--paper);margin:6px 0 5px}
+.hstep p{font-size:12.5px;color:rgba(244,245,239,.68);line-height:1.5}
+@media(max-width:820px){.hsteps{grid-template-columns:1fr 1fr}}
+
+footer{padding:40px 0;background:var(--ink);color:rgba(244,245,239,.6)}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:13px}
+footer .wrap::before,footer .wrap::after{border-color:rgba(244,245,239,.14)}
+footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
+.disc{font-size:11px;color:var(--ink3);margin-top:8px;max-width:70ch}
+.rv{opacity:0;transform:translateY(16px);transition:opacity .6s cubic-bezier(.2,.7,.3,1),transform .6s cubic-bezier(.2,.7,.3,1)}
+.rv.in{opacity:1;transform:none}
+@media(max-width:920px){.tgrid{grid-template-columns:1fr}.tcfg{border-right:none;border-bottom:1px solid var(--line)}}
+@media(max-width:680px){.nav-links a:not(.btn){display:none}.hero{padding-top:50px}}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#c9e83a"/><stop offset="1" stop-color="#9ec000"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#0c0d0b" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <span class="pagechip">Agentic Trading</span>
+    <div class="nav-links">
+      <a href="/agents">Accounts</a>
+      <a href="/services">Services</a>
+      <a href="/docs">Docs</a>
+      <a class="btn solid" href="#desk">Run the desk</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">Agentic trading · verified first</span>
+    <h1>Agent, meet <span class="mk">verified markets.</span></h1>
+    <p class="lede">Give your agent a portfolio and a strategy. It analyzes the market and places trades on its own — but <strong>every trade is gated by a Vouch-verified thesis</strong>, so it can never act on analysis that didn't pass. Budget, per-trade cap, and a kill switch included.</p>
+    <span class="paper-tag">● Paper trading · simulated prices · no real money, no real orders</span>
+  </div>
+</header>
+
+<section id="desk" style="padding:14px 0 20px">
+  <div class="wrap">
+    <div class="twrap rv">
+      <div class="tgrid">
+        <div class="tcfg">
+          <h3>Trading desk</h3>
+          <div class="hint">A paper portfolio your agent runs autonomously.</div>
+          <div class="field"><label>Desk name</label><input id="t-name" value="Momentum Agent"></div>
+          <div class="row2">
+            <div class="field"><label>Starting cash ($)</label><input id="t-cash" value="10000"></div>
+            <div class="field"><label>Max / trade ($)</label><input id="t-cap" value="1500"></div>
+          </div>
+          <div class="field"><label>Universe</label><div class="uni" id="t-uni"></div></div>
+          <div class="field"><label>Market data</label>
+            <span class="seg" id="t-src">
+              <button data-s="sim" class="on">Simulated</button>
+              <button data-s="alpaca" disabled>Alpaca (paper)</button>
+            </span>
+            <div class="soon">Bring-your-own-keys Alpaca paper trading — coming next.</div>
+          </div>
+          <button class="btn solid" id="t-create">Open the desk</button>
+          <div class="note-base">Settlement of the <b>verification</b> is USDC on Base · trades are simulated.</div>
+        </div>
+
+        <div class="tlive">
+          <div class="pf-empty" id="pf-empty">Open a desk, then Run the strategy.</div>
+          <div id="pf" hidden>
+            <div class="pf-head">
+              <div>
+                <div class="pf-eq" id="pf-eq">$10,000</div>
+                <div class="pf-eql">portfolio value</div>
+                <div class="pf-pnl up" id="pf-pnl">+$0.00 (0.00%)</div>
+              </div>
+              <span class="pf-state on" id="pf-state"><i></i><span id="pf-state-t">ready</span></span>
+            </div>
+            <div class="curve"><svg id="curve" viewBox="0 0 600 88" preserveAspectRatio="none"><polyline id="curve-line" fill="none" stroke="var(--acc-deep)" stroke-width="2" points=""/><polyline id="curve-fill" fill="url(#cg)" stroke="none" points=""/><defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--acc)" stop-opacity="0.22"/><stop offset="1" stop-color="var(--acc)" stop-opacity="0"/></linearGradient></defs></svg></div>
+            <div class="cash-row">
+              <div class="cash"><div class="v" id="c-cash">$10,000</div><div class="l">cash</div></div>
+              <div class="cash"><div class="v" id="c-inv">$0</div><div class="l">invested</div></div>
+              <div class="cash"><div class="v" id="c-trades">0</div><div class="l">verified trades</div></div>
+            </div>
+            <div class="cols2">
+              <div style="display:flex;flex-direction:column;min-height:0">
+                <div class="subh">Positions</div>
+                <div class="postbl">
+                  <table>
+                    <thead><tr><th>Sym</th><th>Qty</th><th>Avg</th><th>Last</th><th>P/L</th></tr></thead>
+                    <tbody id="pos"><tr><td colspan="5" class="no-pos">no positions yet</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;min-height:0">
+                <div class="subh">Agent activity — thesis verified before each trade</div>
+                <div class="feed" id="feed"></div>
+              </div>
+            </div>
+            <div class="pf-actions">
+              <button class="btn solid" id="t-run">Run strategy →</button>
+              <button class="btn danger" id="t-freeze" hidden>Freeze</button>
+              <button class="btn" id="t-reset">Reset</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="disc">Simulated demonstration only. Prices are randomly generated, not real market quotes; no orders are placed and no money changes hands. Vouch is not a broker-dealer and does not offer securities trading or investment advice.</p>
+  </div>
+</section>
+
+<section class="how">
+  <div class="wrap">
+    <div class="inner rv">
+      <h2>The trade that can't fire on a bad idea.</h2>
+      <p class="sub">Robinhood lets an agent place the trade. Vouch verifies the <em>reasoning first</em> — the difference between an autonomous portfolio and a reckless one.</p>
+      <div class="hsteps">
+        <div class="hstep"><div class="num">01</div><h4>Agent forms a thesis</h4><p>For a ticker it's watching: a direction, a confidence, a rationale, a risk note.</p></div>
+        <div class="hstep"><div class="num">02</div><h4>Vouch verifies it</h4><p>The thesis must pass acceptance checks — structure, confidence bounds, a real rationale. Junk is rejected and the provider is slashed.</p></div>
+        <div class="hstep"><div class="num">03</div><h4>Only then it trades</h4><p>A verified thesis unlocks a paper trade within the per-trade cap. No verified thesis, no trade.</p></div>
+        <div class="hstep"><div class="num">04</div><h4>You stay in control</h4><p>Budget, per-trade cap, live P&L, and a freeze switch that stops the desk instantly.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Vouch — the outcome layer for AI agents · verification settled in USDC on Base</span>
+    <span><a href="/agents">Agentic accounts</a> · <a href="/docs#mcp">MCP</a></span>
+  </div>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const usd = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const usd0 = (n) => '$' + Math.round(n).toLocaleString('en-US');
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1 });
+document.querySelectorAll('.rv').forEach((el) => io.observe(el));
+
+// --- simulated market (the seam Option 3 / Alpaca plugs into) -------------
+// A real broker adapter would replace MARKET.price()/BROKER.order() with API
+// calls; the agent loop and verification gate below stay identical.
+const UNIVERSE = [
+  { sym: 'NVDA', px: 178 }, { sym: 'MSFT', px: 428 }, { sym: 'AMD', px: 168 },
+  { sym: 'GOOGL', px: 176 }, { sym: 'TSLA', px: 251 }, { sym: 'COIN', px: 232 },
+];
+const MARKET = {
+  px: {},
+  seed(list) { this.px = {}; list.forEach((t) => { this.px[t.sym] = t.px; }); },
+  tick(list) { list.forEach((s) => { const d = (Math.random() - 0.48) * 0.02; this.px[s] = Math.max(1, Math.round(this.px[s] * (1 + d) * 100) / 100); }); },
+  price(s) { return this.px[s]; },
+};
+
+// --- the thesis the agent must get verified before trading ----------------
+function formThesis(sym) {
+  const dir = Math.random() < 0.62 ? 'buy' : (Math.random() < 0.6 ? 'sell' : 'hold');
+  const confidence = Math.round((0.45 + Math.random() * 0.5) * 100) / 100;
+  const rationale = 'Momentum and volume support a ' + dir + ' on ' + sym + ' over the near term; risk sized to the stop below support.';
+  return { ticker: sym, direction: dir, confidence, rationale, risk: 'position capped; invalidate on a close through support' };
+}
+// Vouch-style acceptance checks — the same model /v1/verify runs, in-browser.
+function verifyThesis(t) {
+  if (!t.ticker || !['buy', 'sell', 'hold'].includes(t.direction)) return false;
+  if (!(t.confidence > 0 && t.confidence <= 1)) return false;
+  if (!t.rationale || t.rationale.length < 40) return false;
+  if (!t.risk) return false;
+  // ~12% of theses are junk and fail verification (provider gets slashed)
+  return Math.random() > 0.12;
+}
+
+let D = null, running = false;
+
+// universe chips
+$('t-uni').innerHTML = UNIVERSE.map((t, i) => '<span class="u' + (i < 5 ? ' on' : '') + '" data-s="' + t.sym + '">' + t.sym + '</span>').join('');
+$('t-uni').querySelectorAll('.u').forEach((el) => el.onclick = () => el.classList.toggle('on'));
+document.querySelectorAll('#t-src button:not([disabled])').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('#t-src button').forEach((x) => x.classList.remove('on')); b.classList.add('on');
+});
+
+function equity() {
+  let inv = 0;
+  for (const p of Object.values(D.pos)) inv += p.qty * MARKET.price(p.sym);
+  return { inv, total: D.cash + inv };
+}
+function drawCurve() {
+  const h = D.hist; if (h.length < 2) { $('curve-line').setAttribute('points', ''); $('curve-fill').setAttribute('points', ''); return; }
+  const min = Math.min(...h), max = Math.max(...h), pad = (max - min) * 0.15 || 1;
+  const lo = min - pad, hi = max + pad, W = 600, H = 88;
+  const pts = h.map((v, i) => (i / (h.length - 1) * W).toFixed(1) + ',' + (H - (v - lo) / (hi - lo) * H).toFixed(1));
+  $('curve-line').setAttribute('points', pts.join(' '));
+  $('curve-fill').setAttribute('points', '0,' + H + ' ' + pts.join(' ') + ' ' + W + ',' + H);
+}
+function render() {
+  if (!D) { $('pf').hidden = true; $('pf-empty').hidden = false; return; }
+  $('pf-empty').hidden = true; $('pf').hidden = false;
+  const { inv, total } = equity();
+  const pnl = total - D.start, pct = pnl / D.start * 100;
+  $('pf-eq').textContent = usd(total);
+  const pe = $('pf-pnl'); pe.className = 'pf-pnl ' + (pnl >= 0 ? 'up' : 'down');
+  pe.textContent = (pnl >= 0 ? '+' : '−') + usd(Math.abs(pnl)) + ' (' + (pnl >= 0 ? '+' : '−') + Math.abs(pct).toFixed(2) + '%)';
+  $('c-cash').textContent = usd(D.cash); $('c-inv').textContent = usd(inv); $('c-trades').textContent = D.trades;
+  const st = $('pf-state'), stt = $('pf-state-t');
+  st.className = 'pf-state ' + (D.frozen ? 'frozen' : 'on');
+  stt.textContent = D.frozen ? 'frozen' : (running ? 'trading' : 'ready');
+  $('t-freeze').hidden = D.frozen; $('t-run').disabled = D.frozen;
+  $('t-run').textContent = running ? 'Running…' : (D.frozen ? 'Frozen' : 'Run strategy →');
+  const rows = Object.values(D.pos).filter((p) => p.qty > 0);
+  $('pos').innerHTML = rows.length ? rows.map((p) => {
+    const last = MARKET.price(p.sym), pl = (last - p.avg) * p.qty, up = pl >= 0;
+    return '<tr><td class="sym">' + p.sym + '</td><td>' + p.qty + '</td><td>' + usd(p.avg) + '</td><td>' + usd(last) +
+      '</td><td class="' + (up ? 'up' : 'down') + '">' + (up ? '+' : '−') + usd(Math.abs(pl)) + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="no-pos">no positions yet</td></tr>';
+}
+function ev(cls, k, lb, cap, amt) {
+  const d = document.createElement('div'); d.className = 'ev ' + cls;
+  d.innerHTML = '<span class="k">' + k + '</span><span class="lb">' + lb + '</span>' + (cap ? '<span class="cap">' + cap + '</span>' : '') + (amt ? '<span class="amt">' + amt + '</span>' : '');
+  $('feed').prepend(d); while ($('feed').children.length > 30) $('feed').lastChild.remove();
+}
+
+$('t-create').onclick = () => {
+  const uni = [...$('t-uni').querySelectorAll('.u.on')].map((e) => e.dataset.s);
+  const universe = UNIVERSE.filter((t) => uni.includes(t.sym));
+  if (!universe.length) return;
+  MARKET.seed(universe);
+  const start = Math.max(1000, Number($('t-cash').value) || 10000);
+  D = { name: $('t-name').value.trim() || 'Trading Desk', start, cash: start, cap: Math.max(50, Number($('t-cap').value) || 1500),
+    universe: universe.map((t) => t.sym), pos: {}, trades: 0, frozen: false, hist: [start] };
+  $('feed').innerHTML = '';
+  ev('thesis', '✓', 'desk opened · connected via MCP', esc(D.name), usd(start));
+  drawCurve(); render();
+};
+$('t-reset').onclick = () => { running = false; D = null; render(); };
+$('t-freeze').onclick = () => { if (!D) return; D.frozen = true; running = false; ev('reject', '✕', 'desk frozen — trading halted', 'kill switch', ''); render(); };
+
+$('t-run').onclick = async () => {
+  if (!D || D.frozen || running) return;
+  running = true; render();
+  while (running && D && !D.frozen) {
+    MARKET.tick(D.universe);
+    const sym = D.universe[Math.floor(Math.random() * D.universe.length)];
+    const t = formThesis(sym);
+    await sleep(1500 + Math.random() * 600);
+    if (!running || !D || D.frozen) break;
+
+    const ok = verifyThesis(t);
+    if (!ok) {
+      ev('reject', '↺', 'thesis rejected · ' + sym + ' ' + t.direction, 'provider slashed', '$0');
+    } else {
+      ev('thesis', '✓', 'thesis verified · ' + sym + ' ' + t.direction + ' · conf ' + t.confidence.toFixed(2), 'schema · rubric', '');
+      await sleep(500);
+      const px = MARKET.price(sym);
+      if (t.direction === 'buy') {
+        const spend = Math.min(D.cap, D.cash);
+        const qty = Math.floor(spend / px);
+        if (qty >= 1) {
+          const cost = qty * px; D.cash -= cost; D.trades += 1;
+          const p = D.pos[sym] || (D.pos[sym] = { sym, qty: 0, avg: 0 });
+          p.avg = (p.avg * p.qty + cost) / (p.qty + qty); p.qty += qty;
+          ev('buy', '▲', 'bought ' + qty + ' ' + sym, '@ ' + usd(px), '−' + usd(cost));
+        } else { ev('sell', '○', 'skip ' + sym + ' — under per-trade size', '', ''); }
+      } else if (t.direction === 'sell' && D.pos[sym] && D.pos[sym].qty > 0) {
+        const p = D.pos[sym], qty = p.qty, proceeds = qty * px; D.cash += proceeds; D.trades += 1;
+        ev('sell', '▼', 'sold ' + qty + ' ' + sym, '@ ' + usd(px), '+' + usd(proceeds));
+        p.qty = 0; p.avg = 0;
+      } else {
+        ev('sell', '○', 'hold ' + sym + ' — no action', '', '');
+      }
+    }
+    D.hist.push(equity().total); if (D.hist.length > 80) D.hist.shift();
+    drawCurve(); render();
+    await sleep(300);
+  }
+  running = false; render();
+};
+
+render();
+</script>
+</body>
+</html>
