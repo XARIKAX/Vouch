@@ -191,6 +191,47 @@ export function createApi(engine) {
       send(res, 200, engine.insuranceStats(), rl);
     }],
 
+    // Launchpad: launched agents (token-wrapped, supply-side providers). Launch,
+    // fee harvest, unbond and the sandbox price feed are gated like provider
+    // registration (open in dev); the reads are public analytics.
+    ['POST', /^\/v1\/agents$/, async (req, res) => {
+      adminGate(req);
+      const body = await readBody(req);
+      send(res, 201, engine.launchAgent(body));
+    }],
+
+    ['GET', /^\/v1\/agents$/, async (req, res) => {
+      const key = req.headers.authorization ? auth(req) : ANON_KEY;
+      const rl = limit(key);
+      send(res, 200, { agents: engine.listAgents() }, rl);
+    }],
+
+    ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId]) => {
+      const key = req.headers.authorization ? auth(req) : ANON_KEY;
+      const rl = limit(key);
+      send(res, 200, engine.getAgent(agentId), rl);
+    }],
+
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/harvest$/, async (req, res, [agentId]) => {
+      adminGate(req);
+      const body = await readBody(req);
+      send(res, 200, engine.harvestFees(agentId, body.fee_amount ?? body.fee));
+    }],
+
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/unbond$/, async (req, res, [agentId]) => {
+      adminGate(req);
+      const body = await readBody(req);
+      send(res, 202, engine.requestUnbond(agentId, body.token_qty ?? body.tokenQty));
+    }],
+
+    // Sandbox price feed: move an agent token's TWAP / pool liquidity so you can
+    // watch bond capacity reprice (and shrink) without a live pool.
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/price$/, async (req, res, [agentId]) => {
+      adminGate(req);
+      const body = await readBody(req);
+      send(res, 200, engine.setAgentPrice(agentId, body));
+    }],
+
     // Attestation public key — anyone can verify a receipt offline.
     ['GET', /^\/v1\/attestation\/key$/, async (req, res) => {
       send(res, 200, engine.attestorKey());

@@ -62,6 +62,37 @@ test('full HTTP loop: key → deposit → offers → task → settled', async ()
   }
 });
 
+test('launchpad HTTP: launch → harvest → price-drop → unbond over /v1/agents', async () => {
+  const { server, call } = await boot();
+  try {
+    const launched = await call('POST', '/v1/agents', {
+      body: { owner: '0xowner', symbol: 'CALC', twap_usdg: 1, pool_liquidity_usdg: 5000 },
+    });
+    assert.equal(launched.status, 201);
+    const id = launched.body.id;
+    assert.match(id, /^agt_/);
+
+    const list = await call('GET', '/v1/agents');
+    assert.ok(list.body.agents.some((a) => a.id === id));
+
+    const harvested = await call('POST', `/v1/agents/${id}/harvest`, { body: { fee_amount: 1000 } });
+    assert.equal(harvested.status, 200);
+    assert.deepEqual(harvested.body.split, { bond: 500, operating: 300, creator: 150, treasury: 50 });
+
+    const got = await call('GET', `/v1/agents/${id}`);
+    assert.equal(got.body.bond.capacity_usdg, 125); // 500 * 0.5 / 2
+
+    const priced = await call('POST', `/v1/agents/${id}/price`, { body: { twap_usdg: 0.5 } });
+    assert.equal(priced.body.bond.capacity_usdg, 62.5); // capacity halves with price
+
+    const unbond = await call('POST', `/v1/agents/${id}/unbond`, { body: { token_qty: 100 } });
+    assert.equal(unbond.status, 202);
+    assert.ok(unbond.body.unbonding.release_at > Date.now());
+  } finally {
+    server.close();
+  }
+});
+
 test('auth: missing or bad key → 401 unauthorized', async () => {
   const { server, call } = await boot();
   try {
@@ -140,8 +171,9 @@ test('MCP: tools/list is open, tools/call requires a key and works end to end', 
     const names = list.result.tools.map((t) => t.name);
     assert.deepEqual(names.sort(), [
       'vouch_balance', 'vouch_create_subkey', 'vouch_create_workflow', 'vouch_dispute',
-      'vouch_find_offers', 'vouch_get_attestation', 'vouch_list_providers', 'vouch_post_task',
-      'vouch_task_status', 'vouch_verify', 'vouch_workflow_status',
+      'vouch_find_offers', 'vouch_get_agent', 'vouch_get_attestation', 'vouch_list_agents',
+      'vouch_list_providers', 'vouch_post_task', 'vouch_task_status', 'vouch_verify',
+      'vouch_workflow_status',
     ]);
 
     const KEY = (await call('POST', '/v1/keys', { body: {} })).body.key;

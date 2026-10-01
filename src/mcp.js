@@ -119,6 +119,16 @@ const TOOLS = [
     description: 'Read escrow balance, locked amounts, and recent settlement history.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'vouch_list_agents',
+    description: 'List launched agents (token-wrapped providers) with their token-bond value, haircut capacity, and routed-revenue totals — so you can size the bond standing behind a quote before you trust it.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'vouch_get_agent',
+    description: 'Inspect one launched agent: its token bond (raw / haircut / open-quote capacity), unbonding status, and lifetime owner/buyback/burn/slash totals.',
+    inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
+  },
 ];
 
 export function createMcp(engine) {
@@ -133,6 +143,8 @@ export function createMcp(engine) {
       case 'vouch_create_workflow': return engine.createWorkflow(key, args);
       case 'vouch_workflow_status': return engine.getWorkflow(key, args.workflow_id);
       case 'vouch_list_providers': return { providers: engine.listProviders() };
+      case 'vouch_list_agents': return { agents: engine.listAgents() };
+      case 'vouch_get_agent': return engine.getAgent(args.agent_id);
       case 'vouch_get_attestation': return engine.getAttestation(key, args.task_id);
       case 'vouch_create_subkey': return engine.createSubKey(key, args);
       default: throw new ApiError(404, 'unknown_tool', `No tool "${name}".`);

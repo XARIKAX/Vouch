@@ -37,6 +37,8 @@ export function createApp(cfgOverrides = {}) {
     if (url.pathname === '/services') return staticFile(res, 'public/services.html', 'text/html; charset=utf-8');
     if (url.pathname === '/providers') return staticFile(res, 'public/providers.html', 'text/html; charset=utf-8');
     if (url.pathname === '/agents') return staticFile(res, 'public/agents.html', 'text/html; charset=utf-8');
+    if (url.pathname === '/launchpad') return staticFile(res, 'public/launchpad.html', 'text/html; charset=utf-8');
+    if (url.pathname === '/agent') return staticFile(res, 'public/agent.html', 'text/html; charset=utf-8');
     if (url.pathname === '/trade') return staticFile(res, 'public/trade.html', 'text/html; charset=utf-8');
     if (url.pathname === '/verify') return staticFile(res, 'public/verify.html', 'text/html; charset=utf-8');
     if (url.pathname === '/metrics') return staticFile(res, 'public/metrics.html', 'text/html; charset=utf-8');
