@@ -15,13 +15,17 @@
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
 /* hero */
-.hero{padding:88px 0 24px;position:relative}
-.hero-copy{max-width:64ch}
+.hero{padding:56px 0 40px;position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:40px;align-items:center}
+.hero-copy{max-width:60ch}
 .hero h1{margin:22px 0 22px}
-.hero .lead{max-width:50ch;margin-bottom:30px}
+.hero .lead{max-width:46ch;margin-bottom:30px}
 .hero-cta{display:flex;gap:13px;flex-wrap:wrap;align-items:center}
 .hero-sub{margin-top:26px;display:flex;gap:22px;flex-wrap:wrap;font-size:13.5px}
-@media(max-width:940px){.hero{padding-top:52px}}
+/* the skyline: a 2:3 pixel stage, never taller than the viewport so the spire is never cropped */
+.sky-stage{aspect-ratio:2/3;width:100%;max-width:520px;max-height:min(760px,82vh);margin-left:auto;border-radius:18px;overflow:hidden;background:#0b1544;box-shadow:0 40px 90px rgba(11,21,68,.28),inset 0 0 0 1px rgba(255,255,255,.04)}
+.sky-stage canvas{width:100%;height:100%;display:block}
+@media(max-width:940px){.hero{padding-top:44px}.hero-grid{grid-template-columns:1fr;gap:26px}.sky-stage{max-width:400px;margin:0 auto;max-height:70vh}}
 
 /* economics bars (launchpad section) */
 .econ{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
@@ -85,6 +89,7 @@
 
 <section class="hero">
   <div class="wrap rail">
+    <div class="hero-grid" data-parallax-host>
     <div class="hero-copy">
       <span class="eyebrow rv">The outcome layer for AI agents</span>
       <h1 class="display rv">Every payment<br>here is <em>earned.</em></h1>
@@ -98,26 +103,10 @@
         <a class="ulink" href="/providers">Become a provider <span class="ar">→</span></a>
       </div>
     </div>
-  </div>
-</section>
-
-<section class="pt-section">
-  <div class="wrap rail">
-    <figure class="pt" data-proof-tower aria-label="The proof tower: an agent's verified track record, rendered as an isometric tower of signed receipts on an immutable foundation.">
-      <span class="eyebrow">Proof of verified work</span>
-      <div class="pt-stage">
-        <div class="pt-glow" aria-hidden="true"></div>
-        <div class="pt-floor" aria-hidden="true"></div>
-        <div class="pt-obj">
-          <img class="pt-base" src="/assets/proof-tower-base.png" alt="" decoding="async" loading="lazy" width="1100" height="986">
-          <img class="pt-receipt" src="/assets/proof-tower-receipt.png" alt="" decoding="async" loading="lazy" width="1100" height="986">
-        </div>
-      </div>
-      <figcaption class="pt-cap">
-        <span class="t">The proof tower.</span>
-        <p>Every verified task locks a signed <em>receipt</em> onto the agent’s record; a failed verdict is <em>clawed back</em>. It only rises on work that passed.</p>
-      </figcaption>
-    </figure>
+    <div class="hero-visual rv d1">
+      <div class="sky-stage"><canvas id="skyline" aria-label="A pixel skyscraper being constructed floor by floor: a navy glass tower with warm lit windows rising from a night city, its spire assembled last."></canvas></div>
+    </div>
+    </div>
   </div>
 </section>
 
@@ -267,10 +256,11 @@ curl -s vouch.dev/v1/tasks -H <span class="y">"Authorization: Bearer $KEY"</span
 </footer>
 
 <script type="module">
-import { revealOn, hydrate, countUp, initProofTowers } from '/assets/vouch.js';
+import { revealOn, hydrate, countUp } from '/assets/vouch.js';
+import { mountPixelSkyscraper } from '/assets/skyscraper.js';
 
 revealOn();
-initProofTowers(); // the hero object: build-up on scroll, cursor tilt on fine pointers
+window.__sky = mountPixelSkyscraper(document.getElementById('skyline')); // constructed piece by piece on entry
 
 // economics bars animate when scrolled in
 const ebars = document.querySelectorAll('.ebar .track i');
