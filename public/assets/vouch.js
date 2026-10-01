@@ -28,7 +28,7 @@ export function initTicker() {
 export function initProgressRail() {
   if (document.querySelector('.prail')) return;
   const el = document.createElement('div'); el.className = 'prail'; el.setAttribute('aria-hidden', 'true');
-  el.innerHTML = '<span class="pct">00%</span><div class="bar"><i></i></div><span>VCH</span>';
+  el.innerHTML = '<span class="pct">00%</span><div class="prail-track"><i class="prail-mark"></i></div><span>VCH</span>';
   document.body.appendChild(el);
   const pct = el.querySelector('.pct'), i = el.querySelector('i');
   const upd = () => { const d = document.documentElement; const k = Math.max(0, Math.min(1, d.scrollTop / Math.max(1, d.scrollHeight - d.clientHeight))); pct.textContent = String(Math.round(k * 100)).padStart(2, '0') + '%'; i.style.top = (k * 96) + 'px'; };
@@ -40,6 +40,8 @@ export function numberSections() {
   let n = 0;
   document.querySelectorAll('section').forEach((s) => {
     const e = s.querySelector(':scope .eyebrow, :scope .sec-head .eyebrow'); if (!e || e.dataset.numbered) return;
+    // respect hand-numbered eyebrows ("01 / …" or an existing .n)
+    if (e.querySelector('.n') || /^\s*\d{2}\b/.test(e.textContent)) { e.dataset.numbered = '1'; return; }
     n++; e.dataset.numbered = '1';
     const num = document.createElement('span'); num.className = 'n'; num.textContent = String(n).padStart(2, '0') + ' /';
     e.prepend(num);

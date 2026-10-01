@@ -60,7 +60,8 @@
 .checklist .ic{font-family:var(--mono);font-size:10.5px;color:var(--accent-deep);padding-top:4px}
 .term pre{padding:18px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.8;color:#dfe3f0}
 .term .c{color:rgba(242,239,228,.4)}.term .g{color:#6fe3a0}.term .y{color:var(--accent-bright)}
-@media(max-width:900px){.econ,.ship{grid-template-columns:1fr;gap:26px}}
+.econ>*,.ship>*{min-width:0}
+@media(max-width:900px){.econ,.ship{grid-template-columns:minmax(0,1fr);gap:26px}}
 
 /* final cta */
 .cta-final{padding:110px 0}
@@ -267,7 +268,13 @@ curl -s vouch.dev/v1/tasks -H <span class="y">"Authorization: Bearer $KEY"</span
 import { hydrate, countUp } from '/assets/vouch.js';
 import { mountPixelSkyscraper } from '/assets/skyscraper.js';
 
-window.__sky = mountPixelSkyscraper(document.getElementById('skyline'));
+// Violet dusk: the sky runs indigo → violet → lilac haze; windows are pale gold.
+window.__sky = mountPixelSkyscraper(document.getElementById('skyline'), { palette: {
+  sky: ['#0b0f3a', '#101650', '#171d60', '#22246e', '#302b7c', '#41338a', '#563d98', '#6d4aa6', '#8459b1', '#9c6cba', '#b483c4', '#c99ccf'],
+  cloud: ['#2a2a74', '#4d3c8e', '#7a5aa6', '#a98ac6'],
+  window: ['#f3d27a', '#ffe9a8', '#e9c35f', '#fff4cc'],
+  plateLight: '#e6dcff', cityWin: '#c9b67e', spireTip: '#fff7d6',
+} });
 
 // ledger strip clock
 const st = document.getElementById('strip-time');
