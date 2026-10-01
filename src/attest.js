@@ -6,9 +6,10 @@ import crypto from 'node:crypto';
 // time. Zero dependencies (node:crypto).
 //
 // Key source, in order: cfg.attestKey / VOUCH_ATTEST_KEY (a PKCS8 PEM private
-// key, stable across restarts) → otherwise an ephemeral keypair per boot (fine
-// for the sandbox; attestations don't verify across cold starts until a key is
-// set). The matching public key is served at /v1/attestation/key.
+// key, stable across restarts) → otherwise a generated keypair. The engine
+// persists a generated key inside its state so receipts keep verifying across
+// restarts and serverless invocations. The matching public key is served at
+// /v1/attestation/key.
 
 // Deterministic serialization so a signature is reproducible byte-for-byte.
 export function canonical(v) {
@@ -29,7 +30,7 @@ export function createAttestor(cfg = {}) {
       publicKey = crypto.createPublicKey(privateKey);
     }
   } catch {
-    privateKey = undefined; // fall through to ephemeral on a bad key
+    privateKey = undefined; // fall through to a generated key on a bad PEM
   }
   if (!privateKey) {
     const kp = crypto.generateKeyPairSync('ed25519');
@@ -37,6 +38,7 @@ export function createAttestor(cfg = {}) {
     publicKey = kp.publicKey;
   }
   const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const privateKeyPem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
   const keyId = crypto.createHash('sha256').update(publicKeyPem).digest('hex').slice(0, 16);
 
   function attest(kind, payload) {
@@ -45,7 +47,7 @@ export function createAttestor(cfg = {}) {
     return { payload: body, alg: 'ed25519', key_id: keyId, signature };
   }
 
-  return { attest, publicKeyPem, keyId };
+  return { attest, publicKeyPem, privateKeyPem, keyId };
 }
 
 // Anyone holding the public key can verify an attestation offline.

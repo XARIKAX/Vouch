@@ -1,10 +1,13 @@
+import { ApiError } from './errors.js';
+
 // Launchpad parameters. Global defaults live here; each agent snapshots these
 // at launch (see snapshotParams) and is immutable afterwards, so changing a
-// default never alters an already-launched agent.
+// default never alters an already-launched agent. Risk parameters are set by
+// the platform only: the launch request body cannot override them.
 //
-// All money values are in USDG (Robinhood Chain). The platform token is
-// referenced by address only — its identity is a deploy-time parameter, not
-// hard-coded here. Shares are fractions of 1 and each group must sum to 1.
+// All money values are in USDG. The platform token is referenced by address
+// only — its identity is a deploy-time parameter, not hard-coded here. Shares
+// are fractions of 1 and each group must sum to 1.
 
 const deepFreeze = (o) => {
   if (o && typeof o === 'object' && !Object.isFrozen(o)) {
@@ -46,27 +49,44 @@ export const LAUNCHPAD_DEFAULTS = deepFreeze({
 });
 
 const near = (sum) => Math.abs(sum - 1) < 1e-9;
+const bad = (msg) => new ApiError(400, 'invalid_input', `launchpad params: ${msg}`);
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
-// Validate that each share group sums to 1 (fixed, cannot drift per agent).
+// Validate the parameter set: share groups sum to 1 with every share in
+// [0, 1]; risk limits inside their sane ranges. Throws ApiError 400.
 export function validateParams(p) {
-  const groups = [p.feeSplit, p.protocolFeeUse, p.netSplit];
-  for (const g of groups) {
-    const total = Object.values(g).reduce((a, b) => a + (Number(b) || 0), 0);
-    if (!near(total)) throw new Error(`share group must sum to 1, got ${total}: ${JSON.stringify(g)}`);
+  const groups = { feeSplit: p.feeSplit, protocolFeeUse: p.protocolFeeUse, netSplit: p.netSplit };
+  for (const [name, g] of Object.entries(groups)) {
+    if (!g || typeof g !== 'object') throw bad(`${name} must be an object of shares`);
+    for (const [k, v] of Object.entries(g)) {
+      if (!isNum(v) || v < 0 || v > 1) throw bad(`${name}.${k} must be a number in [0, 1], got ${JSON.stringify(v)}`);
+    }
+    const total = Object.values(g).reduce((a, b) => a + b, 0);
+    if (!near(total)) throw bad(`${name} shares must sum to 1, got ${total}`);
   }
-  if (!(p.bondHaircut > 0 && p.bondHaircut <= 1)) throw new Error('bondHaircut must be in (0,1]');
-  if (!(p.reservationMultiple >= 1)) throw new Error('reservationMultiple must be >= 1');
+  if (!isNum(p.bondHaircut) || !(p.bondHaircut > 0 && p.bondHaircut <= 1)) throw bad('bondHaircut must be in (0, 1]');
+  if (!isNum(p.reservationMultiple) || !(p.reservationMultiple >= 1)) throw bad('reservationMultiple must be >= 1');
+  if (!isNum(p.maxSlashMultiple) || !(p.maxSlashMultiple >= 1)) throw bad('maxSlashMultiple must be >= 1');
+  if (!isNum(p.rollingSlashCap) || !(p.rollingSlashCap > 0 && p.rollingSlashCap <= 1)) throw bad('rollingSlashCap must be in (0, 1]');
+  if (!isNum(p.protocolFee) || p.protocolFee < 0 || p.protocolFee > 1) throw bad('protocolFee must be in [0, 1]');
+  if (!isNum(p.poolSwapFee) || p.poolSwapFee < 0 || p.poolSwapFee > 1) throw bad('poolSwapFee must be in [0, 1]');
+  for (const k of ['liquidityFloorUsdg', 'unbondingCooldownMs', 'rollingSlashWindowMs', 'pendingSlashMs', 'priceWindowMinutes']) {
+    if (!isNum(p[k]) || p[k] < 0) throw bad(`${k} must be a non-negative number`);
+  }
   return p;
 }
 
 // Snapshot the live config into an immutable per-agent parameter set at launch.
+// `overrides` is for the platform operator (tests, deploy-time tuning); the
+// public launch endpoint never passes the request body here.
 export function snapshotParams(overrides = {}) {
+  const o = overrides && typeof overrides === 'object' ? overrides : {};
   const merged = {
     ...LAUNCHPAD_DEFAULTS,
-    ...overrides,
-    feeSplit: { ...LAUNCHPAD_DEFAULTS.feeSplit, ...(overrides.feeSplit || {}) },
-    protocolFeeUse: { ...LAUNCHPAD_DEFAULTS.protocolFeeUse, ...(overrides.protocolFeeUse || {}) },
-    netSplit: { ...LAUNCHPAD_DEFAULTS.netSplit, ...(overrides.netSplit || {}) },
+    ...o,
+    feeSplit: { ...LAUNCHPAD_DEFAULTS.feeSplit, ...(o.feeSplit || {}) },
+    protocolFeeUse: { ...LAUNCHPAD_DEFAULTS.protocolFeeUse, ...(o.protocolFeeUse || {}) },
+    netSplit: { ...LAUNCHPAD_DEFAULTS.netSplit, ...(o.netSplit || {}) },
   };
   validateParams(merged);
   return deepFreeze(merged);
