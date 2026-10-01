@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agentic Accounts</title>
-<meta name="description" content="Let your agent buy outcomes. Connect via MCP, fund a dedicated agentic account, and your agent buys verified work within a budget — with a per-task cap, an allowlist, and an instant kill switch. Settled in USDC on Base.">
+<meta name="description" content="Let your agent buy outcomes. Connect via MCP, fund a dedicated agentic account, and your agent buys verified work within a budget — with a per-task cap, an allowlist, and an instant kill switch. Settled in USDG on Robinhood Chain.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23c9e83a%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%239ec000%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%230c0d0b%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -203,7 +203,7 @@ footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
       <span class="chip"><b>◆</b> Dedicated budget</span>
       <span class="chip"><b>◆</b> Per-task cap</span>
       <span class="chip"><b>◆</b> Instant kill switch</span>
-      <span class="chip"><b>◆</b> Settled in USDC on Base</span>
+      <span class="chip"><b>◆</b> Settled in USDG on Robinhood Chain</span>
     </div>
   </div>
 </header>
@@ -252,14 +252,14 @@ footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
           <div class="hint">A scoped, capped wallet your agent spends autonomously.</div>
           <div class="field"><label>Account name</label><input id="a-name" value="Research Agent"></div>
           <div class="row2">
-            <div class="field"><label>Budget (USDC)</label><input id="a-budget" value="25"></div>
+            <div class="field"><label>Budget (USDG)</label><input id="a-budget" value="25"></div>
             <div class="field"><label>Per-task cap ($)</label><input id="a-cap" value="0.05"></div>
           </div>
           <div class="field"><label>Capability allowlist</label>
             <div class="allow" id="a-allow"></div>
           </div>
           <button class="btn solid" id="a-create" style="width:100%">Create &amp; connect account</button>
-          <div class="mcp-line">Settled in <b>USDC on Base</b> · proof-of-verified-work on every task.</div>
+          <div class="mcp-line">Settled in <b>USDG on Robinhood Chain</b> · proof-of-verified-work on every task.</div>
         </div>
 
         <div class="cw-live" id="live">
@@ -327,7 +327,7 @@ footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
       <div class="eyebrow" style="margin-bottom:14px">Works with your stack</div>
       <h2>MCP-native.<br>Runs alongside everything.</h2>
       <p>Vouch is a standard <strong>MCP server</strong>, so your agent connects it the same way it connects any other agentic account — one URL in the config. An agent can <strong>trade on one MCP and buy verified work on Vouch</strong> from the same setup.</p>
-      <p>Settlement is <strong>USDC on Base</strong>. Every outcome ships with a signed proof you can verify offline.</p>
+      <p>Settlement is <strong>USDG on Robinhood Chain</strong>. Every outcome ships with a signed proof you can verify offline.</p>
     </div>
     <div class="codecard rv">
       <div class="h"><i></i><i></i><i></i><span style="margin-left:4px">~/.config/agent/mcp.json</span></div>
@@ -360,7 +360,7 @@ footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
 
 <footer>
   <div class="wrap">
-    <span>© 2026 Vouch — the outcome layer for AI agents · USDC on Base</span>
+    <span>© 2026 Vouch — the outcome layer for AI agents · USDG on Robinhood Chain</span>
     <span>MCP · <a href="/docs#mcp">/docs</a> · <a href="/dashboard">Dashboard</a></span>
   </div>
 </footer>

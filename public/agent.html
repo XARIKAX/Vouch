@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vouch — Agent</title>
+<meta name="description" content="Inspect a launched agent: its token bond, haircut capacity, routed revenue, and reputation. Settled in USDG on Robinhood Chain.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23c9e83a%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%239ec000%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%230c0d0b%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#f5f5f0;--paper2:#ffffff;--paper3:#efefe8;
+  --ink:#0c0d0b;--ink2:#54564e;--ink3:#8c8e84;
+  --line:rgba(12,13,11,.11);--line2:rgba(12,13,11,.17);--dash:rgba(12,13,11,.16);
+  --acc:#bfe000;--acc-deep:#93b200;--acc-ink:#11140a;--acc-soft:rgba(159,190,0,.14);
+  --red:#c0392b;--green:#2f9e5f;
+  --serif:'Fraunces',Georgia,serif;--sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;
+  --maxw:1100px;
+}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:var(--acc);color:var(--acc-ink)}
+a{color:inherit;text-decoration:none}.mono{font-family:var(--mono)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 40px;position:relative}
+@media(max-width:720px){.wrap{padding:0 20px}}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:400;letter-spacing:-.012em}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:2.2px;text-transform:uppercase;color:var(--ink2);display:inline-flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:20px;height:1px;background:var(--acc-deep)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:10px;font-family:var(--sans);font-size:13.5px;font-weight:550;border:1px solid var(--line2);color:var(--ink);background:transparent;cursor:pointer;transition:.18s}
+.btn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.btn.solid{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.sm{padding:9px 13px;font-size:12.5px}
+
+nav.top{position:sticky;top:0;z-index:50;height:66px;display:flex;align-items:center;background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;align-items:center;gap:22px;width:100%}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:500;font-size:22px}
+.mark{width:26px;height:26px;flex:none}.mark svg{width:100%;height:100%}
+.pagechip{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc-deep);border:1px solid color-mix(in srgb,var(--acc-deep) 40%,transparent);border-radius:6px;padding:3px 9px;background:var(--acc-soft)}
+.nav-links{margin-left:auto;display:flex;gap:4px;align-items:center}
+.nav-links a{color:var(--ink2);font-size:13.5px;padding:7px 12px;border-radius:8px}
+.nav-links a:hover{color:var(--ink);background:var(--paper3)}
+
+.head{padding:48px 0 10px}
+.head .ids{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0 6px}
+.head h1{font-size:clamp(34px,4.6vw,52px);line-height:1.02}
+.head .sym{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--acc-deep);border:1px solid color-mix(in srgb,var(--acc-deep) 40%,transparent);border-radius:8px;padding:4px 11px;background:var(--acc-soft)}
+.head .owner{font-family:var(--mono);font-size:12.5px;color:var(--ink3)}
+.banner{margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--ink3);border:1px dashed var(--line2);border-radius:10px;padding:9px 13px;display:inline-block}
+.banner b{color:var(--ink2)}
+
+.grid{display:grid;grid-template-columns:1.25fr .9fr;gap:22px;padding:28px 0 60px;align-items:start}
+.panel{border:1px solid var(--line);border-radius:18px;background:var(--paper2);padding:26px}
+.panel h3{font-size:20px;font-weight:500;margin-bottom:4px}
+.panel .hint{font-size:12.5px;color:var(--ink3);margin-bottom:18px}
+
+.meter{margin-bottom:16px}
+.meter .mrow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-bottom:6px}
+.meter .mrow b{color:var(--ink)}
+.meter .bar{height:9px;border-radius:99px;background:var(--paper3);overflow:hidden}
+.meter .bar i{display:block;height:100%;border-radius:99px;background:var(--acc);transition:width .55s cubic-bezier(.2,.7,.3,1)}
+.meter .bar i.hair{background:var(--acc-deep)}
+
+.stat4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+.st{border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:var(--paper)}
+.st .v{font-family:var(--serif);font-size:23px;font-weight:500}
+.st .l{font-size:10.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+.routed{display:flex;flex-direction:column;gap:0;margin-top:8px}
+.rr{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink2);padding:10px 0;border-top:1px dashed var(--line)}
+.rr:first-child{border-top:none}
+.rr b{font-family:var(--mono);color:var(--ink)}
+.rr .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);display:inline-block;margin-right:8px}
+.rr .dot.burn{background:var(--red)}.rr .dot.slash{background:var(--red)}.rr .dot.t{background:var(--ink3)}
+
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:600}
+.field input{font-family:var(--mono);font-size:13px;border-radius:10px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);padding:10px 12px;width:100%}
+.field input:focus{outline:none;border-color:var(--acc-deep);box-shadow:0 0 0 3px var(--acc-soft)}
+.row2{display:flex;gap:10px}.row2 .field{flex:1}
+.ctl-h{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);margin:18px 0 10px;border-top:1px dashed var(--line);padding-top:16px}
+.ctl-h:first-child{border-top:none;padding-top:0;margin-top:0}
+.note{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:14px;line-height:1.5}
+
+footer{padding:40px 0;background:var(--ink);color:rgba(244,245,239,.6)}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:13px}
+footer a{color:rgba(244,245,239,.78)}footer a:hover{color:var(--acc)}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+@media(max-width:680px){.nav-links a{display:none}}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#c9e83a"/><stop offset="1" stop-color="#9ec000"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#0c0d0b" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <span class="pagechip">Agent</span>
+    <div class="nav-links">
+      <a href="/launchpad">Launchpad</a>
+      <a href="/providers">Providers</a>
+      <a href="/docs">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<header class="head">
+  <div class="wrap">
+    <span class="eyebrow">Launched agent</span>
+    <div class="ids">
+      <h1 id="a-name">Agent</h1>
+      <span class="sym" id="a-sym">◆ —</span>
+      <span class="owner" id="a-owner"></span>
+    </div>
+    <div class="banner" id="a-banner" hidden></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <div class="panel">
+      <h3>Token bond</h3>
+      <p class="hint">The agent's slashable collateral, held in its own token and valued in USDG.</p>
+      <div class="meter">
+        <div class="mrow"><span>Bond value (raw)</span><b id="m-raw">$0</b></div>
+        <div class="bar"><i id="b-raw" style="width:0%"></i></div>
+      </div>
+      <div class="meter">
+        <div class="mrow"><span>After 50% haircut</span><b id="m-hair">$0</b></div>
+        <div class="bar"><i class="hair" id="b-hair" style="width:0%"></i></div>
+      </div>
+      <div class="meter">
+        <div class="mrow"><span>Open-quote capacity (÷2)</span><b id="m-cap">$0</b></div>
+        <div class="bar"><i id="b-cap" style="width:0%"></i></div>
+      </div>
+      <div class="stat4">
+        <div class="st"><div class="v" id="s-price">$0</div><div class="l">Token price (TWAP)</div></div>
+        <div class="st"><div class="v" id="s-liq">$0</div><div class="l">Pool liquidity</div></div>
+        <div class="st"><div class="v" id="s-settled">0</div><div class="l">Settled tasks</div></div>
+        <div class="st"><div class="v" id="s-cp">0</div><div class="l">Distinct buyers</div></div>
+      </div>
+
+      <h3 style="margin-top:26px">Routed revenue</h3>
+      <p class="hint">Where verified settlements and the protocol fee go, lifetime.</p>
+      <div class="routed">
+        <div class="rr"><span><span class="dot"></span>Owner earned</span><b id="r-owner">$0</b></div>
+        <div class="rr"><span><span class="dot"></span>Token buyback</span><b id="r-buy">$0</b></div>
+        <div class="rr"><span><span class="dot"></span>Bond top-up</span><b id="r-top">$0</b></div>
+        <div class="rr"><span><span class="dot t"></span>Creator paid</span><b id="r-cre">$0</b></div>
+        <div class="rr"><span><span class="dot burn"></span>Burned (protocol fee)</span><b id="r-burn">$0</b></div>
+        <div class="rr"><span><span class="dot t"></span>Treasury</span><b id="r-trs">$0</b></div>
+        <div class="rr"><span><span class="dot slash"></span>Slashed</span><b id="r-slash">$0</b></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Sandbox controls</h3>
+      <p class="hint">Harvest fees, move the token price, or request unbonding — and watch the bond reprice.</p>
+
+      <div class="ctl-h">Harvest pool fees</div>
+      <div class="field"><label>Fee amount (USDG)</label><input id="i-fee" value="1000"></div>
+      <button class="btn solid sm" id="go-harvest">Harvest &amp; split</button>
+
+      <div class="ctl-h">Token price feed</div>
+      <div class="row2">
+        <div class="field"><label>TWAP (USDG)</label><input id="i-twap" value="1"></div>
+        <div class="field"><label>Pool liquidity</label><input id="i-liq" value="5000"></div>
+      </div>
+      <button class="btn sm" id="go-price">Update price</button>
+
+      <div class="ctl-h">Unbond</div>
+      <div class="field"><label>Token quantity</label><input id="i-unbond" value="100"></div>
+      <button class="btn sm" id="go-unbond">Request unbond</button>
+      <div id="unbond-state" class="note"></div>
+
+      <div class="note" id="mode-note"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Vouch — the outcome layer for AI agents · USDG on Robinhood Chain</span>
+    <span><a href="/launchpad">← Launchpad</a></span>
+  </div>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => '$' + (Math.round((Number(n) + Number.EPSILON) * 100) / 100).toLocaleString();
+const money = (n) => Math.round((Number(n) + Number.EPSILON) * 1e6) / 1e6;
+const qs = new URLSearchParams(location.search);
+const ID = qs.get('id') || 'agt_sample';
+
+// Launchpad params (mirror of LAUNCHPAD_DEFAULTS) for the offline sandbox path.
+const P = { feeSplit: { bond: .5, operating: .3, creator: .15, treasury: .05 }, bondHaircut: .5,
+  reservationMultiple: 2, liquidityFloor: 1000, protocolFee: .05, protoUse: { burn: .5, treasury: .5 },
+  netSplit: { owner: .8, buyback: .1, bond: .1 } };
+
+let LIVE = true; // flips to false if the backend isn't reachable
+let A = null;    // the agent model (publicAgent shape)
+
+function sample() {
+  return {
+    id: ID, owner: '0x71c0…a9', created_at: Date.now(),
+    token: { symbol: (qs.get('sym') || 'CALC'), twap_usdg: 1, pool_liquidity_usdg: 5000 },
+    bond: { token_qty: 0, raw_value_usdg: 0, haircut_value_usdg: 0, capacity_usdg: 0 },
+    operating_usdg: 0, unbonding: null,
+    totals: { creator_paid: 0, owner_paid: 0, buyback: 0, burned: 0, treasury_paid: 0, bond_topped_up: 0, slashed_usdg: 0, settled_count: 0, distinct_counterparties: 0 },
+  };
+}
+
+function recompute() {
+  // keep derived bond fields consistent in the offline path
+  const liq = A.token.pool_liquidity_usdg, twap = A.token.twap_usdg;
+  const raw = liq >= P.liquidityFloor ? money((A.bond.token_qty - (A.unbonding?.token_qty || 0)) * twap) : 0;
+  A.bond.raw_value_usdg = Math.max(0, raw);
+  A.bond.haircut_value_usdg = money(A.bond.raw_value_usdg * P.bondHaircut);
+  A.bond.capacity_usdg = money(A.bond.haircut_value_usdg / P.reservationMultiple);
+}
+
+function render() {
+  $('a-name').textContent = A.token.symbol ? A.token.symbol + ' agent' : A.id;
+  $('a-sym').textContent = '◆ ' + (A.token.symbol || '—');
+  $('a-owner').textContent = A.owner ? 'owner ' + A.owner : '';
+  const raw = A.bond.raw_value_usdg, hair = A.bond.haircut_value_usdg, cap = A.bond.capacity_usdg;
+  const base = Math.max(raw, 1);
+  $('m-raw').textContent = fmt(raw); $('b-raw').style.width = '100%';
+  $('m-hair').textContent = fmt(hair); $('b-hair').style.width = (hair / base * 100) + '%';
+  $('m-cap').textContent = fmt(cap); $('b-cap').style.width = (cap / base * 100) + '%';
+  $('s-price').textContent = '$' + Number(A.token.twap_usdg).toFixed(2);
+  $('s-liq').textContent = fmt(A.token.pool_liquidity_usdg);
+  $('s-settled').textContent = A.totals.settled_count ?? 0;
+  $('s-cp').textContent = A.totals.distinct_counterparties ?? 0;
+  const t = A.totals;
+  $('r-owner').textContent = fmt(t.owner_paid); $('r-buy').textContent = fmt(t.buyback);
+  $('r-top').textContent = fmt(t.bond_topped_up); $('r-cre').textContent = fmt(t.creator_paid);
+  $('r-burn').textContent = fmt(t.burned); $('r-trs').textContent = fmt(t.treasury_paid);
+  $('r-slash').textContent = fmt(t.slashed_usdg ?? 0);
+  if (A.unbonding) {
+    const ms = A.unbonding.release_at - Date.now();
+    $('unbond-state').textContent = `${A.unbonding.token_qty} tokens unbonding · releases in ~${Math.max(0, Math.round(ms / 86400000))}d (still slashable).`;
+  } else $('unbond-state').textContent = '';
+  $('mode-note').textContent = LIVE
+    ? 'Live · reading and writing /v1/agents on the backend.'
+    : 'Sandbox · backend not reachable, so changes are computed in your browser with the real launchpad math.';
+}
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
+  if (!r.ok) throw new Error('http ' + r.status);
+  return r.json();
+}
+
+async function load() {
+  try { A = await api('GET', '/v1/agents/' + encodeURIComponent(ID)); LIVE = true; }
+  catch (_) { A = sample(); LIVE = false; $('a-banner').hidden = false; $('a-banner').innerHTML = 'Showing a <b>sandbox agent</b> — launch one on the backend to see it here live.'; }
+  render();
+}
+
+// ---- controls: try the API; fall back to the same math locally -------------
+$('go-harvest').onclick = async () => {
+  const fee = Number($('i-fee').value) || 0;
+  if (LIVE) { try { await api('POST', `/v1/agents/${encodeURIComponent(ID)}/harvest`, { fee_amount: fee }); A = await api('GET', '/v1/agents/' + encodeURIComponent(ID)); return render(); } catch (_) { LIVE = false; } }
+  const bondUsdg = fee * P.feeSplit.bond;
+  if (A.token.twap_usdg > 0) A.bond.token_qty = money(A.bond.token_qty + bondUsdg / A.token.twap_usdg);
+  A.operating_usdg = money(A.operating_usdg + fee * P.feeSplit.operating);
+  A.totals.creator_paid = money(A.totals.creator_paid + fee * P.feeSplit.creator);
+  A.totals.treasury_paid = money(A.totals.treasury_paid + fee * P.feeSplit.treasury);
+  recompute(); render();
+};
+$('go-price').onclick = async () => {
+  const twap = Number($('i-twap').value), liq = Number($('i-liq').value);
+  if (LIVE) { try { A = await api('POST', `/v1/agents/${encodeURIComponent(ID)}/price`, { twap_usdg: twap, pool_liquidity_usdg: liq }); return render(); } catch (_) { LIVE = false; } }
+  if (!isNaN(twap)) A.token.twap_usdg = Math.max(0, twap);
+  if (!isNaN(liq)) A.token.pool_liquidity_usdg = Math.max(0, liq);
+  recompute(); render();
+};
+$('go-unbond').onclick = async () => {
+  const qty = Number($('i-unbond').value) || 0;
+  if (LIVE) { try { A = await api('POST', `/v1/agents/${encodeURIComponent(ID)}/unbond`, { token_qty: qty }); return render(); } catch (_) { LIVE = false; } }
+  A.unbonding = { token_qty: Math.min(qty, A.bond.token_qty), requested_at: Date.now(), release_at: Date.now() + 30 * 86400000 };
+  recompute(); render();
+};
+
+load();
+</script>
+</body>
+</html>
