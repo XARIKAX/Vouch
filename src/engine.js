@@ -5,7 +5,7 @@ import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
 import { createAttestor } from './attest.js';
 import { snapshotParams } from './launchpad-config.js';
-import { splitFees, bondValue, bondCapacity, protocolFeeSplit, netPayoutSplit } from './launchpad.js';
+import { splitFees, bondValue, bondCapacity, protocolFeeSplit, netPayoutSplit, slashPlan, trackWeight } from './launchpad.js';
 
 // ---------------------------------------------------------------------------
 // ApiError carries the HTTP status and the error code from the docs.
@@ -82,9 +82,12 @@ export function createEngine(cfg = {}) {
 
   // ---- accounts & keys ----------------------------------------------------
 
-  function createKey(name = 'default') {
+  function createKey(name = 'default', opts = {}) {
     const token = id('vch');
     const key = { id: id('key'), tokenHash: sha256(token), name, tier: 'sandbox', createdAt: Date.now() };
+    // Optional owner wallet: lets the launchpad detect self-dealing (a buyer and
+    // a launched agent funded by the same owner earn that agent zero reputation).
+    if (opts.owner) key.owner = String(opts.owner);
     state.keys[key.id] = key;
     state.accounts[key.id] = {
       balance: cfg.faucet, locked: 0, lockedToday: 0,
@@ -286,12 +289,34 @@ export function createEngine(cfg = {}) {
     p.earnings = money(p.earnings + task.quote.price);
     p.stakeReserved = money(Math.max(0, p.stakeReserved - task.quote.stake_reserved));
     p.settledCount++;
-    p.track = clamp(p.track + 0.2, 0, 100);
+    // Reputation bump. Non-launchpad providers keep the flat bump. Launched
+    // agents earn it weighted by the counterparty: self-dealing (same owner
+    // wallet on both sides) earns zero, rubric-only work earns reduced weight,
+    // deterministic checks / webhook / schema earn full weight. This is how the
+    // launchpad resists an agent farming its own reputation.
+    const agent = p.agentId ? state.agents[p.agentId] : null;
+    if (agent) {
+      const validators = ['schema'];
+      if (task.acceptance?.checks?.length) validators.push('checks');
+      if (task.acceptance?.rubric) validators.push('rubric');
+      if (task.acceptance?.webhook) validators.push('webhook');
+      const buyerOwner = state.keys[task.keyId]?.owner;
+      const sameOwner = !!(agent.owner && buyerOwner && buyerOwner === agent.owner);
+      const w = trackWeight({ sameOwner, validators });
+      p.track = clamp(p.track + 0.2 * w, 0, 100);
+      agent.settledCount = (agent.settledCount ?? 0) + 1;
+      if (w > 0) {
+        agent.counterparties ??= {};
+        agent.counterparties[buyerOwner || task.keyId] = true;
+      }
+    } else {
+      p.track = clamp(p.track + 0.2, 0, 100);
+    }
     const entry = { ts: Date.now(), kind: 'settle', amount: -task.quote.price, task: task.id, tx: txHash() };
     acct.history.push(entry);
     // Launchpad: if this provider is a launched agent, route its revenue
     // (protocol fee + owner/buyback/bond). Non-launchpad providers are untouched.
-    if (p.agentId && state.agents[p.agentId]) routeAgentRevenue(state.agents[p.agentId], task.quote.price);
+    if (agent) routeAgentRevenue(agent, task.quote.price);
     return entry.tx;
   }
 
@@ -306,29 +331,40 @@ export function createEngine(cfg = {}) {
     return entry.tx;
   }
 
-  function slashQuote(quote, multiple) {
-    const p = state.providers[quote.provider];
-    const amount = money(quote.price * multiple);
-    p.stake = money(Math.max(0, p.stake - amount));
-    p.stakeReserved = money(Math.max(0, p.stakeReserved - quote.stake_reserved));
-    p.slashedCount++;
-    p.track = clamp(p.track - 15, 0, 100);
-    // Slashed stake capitalizes the outcome-insurance pool.
+  // Slash `priceUsdg * multiple` off a provider's collateral. A launched agent
+  // is slashed in its platform token at TWAP, capped (per-verdict max multiple
+  // and a rolling-window cap, both from slashPlan); its token-bond capacity then
+  // reprices. A normal provider is slashed flat off its USDG stake as before.
+  // Either way the slashed USDG value capitalizes the insurance pool.
+  function applySlash(p, priceUsdg, multiple) {
+    let amount;
+    const agent = p.agentId ? state.agents[p.agentId] : null;
+    if (agent) {
+      amount = slashAgentBond(agent, priceUsdg, multiple);
+    } else {
+      amount = money(priceUsdg * multiple);
+      p.stake = money(Math.max(0, p.stake - amount));
+    }
     state.insurance.balance = money(state.insurance.balance + amount);
     state.insurance.funded = money(state.insurance.funded + amount);
     return amount;
   }
 
-  function slashProvider(task, multiple) {
-    const p = state.providers[task.quote.provider];
-    const amount = money(task.quote.price * multiple);
-    p.stake = money(Math.max(0, p.stake - amount));
-    p.stakeReserved = money(Math.max(0, p.stakeReserved - task.quote.stake_reserved));
+  function slashQuote(quote, multiple) {
+    const p = state.providers[quote.provider];
+    p.stakeReserved = money(Math.max(0, p.stakeReserved - quote.stake_reserved));
+    const amount = applySlash(p, quote.price, multiple);
     p.slashedCount++;
     p.track = clamp(p.track - 15, 0, 100);
-    // Slashed stake capitalizes the outcome-insurance pool.
-    state.insurance.balance = money(state.insurance.balance + amount);
-    state.insurance.funded = money(state.insurance.funded + amount);
+    return amount;
+  }
+
+  function slashProvider(task, multiple) {
+    const p = state.providers[task.quote.provider];
+    p.stakeReserved = money(Math.max(0, p.stakeReserved - task.quote.stake_reserved));
+    const amount = applySlash(p, task.quote.price, multiple);
+    p.slashedCount++;
+    p.track = clamp(p.track - 15, 0, 100);
     return amount;
   }
 
@@ -771,7 +807,12 @@ export function createEngine(cfg = {}) {
       operating_usdg: state.accounts[a.id]?.balance ?? 0,
       provider_id: a.providerId,
       unbonding: a.unbonding ? { token_qty: a.unbonding.tokenQty, requested_at: a.unbonding.requestedAt, release_at: a.unbonding.releaseAt } : null,
-      totals: { creator_paid: a.creatorPaid, owner_paid: a.ownerPaid, buyback: a.buyback, burned: a.burned, treasury_paid: a.treasuryPaid, bond_topped_up: a.bondToppedUp },
+      totals: {
+        creator_paid: a.creatorPaid, owner_paid: a.ownerPaid, buyback: a.buyback,
+        burned: a.burned, treasury_paid: a.treasuryPaid, bond_topped_up: a.bondToppedUp,
+        slashed_usdg: a.slashedUsdg ?? 0, settled_count: a.settledCount ?? 0,
+        distinct_counterparties: Object.keys(a.counterparties ?? {}).length,
+      },
       params: a.params,
     };
   }
@@ -843,6 +884,30 @@ export function createEngine(cfg = {}) {
     agent.bondToppedUp = money(agent.bondToppedUp + net.bond);
     agent.ledger.push({ ts: Date.now(), kind: 'revenue', price: f.price, fee: f.fee, burn: f.burn, treasury: f.treasury, net: f.net, ...net });
     syncAgentCapacity(agent);
+  }
+
+  // Slash a launched agent's token bond for a bad outcome. Sized in USDG, taken
+  // in platform token at TWAP, and double-capped: a single verdict can never
+  // exceed maxSlashMultiple x price, and no more than rollingSlashCap of bond
+  // value can be slashed within a rolling window. Returns the USDG value slashed.
+  function slashAgentBond(agent, priceUsdg, multiple) {
+    const now = Date.now();
+    const windowMs = agent.params.rollingSlashWindowMs;
+    agent.slashWindow = (agent.slashWindow ?? []).filter((e) => now - e.ts < windowMs);
+    const slashedInWindowUsdg = money(agent.slashWindow.reduce((a, e) => a + e.amountUsdg, 0));
+    const plan = slashPlan({
+      priceUsdg, multiple,
+      twapUsdg: agent.token.twapUsdg,
+      bondRawValueUsdg: agentRawBond(agent),
+      slashedInWindowUsdg,
+    }, agent.params);
+    // Burn the slashed platform token out of the bond; capacity reprices below.
+    agent.bond.tokenQty = money(Math.max(0, agent.bond.tokenQty - plan.tokenQty));
+    agent.slashWindow.push({ ts: now, amountUsdg: plan.amountUsdg });
+    agent.slashedUsdg = money((agent.slashedUsdg ?? 0) + plan.amountUsdg);
+    agent.ledger.push({ ts: now, kind: 'slash', price: priceUsdg, multiple, ...plan });
+    syncAgentCapacity(agent);
+    return plan.amountUsdg;
   }
 
   // Owner requests unbonding; the amount can't back new quotes and stays
