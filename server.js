@@ -43,6 +43,15 @@ export function createApp(cfgOverrides = {}) {
     if (url.pathname === '/verify') return staticFile(res, 'public/verify.html', 'text/html; charset=utf-8');
     if (url.pathname === '/metrics') return staticFile(res, 'public/metrics.html', 'text/html; charset=utf-8');
     if (url.pathname === '/og.png') return staticFile(res, 'public/og.png', 'image/png');
+    // Shared design-system assets (CSS/JS/fonts/images), safe-pathed under /assets.
+    if (url.pathname.startsWith('/assets/')) {
+      const rel = path.normalize(url.pathname).replace(/^(\.\.(\/|\\|$))+/, '');
+      const safe = path.join(ROOT, 'public', rel);
+      if (!safe.startsWith(path.join(ROOT, 'public', 'assets'))) { res.writeHead(403); return res.end('forbidden'); }
+      const ext = path.extname(safe).toLowerCase();
+      const types = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json' };
+      return staticFile(res, path.join('public', rel), types[ext] ?? 'application/octet-stream');
+    }
     if (url.pathname === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ ok: true, tasks: Object.keys(engine.state.tasks).length }));
