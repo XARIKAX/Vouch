@@ -79,7 +79,7 @@ td:first-child{color:var(--ink)}
 /* how — dark panel */
 .how{margin-top:66px}
 .how .inner{border-radius:24px;padding:56px 46px;position:relative;overflow:hidden;background:var(--night);color:var(--cream)}
-.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(34rem 16rem at 50% -30%,rgba(63,145,89,.22),transparent 66%);pointer-events:none}
+.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(34rem 16rem at 50% -30%,rgba(240,97,26,.22),transparent 66%);pointer-events:none}
 .how h3{font-size:clamp(26px,3vw,38px);letter-spacing:-.02em;margin-bottom:14px;color:var(--cream)}
 .how p{color:rgba(242,239,228,.74);font-size:15.5px;max-width:74ch;margin-bottom:26px}
 .how p .mono{color:var(--forest-bright)}
@@ -99,7 +99,7 @@ td:first-child{color:var(--ink)}
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#3f9159"/><stop offset="1" stop-color="#20492f"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8a4a"/><stop offset="1" stop-color="#c84d10"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <div class="nav-links">
       <a class="active" href="/services">Services</a>
       <a href="/agents">Agents</a>
@@ -163,7 +163,7 @@ td:first-child{color:var(--ink)}
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#3f9159"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#ff8a4a"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
       <div class="fcol">
@@ -361,5 +361,6 @@ function applySearch() {
 document.getElementById('q').addEventListener('input', (e) => { query = e.target.value; applySearch(); });
 load();
 </script>
+<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>

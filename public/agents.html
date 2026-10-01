@@ -92,12 +92,12 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
 
 /* safety (dark) */
 .safety .inner{border-radius:24px;padding:52px 46px;background:var(--night);color:var(--cream);position:relative;overflow:hidden}
-.safety .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(32rem 16rem at 22% -30%,rgba(63,145,89,.22),transparent 66%);pointer-events:none}
+.safety .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(32rem 16rem at 22% -30%,rgba(240,97,26,.22),transparent 66%);pointer-events:none}
 .safety h2{color:var(--cream);margin-bottom:8px}
 .safety .sub{color:rgba(242,239,228,.7)}
 .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
 .sitem{border-left:1px solid rgba(242,239,228,.14);padding-left:16px}
-.sitem .si{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(63,145,89,.14);color:var(--forest-bright);margin-bottom:12px}
+.sitem .si{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(240,97,26,.14);color:var(--forest-bright);margin-bottom:12px}
 .sitem .si svg{width:17px;height:17px}
 .sitem h4{font-size:17px;font-weight:500;color:var(--cream);margin-bottom:5px}
 .sitem p{font-size:13px;color:rgba(242,239,228,.68);line-height:1.5}
@@ -115,7 +115,7 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
 
 /* cta band (dark) */
 .cta-band .inner{border-radius:24px;padding:60px 40px;background:var(--night);color:var(--cream);text-align:center;position:relative;overflow:hidden}
-.cta-band .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 16rem at 50% -30%,rgba(63,145,89,.24),transparent 64%);pointer-events:none}
+.cta-band .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 16rem at 50% -30%,rgba(240,97,26,.24),transparent 64%);pointer-events:none}
 .cta-band h2{color:var(--cream);margin:0 auto 14px;max-width:20ch;position:relative}
 .cta-band p{color:rgba(242,239,228,.72);max-width:40rem;margin:0 auto 30px;position:relative}
 .cta-band .cta-row{position:relative}
@@ -128,7 +128,7 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#3f9159"/><stop offset="1" stop-color="#20492f"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8a4a"/><stop offset="1" stop-color="#c84d10"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a class="active" href="/agents">Agents</a>
@@ -323,7 +323,7 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#3f9159"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#ff8a4a"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
       <div class="fcol">
@@ -455,5 +455,6 @@ $('a-run').onclick = async () => {
 
 render();
 </script>
+<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>

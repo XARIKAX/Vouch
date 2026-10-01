@@ -86,7 +86,7 @@ tbody tr.flash{animation:flash 1.2s ease-out}
 /* how earning works (dark strip) ------------------------------------------- */
 .how{margin-top:56px}
 .how .inner{border-radius:24px;padding:44px 46px;background:var(--night);color:var(--cream);position:relative;overflow:hidden}
-.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 14rem at 20% -30%,rgba(63,145,89,.22),transparent 66%);pointer-events:none}
+.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 14rem at 20% -30%,rgba(240,97,26,.22),transparent 66%);pointer-events:none}
 .how h3{font-size:clamp(24px,2.6vw,32px);color:var(--cream);margin-bottom:26px;letter-spacing:-.02em}
 .hsteps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
 .hstep{border-left:1px solid rgba(242,239,228,.14);padding-left:16px}
@@ -102,7 +102,7 @@ tbody tr.flash{animation:flash 1.2s ease-out}
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#3f9159"/><stop offset="1" stop-color="#20492f"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8a4a"/><stop offset="1" stop-color="#c84d10"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
@@ -196,7 +196,7 @@ tbody tr.flash{animation:flash 1.2s ease-out}
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#3f9159"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#ff8a4a"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
       <div class="fcol">
@@ -296,5 +296,6 @@ async function load(flashId) {
 }
 loadCaps(); load(); setInterval(() => load(), 4000);
 </script>
+<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>
