@@ -4,217 +4,219 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Console</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23111210%22/%3E%3Crect%20x%3D%2218%22%20y%3D%226%22%20width%3D%228%22%20height%3D%228%22%20fill%3D%22%235b3df0%22/%3E%3Cpath%20d%3D%22M7%2013l7%2012%2012-18%22%20fill%3D%22none%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%223%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
-/* dashboard console — page-specific layout on the shared design system.
-   Colors are mapped to the forest/cream tokens in vouch.css. */
-main{padding:46px 0 96px}
-.headline{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:10px}
-.headline h1{font-family:var(--serif);font-weight:380;font-size:clamp(34px,5vw,54px);letter-spacing:-.025em;line-height:1}
-.headline h1 em{font-style:italic;color:var(--forest)}
-.headline .sub{color:var(--ink2);font-size:15px}
-.sandbox-note{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin:14px 0 26px;display:flex;align-items:center;gap:9px}
-.sandbox-note b{color:var(--forest);font-weight:500}
-.sandbox-note .d{width:7px;height:7px;border-radius:50%;background:var(--forest);box-shadow:0 0 8px var(--forest);flex:none}
+/* dashboard console — page layout on the shared editorial-terminal system.
+   Every panel is a .term block; the shared forms/tables cascade, with a dark
+   variant for fields and cells that sit inside a terminal. */
+.nav-links .btn.active{color:var(--cream);text-decoration:none}
 
-.console{border:1px solid var(--line);border-radius:16px;background:var(--paper2);padding:18px;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-input,button{font-family:var(--sans);font-size:14px;border-radius:11px;border:1px solid var(--line2);background:var(--paper3);color:var(--ink);padding:11px 14px;transition:.18s}
-input{flex:1;min-width:260px;font-family:var(--mono)}
-input:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
-input::placeholder{color:var(--ink3)}
-button{cursor:pointer;font-weight:550}
-button:hover{border-color:var(--forest);color:var(--forest);transform:translateY(-1px)}
-button.acc{background:var(--forest);color:var(--cream);border-color:var(--forest);font-weight:600}
-button.acc:hover{background:var(--forest-deep);color:var(--cream)}
-button:disabled{opacity:.45;cursor:not-allowed;transform:none}
-#mint{background:var(--forest);color:var(--cream);border-color:var(--forest);font-weight:600}
-#mint:hover{background:var(--forest-deep);color:var(--cream)}
-#msg{font-size:12.5px;color:var(--ink3);margin:8px 4px 20px;min-height:18px;font-family:var(--mono)}
-#msg.err{color:var(--red)}
-#msg.ok{color:var(--forest)}
+/* hero: copy left, the session terminal right */
+.hero{padding:64px 0 48px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.92fr);gap:54px;align-items:center}
+.hero h1{margin:22px 0 26px}
+.hero h1 span{display:block}
+.hero .lead{max-width:48ch;margin-bottom:0}
+.hero .lead b{color:var(--ink);font-weight:600}
+.keyrow{display:flex;flex-wrap:wrap;gap:10px;padding:16px 14px}
+.keyrow input{flex:1 1 220px;min-width:0}
+.term-f #msg{flex:1;min-height:18px;text-transform:none;letter-spacing:.02em;font-size:11.5px;line-height:1.5;color:rgba(242,239,228,.6)}
+.term-f #msg.ok{color:var(--accent-bright)}
+.term-f #msg.err{color:var(--red)}
+@media(max-width:940px){.hero{padding-top:44px}.hero-grid{grid-template-columns:1fr;gap:34px}}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:34px}
-.stat{border:1px solid var(--line);border-radius:14px;padding:20px 22px;background:var(--paper2);transition:.25s}
-.stat:hover{border-color:var(--ink3);transform:translateY(-2px);box-shadow:0 18px 44px rgba(22,24,15,.07)}
-.stat .n{font-family:var(--serif);font-size:30px;font-weight:380;letter-spacing:-.02em;color:var(--forest);line-height:1}
-.stat .l{font-size:12px;color:var(--ink3);margin-top:6px}
+/* ledger: five cells, hairline grid */
+.ledger .strip{border-bottom:none}
+.statband.five{grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line2)}
+.statband.five .st{border:none;background:var(--paper2)}
+.statband.five .st .v{font-size:clamp(26px,2.6vw,38px)}
+@media(max-width:900px){.statband.five{grid-template-columns:repeat(2,1fr)}.statband.five .st:last-child{grid-column:1/-1}}
 
-h2{font-family:var(--mono);font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:2px;color:var(--forest);margin:34px 0 14px;display:flex;align-items:center;gap:12px}
-h2::after{content:"";flex:1;height:1px;background:var(--line)}
-.tablecard{border:1px solid var(--line);border-radius:14px;background:var(--paper2);overflow:hidden}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);vertical-align:top}
-tr:last-child td{border-bottom:none}
-th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink3);font-weight:600;background:var(--paper3)}
-td{color:var(--ink2)}
-tbody tr{transition:background .15s}
-tbody tr:hover{background:var(--paper3)}
-td.mono{font-family:var(--mono);font-size:12px;color:var(--ink);white-space:nowrap}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-family:var(--mono);padding:3px 10px;border-radius:99px;border:1px solid var(--line2);color:var(--ink2);background:var(--paper2)}
-.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-.pill.settled{color:var(--forest);border-color:color-mix(in srgb,var(--forest) 40%,transparent);background:var(--acc-soft)}
-.pill.refunded{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,transparent);background:color-mix(in srgb,var(--red) 8%,transparent)}
-.pill.dispatched,.pill.verifying,.pill.submitted,.pill.disputed{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 38%,transparent);background:color-mix(in srgb,var(--gold) 9%,transparent)}
-.pill.dispatched::before,.pill.verifying::before,.pill.submitted::before{animation:pulse 1.6s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.empty{color:var(--ink3);padding:26px 16px;font-size:13.5px;text-align:center}
-.linkbtn{color:var(--forest);cursor:pointer;font-family:var(--mono);font-size:11.5px;text-decoration:underline;text-underline-offset:2px;margin-left:8px}
-.linkbtn:hover{color:var(--forest-deep)}
-/* composer */
-.composer{border:1px solid var(--line);border-radius:16px;background:var(--paper2);padding:22px;margin-bottom:22px}
-.composer h3{font-family:var(--serif);font-size:21px;font-weight:420;letter-spacing:-.01em;margin-bottom:16px;display:flex;align-items:center;gap:10px}
-.composer h3 .k{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--forest);border:1px solid color-mix(in srgb,var(--forest) 40%,transparent);border-radius:6px;padding:3px 8px;background:var(--acc-soft);font-weight:500}
-.crow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end}
-.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:150px}
-.field label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:500}
-select,.composer input,.composer textarea{font-family:var(--sans);font-size:14px;border-radius:11px;border:1px solid var(--line2);background:var(--paper3);color:var(--ink);padding:11px 12px;width:100%}
-select{cursor:pointer}
-.composer textarea{min-height:62px;resize:vertical;font-family:var(--sans)}
-select:focus,.composer input:focus,.composer textarea:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
+/* fields and buttons inside a terminal */
+.sec-head.tight{margin-bottom:26px}
+.sec-head.tight .eyebrow{margin-bottom:0}
+.term input,.term select,.term textarea{width:100%;background:rgba(242,239,228,.05);border-color:rgba(242,239,228,.22);color:var(--cream)}
+.term input::placeholder,.term textarea::placeholder{color:rgba(242,239,228,.38)}
+.term input:focus,.term select:focus,.term textarea:focus{border-color:var(--cream);box-shadow:3px 3px 0 var(--accent)}
+.term select{cursor:pointer}
+.term select option{background:var(--night);color:var(--cream)}
+.term textarea{min-height:62px;resize:vertical}
+.term label{color:rgba(242,239,228,.55)}
+.term .btn{color:var(--cream);border-color:rgba(242,239,228,.35)}
+.term .btn:hover{box-shadow:3px 3px 0 var(--accent)}
+.term .btn.accent{border-color:var(--accent)}
+.term .btn.accent:hover{box-shadow:3px 3px 0 var(--cream)}
+.composer-body{padding:18px 14px 20px}
+.crow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end}
+.crow.last{justify-content:space-between;align-items:center;margin-bottom:0;padding-top:14px;border-top:1px solid rgba(242,239,228,.12)}
+.field{display:flex;flex-direction:column;gap:7px;flex:1 1 150px;min-width:0}
+.field.w-cap{flex:0 1 220px}.field.w-num{flex:0 1 150px}
 .toggles{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.tg{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink2);border:1px solid var(--line2);border-radius:10px;padding:9px 12px;cursor:pointer;user-select:none;transition:.15s;background:var(--paper3)}
-.tg:hover{color:var(--ink)}
-.tg.on{color:var(--forest);border-color:color-mix(in srgb,var(--forest) 50%,transparent);background:var(--acc-soft)}
-.tg .dot{width:15px;height:15px;border-radius:5px;border:1px solid currentColor;display:grid;place-items:center;font-size:10px;font-weight:700}
-.tg.on .dot::after{content:"✓"}
-.seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden;background:var(--paper3)}
-.seg button{border:none;border-radius:0;background:transparent;color:var(--ink2);padding:9px 13px;font-size:12.5px;transform:none}
-.seg button:hover{color:var(--ink);border:none;transform:none}
-.seg button.on{background:var(--acc-soft);color:var(--forest)}
-.seg button:not(:last-child){border-right:1px solid var(--line2)}
-@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}.tablecard{overflow-x:auto}}
-@media(max-width:600px){.grid{grid-template-columns:1fr}}
+.tg{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.22);padding:10px 12px;cursor:pointer;user-select:none;transition:.15s}
+.tg:hover{color:var(--cream);border-color:rgba(242,239,228,.5)}
+.tg.on{color:var(--cream);border-color:var(--accent-bright)}
+.tg .dot{width:10px;height:10px;border:1px solid currentColor;display:block;flex:none}
+.tg.on .dot{background:var(--accent);border-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid rgba(242,239,228,.22)}
+.seg button{border:none;border-radius:0;background:transparent;color:rgba(242,239,228,.7);padding:10px 13px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.15s}
+.seg button:hover{color:var(--cream)}
+.seg button.on{background:var(--accent);color:var(--cream)}
+.seg button:not(:last-child){border-right:1px solid rgba(242,239,228,.22)}
+@media(max-width:600px){.field.w-cap,.field.w-num{flex:1 1 100%}.crow.last .btn{width:100%}}
+
+/* tables inside terminals: hairline, mono */
+.tbl{overflow-x:auto}
+.term table{min-width:640px}
+.term th{color:rgba(242,239,228,.5);border-bottom-color:rgba(242,239,228,.18);white-space:nowrap}
+.term td{color:rgba(242,239,228,.82);border-bottom-color:rgba(242,239,228,.1);vertical-align:top}
+.term tr:last-child td{border-bottom:none}
+.term td.mono{color:var(--cream);white-space:nowrap}
+.term tbody tr{transition:background .15s}
+.term tbody tr:hover{background:rgba(242,239,228,.035)}
+.term .empty{color:rgba(242,239,228,.45);padding:26px 16px;text-align:center}
+.term .pill{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;background:transparent;color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.25)}
+.term .pill::before{content:"";width:6px;height:6px;background:currentColor}
+.term .pill.settled{color:var(--green);border-color:var(--green)}
+.term .pill.refunded{color:var(--red);border-color:var(--red)}
+.term .pill.dispatched,.term .pill.verifying,.term .pill.submitted,.term .pill.disputed{color:var(--accent-bright);border-color:var(--accent-bright)}
+.term .pill.dispatched::before,.term .pill.verifying::before,.term .pill.submitted::before{animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.term .linkbtn{color:var(--accent-bright);cursor:pointer;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid currentColor;margin-left:8px;white-space:nowrap}
+.term .linkbtn:hover{color:var(--cream)}
+.stack{display:grid;gap:28px}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8a4a"/><stop offset="1" stop-color="#c84d10"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
-    <span class="navchip">Console</span>
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
       <a href="/launchpad">Launchpad</a>
       <a href="/providers">Providers</a>
       <a href="/docs">Docs</a>
+      <a class="btn solid active" href="/dashboard">Open console</a>
     </div>
   </div>
 </nav>
 
-<div class="ticker">
-  <div class="wrap rail">
-    <span class="dot"></span><b>Live</b>
-    <span class="sp">·</span>verification before payment
-    <span class="sp tk-hide">·</span><span class="tk-hide">USDG on Robinhood Chain</span>
-    <span class="sp tk-hide">·</span><span class="tk-hide">faucet-funded sandbox</span>
-    <span class="end">$0 lost to bad work →</span>
-  </div>
-</div>
-
 <main>
+<section class="hero">
   <div class="wrap rail">
-    <div class="headline">
-      <h1>Sandbox <em>console.</em></h1>
-      <span class="sub">Mint a key, post a task, watch it settle or slash.</span>
-    </div>
-    <div class="sandbox-note"><span class="d"></span>Live <b>in-browser sandbox</b> — mint a key and every action runs, no signup.</div>
-
-    <div class="console">
-      <input id="key" placeholder="click Mint sandbox key →" autocomplete="off" readonly>
-      <button id="mint">Mint sandbox key</button>
-      <button id="deposit">Deposit $2</button>
-      <button id="sample">Quick sample</button>
-    </div>
-    <div id="msg"></div>
-
-    <div class="composer">
-      <h3>Compose a task <span class="k">live</span></h3>
-      <div class="crow">
-        <div class="field" style="flex:0 0 210px"><label>Capability</label><select id="c-cap"></select></div>
-        <div class="field"><label id="c-input-label">Input</label><textarea id="c-input" placeholder="Describe what you want done…"></textarea></div>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow">Sandbox console · no signup</span>
+        <h1 class="display"><span>Sandbox</span><span class="outline">console.</span></h1>
+        <p class="lead mono">Mint a key, post a task, watch it settle or slash. Live <b>in-browser sandbox</b> — mint a key and every action runs, no signup.</p>
       </div>
-      <div class="crow">
-        <div class="field" style="flex:0 0 140px"><label>Budget (USDG)</label><input id="c-budget" value="0.03"></div>
-        <div class="field" style="flex:0 0 150px"><label>Deadline (ms)</label><input id="c-deadline" value="10000"></div>
-        <div class="field"><label>Acceptance rubric (optional)</label><input id="c-rubric" placeholder="e.g. substantive, on-topic, no filler"></div>
-      </div>
-      <div class="crow" style="justify-content:space-between;align-items:center">
-        <div class="toggles">
-          <span class="tg" id="tg-retry"><span class="dot"></span>Auto-retry</span>
-          <span class="tg" id="tg-cache"><span class="dot"></span>Cache</span>
-          <span class="seg" id="seg-consensus">
-            <button data-n="1" class="on">Single</button><button data-n="2">Consensus ×2</button><button data-n="3">×3</button>
-          </span>
+      <div class="hero-visual">
+        <div class="term offset brackets">
+          <div class="term-h"><span><span class="sq"></span>Session · sandbox key</span><span>faucet-funded</span></div>
+          <div class="keyrow">
+            <input id="key" placeholder="click Mint sandbox key →" autocomplete="off" readonly>
+            <button id="mint" class="btn accent">Mint sandbox key</button>
+            <button id="deposit" class="btn">Deposit $2</button>
+            <button id="sample" class="btn">Quick sample</button>
+          </div>
+          <div class="term-f"><div id="msg"></div></div>
         </div>
-        <button id="c-post" class="acc">Post task →</button>
       </div>
-    </div>
-
-    <div class="grid">
-      <div class="stat"><div class="n" id="s-balance">$0</div><div class="l">escrow balance</div></div>
-      <div class="stat"><div class="n" id="s-locked">$0</div><div class="l">locked in open tasks</div></div>
-      <div class="stat"><div class="n" id="s-settled">0</div><div class="l">settled</div></div>
-      <div class="stat"><div class="n" id="s-refunded">0</div><div class="l">refunded (you paid $0)</div></div>
-      <div class="stat"><div class="n" id="s-insurance">$0</div><div class="l">insurance pool</div></div>
-    </div>
-
-    <h2>Tasks</h2>
-    <div class="tablecard">
-      <table>
-        <thead><tr><th>Task</th><th>Capability</th><th>Status</th><th>Provider</th><th>Price</th><th>Detail</th></tr></thead>
-        <tbody id="tasks"><tr><td colspan="6" class="empty">Mint a sandbox key to begin.</td></tr></tbody>
-      </table>
-    </div>
-
-    <h2>Network offers</h2>
-    <div class="tablecard">
-      <table>
-        <thead><tr><th>Capability</th><th>Provider</th><th>Ceiling</th><th>SLA</th><th>Track</th><th>Stake free</th></tr></thead>
-        <tbody id="offers"><tr><td colspan="6" class="empty">—</td></tr></tbody>
-      </table>
     </div>
   </div>
+</section>
+
+<section class="ledger" style="padding-top:0">
+  <div class="wrap rail">
+    <div class="strip">
+      <span><span class="sq"></span>The ledger</span>
+      <span>Sandbox · this browser</span>
+      <span class="end">Settle or slash · you pay $0 for a fail</span>
+    </div>
+    <div class="statband five rv">
+      <div class="st"><div class="l">Escrow balance</div><div class="v acc" id="s-balance">$0</div></div>
+      <div class="st"><div class="l">Locked in open tasks</div><div class="v" id="s-locked">$0</div></div>
+      <div class="st"><div class="l">Settled</div><div class="v" id="s-settled">0</div></div>
+      <div class="st"><div class="l">Refunded (you paid $0)</div><div class="v" id="s-refunded">0</div></div>
+      <div class="st"><div class="l">Insurance pool</div><div class="v acc" id="s-insurance">$0</div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap rail">
+    <div class="sec-head tight"><span class="eyebrow">Composer</span></div>
+    <div class="term rv">
+      <div class="term-h"><span><span class="sq"></span>Compose a task</span><span>live</span></div>
+      <div class="composer-body">
+        <div class="crow">
+          <div class="field w-cap"><label>Capability</label><select id="c-cap"></select></div>
+          <div class="field"><label id="c-input-label">Input</label><textarea id="c-input" placeholder="Describe what you want done…"></textarea></div>
+        </div>
+        <div class="crow">
+          <div class="field w-num"><label>Budget (USDG)</label><input id="c-budget" value="0.03"></div>
+          <div class="field w-num"><label>Deadline (ms)</label><input id="c-deadline" value="10000"></div>
+          <div class="field"><label>Acceptance rubric (optional)</label><input id="c-rubric" placeholder="e.g. substantive, on-topic, no filler"></div>
+        </div>
+        <div class="crow last">
+          <div class="toggles">
+            <span class="tg" id="tg-retry"><span class="dot"></span>Auto-retry</span>
+            <span class="tg" id="tg-cache"><span class="dot"></span>Cache</span>
+            <span class="seg" id="seg-consensus">
+              <button data-n="1" class="on">Single</button><button data-n="2">Consensus ×2</button><button data-n="3">×3</button>
+            </span>
+          </div>
+          <button id="c-post" class="acc btn accent">Post task <span class="ar">→</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap rail">
+    <div class="sec-head tight"><span class="eyebrow">Event log</span></div>
+    <div class="stack">
+      <div class="term rv">
+        <div class="term-h"><span><span class="sq"></span>Tasks</span><span>escrow → verify → settle</span></div>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Task</th><th>Capability</th><th>Status</th><th>Provider</th><th>Price</th><th>Detail</th></tr></thead>
+            <tbody id="tasks"><tr><td colspan="6" class="empty">Mint a sandbox key to begin.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="term rv d1">
+        <div class="term-h"><span><span class="sq"></span>Network offers</span><span>committed quotes</span></div>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Capability</th><th>Provider</th><th>Ceiling</th><th>SLA</th><th>Track</th><th>Stake free</th></tr></thead>
+            <tbody id="offers"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 </main>
 
 <footer>
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#ff8a4a"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
-      <div class="fcol">
-        <h4>Product</h4>
-        <a href="/services">Service catalog</a>
-        <a href="/agents">Agentic accounts</a>
-        <a href="/launchpad">Agent Launchpad</a>
-        <a href="/trade">Agentic trading</a>
-        <a href="/providers">Provider console</a>
-      </div>
-      <div class="fcol">
-        <h4>Protocol</h4>
-        <a href="/docs#outcomes">Tasks &amp; outcomes</a>
-        <a href="/docs#verification">Verification</a>
-        <a href="/docs#launchpad">Launchpad</a>
-        <a href="/docs#onchain">On-chain settlement</a>
-      </div>
-      <div class="fcol">
-        <h4>Network</h4>
-        <a href="/verify">Verify a receipt</a>
-        <a href="/metrics">Network metrics</a>
-        <a href="/v1/offers">/v1/offers</a>
-        <a href="https://github.com/XARIKAX/Vouch">GitHub</a>
-      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot">
-      <span>© 2026 Vouch — the outcome layer for AI agents</span>
-      <span>Verification before payment · USDG on Robinhood Chain</span>
-    </div>
+    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
   </div>
 </footer>
 

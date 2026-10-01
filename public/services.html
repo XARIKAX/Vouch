@@ -5,131 +5,118 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Services</title>
 <meta name="description" content="The Vouch service catalog: every capability backed by slashable capital and gated by verification. Guaranteed outcomes, not a list of endpoints.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23111210%22/%3E%3Crect%20x%3D%2218%22%20y%3D%226%22%20width%3D%228%22%20height%3D%228%22%20fill%3D%22%235b3df0%22/%3E%3Cpath%20d%3D%22M7%2013l7%2012%2012-18%22%20fill%3D%22none%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%223%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
-/* services — page-specific layout over the shared forest/cream system in vouch.css */
+/* services — page-specific layout over the shared editorial-terminal system in vouch.css */
 
 /* hero */
-.hero{padding:72px 0 26px;position:relative;overflow:hidden}
-.hero::after{content:"";position:absolute;inset:auto -10% -60% 45%;height:52rem;background:radial-gradient(34rem 26rem at 60% 40%,var(--acc-soft),transparent 66%);z-index:0;pointer-events:none}
-.hero h1{font-size:clamp(38px,5vw,66px);line-height:1.02;letter-spacing:-.02em;margin:22px 0 18px;max-width:17ch}
-.hero h1 em{color:var(--forest)}
-.lede{color:var(--ink2);font-size:18px;max-width:48rem;line-height:1.58}
-.lede strong{color:var(--ink);font-weight:600}
+.hero{padding:64px 0 0}
+.hero .eyebrow{margin-bottom:22px}
+.hero h1{margin:0 0 26px;font-size:clamp(34px,8.4vw,100px)}
+.hero h1 span{display:block}
+.hero .lead{max-width:62ch;margin-bottom:30px}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 
-/* stat row */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px dashed var(--dash);border-bottom:1px dashed var(--dash);margin:42px 0 0}
-.stat{padding:30px 26px;border-left:1px dashed var(--dash)}
-.stat:first-child{border-left:none}
-.stat .n{font-family:var(--serif);font-size:38px;font-weight:400;letter-spacing:-.02em;line-height:1;display:flex;align-items:baseline;gap:9px;color:var(--forest)}
-.stat .n::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--forest);align-self:center;flex:none}
-.stat .l{font-size:12.5px;color:var(--ink3);margin-top:9px}
+/* stat row (hydrated into #stats) — mirrors .statband */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line2);background:var(--paper2);margin-top:44px;min-height:112px}
+.stat{padding:22px 22px 20px;border-right:1px solid var(--line2)}
+.stat:last-child{border-right:none}
+.stat .n{font-family:var(--serif);font-weight:800;font-size:clamp(28px,3.4vw,44px);line-height:1;letter-spacing:-.03em;color:var(--accent-deep)}
+.stat:last-child .n{color:var(--ink)}
+.stat .l{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-top:10px}
+#err{display:none;margin-top:18px;padding:12px 16px;border:1px solid var(--red);color:var(--red);font-family:var(--mono);font-size:12.5px}
 
-/* controls */
-.controls{position:sticky;top:72px;z-index:30;padding:20px 0 14px;margin-top:20px;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.searchrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-.search{flex:1;min-width:260px;display:flex;align-items:center;gap:10px;height:48px;padding:0 16px;border:1px solid var(--line2);border-radius:12px;background:var(--paper2);color:var(--ink2);transition:.18s}
-.search:focus-within{border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
-.search input{flex:1;border:none;outline:none;background:transparent;color:var(--ink);font-family:var(--mono);font-size:13.5px}
+/* controls — sticky search + category tabs */
+.controls{position:sticky;top:64px;z-index:30;padding:18px 0 14px;margin-top:40px;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);border-bottom:1px solid var(--line2)}
+.searchrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.search{flex:1;min-width:240px;display:flex;align-items:center;gap:10px;height:46px;padding:0 14px;border:1px solid var(--line2);background:var(--paper2);color:var(--ink2);transition:border-color .15s,box-shadow .15s}
+.search:focus-within{border-color:var(--ink);box-shadow:3px 3px 0 var(--accent)}
+.search input{flex:1;min-width:0;border:none;outline:none;box-shadow:none;background:transparent;padding:0;color:var(--ink);font-size:13px;text-transform:none;letter-spacing:0}
 .search input::placeholder{color:var(--ink3)}
-.search svg{width:16px;height:16px;color:var(--ink3);flex:none}
-.guarantee-note{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--cream);border-radius:10px;padding:0 15px;height:48px;background:var(--forest);white-space:nowrap;font-weight:500}
-.tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
-.tab{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:10px;border:1px solid var(--line);background:var(--paper2);color:var(--ink2);font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.15s}
-.tab:hover{color:var(--ink);border-color:var(--line2)}
-.tab.on{color:var(--cream);background:var(--forest);border-color:transparent;font-weight:600}
-.tab .c{font-weight:600;opacity:.65}.tab.on .c{opacity:.8}
+.search svg{width:15px;height:15px;color:var(--ink3);flex:none}
+.guarantee-note{height:46px;white-space:nowrap}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.tab{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line2);background:var(--paper2);color:var(--ink2);font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+.tab:hover{color:var(--ink);border-color:var(--ink)}
+.tab.on{color:var(--cream);background:var(--ink);border-color:var(--ink)}
+.tab .c{color:var(--accent-deep);font-weight:600}.tab.on .c{color:var(--accent-bright)}
 
-main{padding:14px 0 40px}
-h3.cat{font-family:var(--mono);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:2.4px;color:var(--ink3);margin:34px 0 16px;display:flex;align-items:center;gap:14px}
-h3.cat::after{content:"";flex:1;height:1px;background:var(--line)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-.svc{border:1px solid var(--line);border-radius:18px;background:var(--paper2);padding:22px 22px 16px;display:flex;flex-direction:column;transition:.28s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden}
-.svc::before{content:"";position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--acc-soft),transparent 70%);top:-80px;right:-60px;pointer-events:none;opacity:0;transition:.3s}
-.svc:hover{border-color:var(--ink3);transform:translateY(-4px);box-shadow:0 24px 54px rgba(22,24,15,.1)}
-.svc:hover::before{opacity:1}
+/* catalog — one dense board of hairline cards */
+.catalog-sec{padding:40px 0 88px}
+#catalog{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid var(--line2);border-left:1px solid var(--line2)}
+#catalog .grid{display:contents}
+#catalog h3.cat{display:none}
+.svc{display:flex;flex-direction:column;min-width:0;position:relative;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);background:var(--paper2);padding:20px 18px 14px}
+.svc.in{transition:transform .15s,box-shadow .15s}
+.svc:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink);z-index:2}
 .svc .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.svc .id{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--ink)}
-.guaranteed{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--cream);background:var(--forest);border-radius:6px;padding:3px 8px;white-space:nowrap;flex:none;font-weight:600}
+.svc .id{font-family:var(--mono);font-size:14.5px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.guaranteed{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--cream);background:var(--accent);padding:4px 7px;white-space:nowrap;flex:none;font-weight:500}
 .guaranteed svg{width:10px;height:10px}
-.svc .desc{color:var(--ink2);font-size:13.5px;margin:6px 0 14px}
-.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.metric{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
-.metric .mv{font-family:var(--serif);font-size:17px;font-weight:500;color:var(--ink)}
-.metric .ml{font-size:10.5px;color:var(--ink3);margin-top:1px}
-.badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.b{font-size:11px;font-family:var(--mono);border:1px solid var(--line2);border-radius:7px;padding:3px 8px;color:var(--ink2)}
-.b strong{color:var(--forest);font-weight:600}
-.b.proto{color:var(--ink);border-color:var(--line2);background:var(--paper3)}
-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:auto}
-th,td{text-align:left;padding:7px 6px;border-top:1px solid var(--line)}
-th{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink3);font-weight:600;border-top:none}
-td{color:var(--ink2);font-family:var(--mono)}
-td:first-child{color:var(--ink)}
-.track{color:var(--forest);font-weight:500}
-.svc.empty-lane{border-style:dashed;background:transparent}
-.svc.empty-lane .lane{margin-top:auto;font-size:12.5px;color:var(--ink3);border-top:1px solid var(--line);padding-top:12px}
+.svc .desc{color:var(--ink2);font-size:13.5px;line-height:1.55;margin:8px 0 14px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line2);margin-bottom:12px}
+.metric{padding:10px 12px;background:var(--paper)}
+.metric+.metric{border-left:1px solid var(--line2)}
+.metric .mv{font-family:var(--serif);font-weight:800;font-size:20px;letter-spacing:-.03em;line-height:1;color:var(--ink)}
+.metric .ml{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:6px}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.b{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line2);padding:4px 7px;color:var(--ink2)}
+.b strong{color:var(--accent-deep);font-weight:600}
+.b.proto{color:var(--cream);background:var(--ink);border-color:var(--ink)}
+.svc table{margin-top:auto}
+.svc th{font-size:9px;padding:6px 5px}
+.svc td{font-size:11.5px;padding:6px 5px;color:var(--ink2)}
+.svc tr:last-child td{border-bottom:none}
+.svc td:first-child{color:var(--ink);overflow-wrap:anywhere}
+.track{color:var(--accent-deep);font-weight:500}
+.svc.empty-lane{background:transparent}
+.svc.empty-lane .lane{margin-top:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;color:var(--ink3);border-top:1px dashed var(--dash);padding-top:12px}
 .svc.empty-lane .lane b{color:var(--ink);font-weight:600}
-.noresults{color:var(--ink3);text-align:center;padding:60px 0;font-size:14px}
+.noresults{grid-column:1/-1;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2);padding:60px 0;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
 
-/* how — dark panel */
-.how{margin-top:66px}
-.how .inner{border-radius:24px;padding:56px 46px;position:relative;overflow:hidden;background:var(--night);color:var(--cream)}
-.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(34rem 16rem at 50% -30%,rgba(240,97,26,.22),transparent 66%);pointer-events:none}
-.how h3{font-size:clamp(26px,3vw,38px);letter-spacing:-.02em;margin-bottom:14px;color:var(--cream)}
-.how p{color:rgba(242,239,228,.74);font-size:15.5px;max-width:74ch;margin-bottom:26px}
-.how p .mono{color:var(--forest-bright)}
-.how .cta{display:inline-flex;gap:12px;flex-wrap:wrap}
-.how .cta .btn{color:var(--cream);border-color:rgba(242,239,228,.2)}
-.how .cta .btn:hover{border-color:var(--cream)}
-.how .cta .btn.solid{background:var(--forest);color:var(--cream);border:none}
-.how .cta .btn.solid:hover{background:var(--forest-deep)}
+/* how — dark section */
+.how h2{font-size:clamp(30px,4.2vw,54px);margin:18px 0 16px}
+.how .lead{max-width:74ch;margin-bottom:26px}
+.how .lead .mono{color:var(--accent-bright)}
 
-#err{color:var(--red);font-size:13.5px;margin:18px 0;display:none;border:1px solid rgba(178,59,46,.3);border-radius:12px;padding:12px 16px;background:rgba(178,59,46,.06)}
-
-@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(3){border-left:none}.stat{border-top:1px dashed var(--dash)}.stat:nth-child(-n+2){border-top:none}}
-@media(max-width:680px){.hero{padding-top:52px}.stats{grid-template-columns:1fr}.stat{border-left:none;border-top:1px dashed var(--dash)}.stat:first-child{border-top:none}.how .inner{padding:36px 24px}.controls{position:static}}
+@media(max-width:999px){#catalog{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:860px){.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(2){border-right:none}.stat:nth-child(3),.stat:nth-child(4){border-top:1px solid var(--line2)}}
+@media(max-width:699px){#catalog{grid-template-columns:1fr}.hero{padding-top:44px}.controls{position:static}.catalog-sec{padding:28px 0 64px}}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8a4a"/><stop offset="1" stop-color="#c84d10"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
     <div class="nav-links">
       <a class="active" href="/services">Services</a>
       <a href="/agents">Agents</a>
       <a href="/launchpad">Launchpad</a>
       <a href="/providers">Providers</a>
       <a href="/docs">Docs</a>
-      <a class="btn forest" href="/dashboard">Open console</a>
+      <a class="btn solid" href="/dashboard">Open console</a>
     </div>
   </div>
 </nav>
 
-<div class="ticker">
+<section class="hero">
   <div class="wrap rail">
-    <span class="dot"></span><b>Live</b>
-    <span class="sp">·</span>verification before payment
-    <span class="sp tk-hide">·</span><span class="tk-hide">USDG on Robinhood Chain</span>
-    <span class="sp tk-hide">·</span><span class="tk-hide">no key needed to browse</span>
-    <span class="end">$0 lost to bad work →</span>
-  </div>
-</div>
-
-<header class="hero">
-  <div class="wrap rail">
-    <span class="eyebrow"><span class="dot"></span>Live catalog — no key needed to browse</span>
-    <h1>Not a list of endpoints.<br>A catalog of <em>guarantees.</em></h1>
-    <p class="lede">Any directory can list a thousand services that <em>might</em> work. Every capability here is <strong>backed by slashable capital</strong> and <strong>gated by verification</strong>: the output is checked before you pay, and a failed check refunds you and slashes the provider. Fewer promises, each one enforced.</p>
+    <span class="eyebrow">Live catalog · no key needed to browse</span>
+    <h1 class="display"><span>Not endpoints.</span><span>A catalog</span><span class="outline">of guarantees.</span></h1>
+    <p class="lead mono">Any directory can list a thousand services that might work. Every capability here is <strong>backed by slashable capital</strong> and <strong>gated by verification</strong>: the output is checked before you pay, and a failed check refunds you and slashes the provider. Fewer promises, each one enforced.</p>
+    <div class="hero-cta">
+      <a class="btn solid lg" href="#catalog">Browse the catalog <span class="ar">↓</span></a>
+      <a class="btn lg" href="/docs#quickstart">Post your first task <span class="ar">→</span></a>
+    </div>
     <div class="stats" id="stats"></div>
     <div id="err"></div>
   </div>
-</header>
+</section>
 
 <div class="controls">
   <div class="wrap rail">
@@ -138,61 +125,46 @@ td:first-child{color:var(--ink)}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         <input id="q" type="text" placeholder="Search capabilities, providers…" autocomplete="off">
       </label>
-      <span class="guarantee-note">✓ 100% verified-settlement or $0</span>
+      <span class="chip on guarantee-note">✓ 100% verified-settlement or $0</span>
     </div>
     <div class="tabs" id="tabs"></div>
   </div>
 </div>
 
-<main class="wrap rail">
-  <div id="catalog"></div>
+<main>
+  <section class="catalog-sec">
+    <div class="wrap rail">
+      <div id="catalog"></div>
+    </div>
+  </section>
 
-  <div class="how rv">
-    <div class="inner">
-      <h3>How a listing becomes a result</h3>
-      <p>Post a task naming any capability above, with acceptance criteria and a budget. Providers return sealed quotes bonded by stake; the best admissible one wins and your escrow locks at exactly that price. The output is verified before a cent moves — a failed check refunds you and slashes the provider's stake shown here. Add <span class="mono">retry: true</span> and Vouch keeps rerouting until it passes.</p>
-      <div class="cta">
-        <a class="btn solid" href="/docs#quickstart">Post your first task <span class="ar">→</span></a>
-        <a class="btn" href="/docs#stakes">How staking works</a>
+  <section class="dark">
+    <div class="wrap rail">
+      <div class="how rv">
+        <span class="eyebrow">From listing to receipt</span>
+        <h2>How a listing<br><em>becomes a result.</em></h2>
+        <p class="lead mono">Post a task naming any capability above, with acceptance criteria and a budget. Providers return sealed quotes bonded by stake; the best admissible one wins and your escrow locks at exactly that price. The output is verified before a cent moves — a failed check refunds you and slashes the provider's stake shown here. Add <span class="mono">retry: true</span> and Vouch keeps rerouting until it passes.</p>
+        <div class="hero-cta">
+          <a class="btn accent lg" href="/docs#quickstart">Post your first task <span class="ar">→</span></a>
+          <a class="btn lg" href="/docs#stakes">How staking works</a>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 </main>
 
 <footer>
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#ff8a4a"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
-      <div class="fcol">
-        <h4>Product</h4>
-        <a href="/services">Service catalog</a>
-        <a href="/agents">Agentic accounts</a>
-        <a href="/launchpad">Agent Launchpad</a>
-        <a href="/trade">Agentic trading</a>
-        <a href="/providers">Provider console</a>
-      </div>
-      <div class="fcol">
-        <h4>Protocol</h4>
-        <a href="/docs#outcomes">Tasks &amp; outcomes</a>
-        <a href="/docs#verification">Verification</a>
-        <a href="/docs#launchpad">Launchpad</a>
-        <a href="/docs#onchain">On-chain settlement</a>
-      </div>
-      <div class="fcol">
-        <h4>Network</h4>
-        <a href="/verify">Verify a receipt</a>
-        <a href="/metrics">Network metrics</a>
-        <a href="/v1/offers">/v1/offers</a>
-        <a href="https://github.com/XARIKAX/Vouch">GitHub</a>
-      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot">
-      <span>© 2026 Vouch — the outcome layer for AI agents</span>
-      <span>Verification before payment · USDG on Robinhood Chain</span>
-    </div>
+    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
   </div>
 </footer>
 
