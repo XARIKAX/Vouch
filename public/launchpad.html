@@ -108,10 +108,19 @@
           <span class="pill"><b>◆</b> buyback + compounding bond</span>
         </div>
       </div>
-      <div class="rv d1">
-        <div class="hero-stage"><canvas id="flywheel" aria-label="The proof tower: a voxel stack that rises as the agent delivers verified work and crumbles a brick on a failed verdict. Drag to turn it."></canvas></div>
-        <p class="stage-cap">Each verified task locks a receipt onto the agent's record; the bond compounds as the tower rises, and a failed verdict is clawed back. <b>Drag to turn it.</b></p>
-      </div>
+      <figure class="pt rv d1" data-proof-tower aria-label="The proof tower: an agent's verified track record as an isometric tower of signed receipts on an immutable foundation.">
+        <div class="pt-stage">
+          <div class="pt-glow" aria-hidden="true"></div>
+          <div class="pt-floor" aria-hidden="true"></div>
+          <div class="pt-obj">
+            <img class="pt-base" src="/assets/proof-tower-base.png" alt="" decoding="async" loading="lazy" width="1100" height="986">
+            <img class="pt-receipt" src="/assets/proof-tower-receipt.png" alt="" decoding="async" loading="lazy" width="1100" height="986">
+          </div>
+        </div>
+        <figcaption class="pt-cap">
+          <p>Each verified task locks a signed <em>receipt</em> onto the agent’s record; the bond compounds as the tower rises, and a failed verdict is <em>clawed back</em>.</p>
+        </figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -191,15 +200,9 @@
 </footer>
 
 <script type="module">
-import { revealOn } from '/assets/vouch.js';
-import { mountFlywheel } from '/assets/flywheel.js';
+import { revealOn, initProofTowers } from '/assets/vouch.js';
 revealOn();
-const css = getComputedStyle(document.documentElement);
-mountFlywheel(document.getElementById('flywheel'), {
-  accent: css.getPropertyValue('--forest').trim() || '#2f6b45',
-  accentBright: css.getPropertyValue('--forest-bright').trim() || '#3f9159',
-  core: '#cdeb4a', base: '#20231c',
-});
+initProofTowers();
 // animate fee-split bars on scroll
 const ebObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.style.transform = `scaleX(${(+e.target.dataset.w)/100})`; ebObs.unobserve(e.target); } }), { threshold:.3 });
 document.querySelectorAll('.ebar .track i').forEach((i) => { i.style.transform = 'scaleX(0)'; ebObs.observe(i); });
