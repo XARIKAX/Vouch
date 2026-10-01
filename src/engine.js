@@ -4,6 +4,8 @@ import { seedProviders, runExecutor } from './providers.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
 import { createAttestor } from './attest.js';
+import { snapshotParams } from './launchpad-config.js';
+import { splitFees, bondValue, bondCapacity, protocolFeeSplit, netPayoutSplit } from './launchpad.js';
 
 // ---------------------------------------------------------------------------
 // ApiError carries the HTTP status and the error code from the docs.
@@ -57,6 +59,8 @@ export function createEngine(cfg = {}) {
   state.workflows ??= {};
   state.insurance ??= { balance: 0, funded: 0, claims: [] };
   state.cache ??= {}; // verified-output cache: fingerprint -> { output, attestation, ... }
+  state.agents ??= {};   // launchpad: agentId -> launched-agent record
+  state.treasury ??= { balance: 0, burned: 0, buyback: 0 }; // protocol treasury (USDG)
   const attestor = createAttestor(cfg);
   const persist = () => store.save(state);
   if (!loaded) { seedProviders(state); persist(); }
@@ -285,6 +289,9 @@ export function createEngine(cfg = {}) {
     p.track = clamp(p.track + 0.2, 0, 100);
     const entry = { ts: Date.now(), kind: 'settle', amount: -task.quote.price, task: task.id, tx: txHash() };
     acct.history.push(entry);
+    // Launchpad: if this provider is a launched agent, route its revenue
+    // (protocol fee + owner/buyback/bond). Non-launchpad providers are untouched.
+    if (p.agentId && state.agents[p.agentId]) routeAgentRevenue(state.agents[p.agentId], task.quote.price);
     return entry.tx;
   }
 
@@ -730,6 +737,147 @@ export function createEngine(cfg = {}) {
       .map(publicTask);
   }
 
+  // ---- launchpad: launched agents, token bond, revenue routing ------------
+  // An "agent" here is a supply-side, token-wrapped provider (distinct from the
+  // demand-side API keys also called "agents"). Its slashable bond is the
+  // platform token, valued in USDG. A launched agent's linked provider reuses
+  // the existing reservation machinery: we set provider.stake to the agent's
+  // bond *capacity* (haircut value / reservationMultiple), so the engine's
+  // 1x-price reservation is exactly the brief's 200%-of-price against haircut.
+
+  function agentRawBond(agent) {
+    return bondValue({
+      tokenQty: Math.max(0, agent.bond.tokenQty - (agent.unbonding?.tokenQty ?? 0)),
+      twapUsdg: agent.token.twapUsdg,
+      poolLiquidityUsdg: agent.token.poolLiquidityUsdg,
+    }, agent.params);
+  }
+  // Keep the linked provider's usable stake in sync with bond capacity.
+  function syncAgentCapacity(agent) {
+    if (!agent.providerId) return;
+    const p = state.providers[agent.providerId];
+    if (!p) return;
+    const cap = bondCapacity(agentRawBond(agent), agent.params);
+    // Never drop below what open quotes already reserve (no liquidation of live work).
+    p.stake = money(Math.max(cap, p.stakeReserved));
+  }
+
+  function publicAgent(a) {
+    const raw = agentRawBond(a);
+    return {
+      id: a.id, owner: a.owner, created_at: a.createdAt,
+      token: { symbol: a.token.symbol, address: a.token.address, twap_usdg: a.token.twapUsdg, pool_liquidity_usdg: a.token.poolLiquidityUsdg },
+      bond: { token_qty: a.bond.tokenQty, raw_value_usdg: raw, haircut_value_usdg: money(raw * a.params.bondHaircut), capacity_usdg: bondCapacity(raw, a.params) },
+      operating_usdg: state.accounts[a.id]?.balance ?? 0,
+      provider_id: a.providerId,
+      unbonding: a.unbonding ? { token_qty: a.unbonding.tokenQty, requested_at: a.unbonding.requestedAt, release_at: a.unbonding.releaseAt } : null,
+      totals: { creator_paid: a.creatorPaid, owner_paid: a.ownerPaid, buyback: a.buyback, burned: a.burned, treasury_paid: a.treasuryPaid, bond_topped_up: a.bondToppedUp },
+      params: a.params,
+    };
+  }
+
+  // One transaction: create the agent, snapshot its (immutable) params, and
+  // optionally register its provider endpoint. Cannot quote until it has an
+  // endpoint and bond capacity.
+  function launchAgent(body = {}) {
+    const params = snapshotParams(body.params);
+    const agentId = id('agt');
+    state.accounts[agentId] = { balance: 0, locked: 0, lockedToday: 0, history: [] };
+    const agent = {
+      id: agentId, owner: body.owner ?? 'owner', createdAt: Date.now(),
+      token: {
+        symbol: body.symbol ?? params.platformToken.symbol, address: body.token_address ?? null,
+        twapUsdg: Number(body.twap_usdg) > 0 ? Number(body.twap_usdg) : 1,
+        poolLiquidityUsdg: Number(body.pool_liquidity_usdg) || 0,
+      },
+      bond: { tokenQty: Number(body.initial_bond_tokens) || 0 },
+      providerId: null, params,
+      creatorPaid: 0, ownerPaid: 0, buyback: 0, burned: 0, treasuryPaid: 0, bondToppedUp: 0,
+      ledger: [], unbonding: null,
+    };
+    if (body.endpoint_url && body.offers) {
+      const prov = registerProvider({ name: body.name ?? `agent ${agentId}`, endpoint_url: body.endpoint_url, offers: body.offers, stake: 0, protocol: body.protocol });
+      prov.agentId = agentId; agent.providerId = prov.id;
+    }
+    state.agents[agentId] = agent;
+    syncAgentCapacity(agent);
+    persist();
+    return publicAgent(agent);
+  }
+
+  // Permissionless: harvest `feeAmount` of pool fees and split per the agent's
+  // snapshot — bond staked, operating credited (spend-only USDG), creator and
+  // treasury paid.
+  function harvestFees(agentId, feeAmount) {
+    const agent = state.agents[agentId];
+    if (!agent) throw new ApiError(404, 'not_found', `No agent ${agentId}.`);
+    const amt = Number(feeAmount);
+    if (!(amt > 0)) throw new ApiError(400, 'invalid_input', 'feeAmount must be positive');
+    const s = splitFees(amt, agent.params);
+    if (agent.token.twapUsdg > 0) agent.bond.tokenQty = money(agent.bond.tokenQty + s.bond / agent.token.twapUsdg);
+    const acct = state.accounts[agentId];
+    acct.balance = money(acct.balance + s.operating);
+    acct.history.push({ ts: Date.now(), kind: 'harvest_operating', amount: s.operating, tx: txHash() });
+    agent.creatorPaid = money(agent.creatorPaid + s.creator);
+    agent.treasuryPaid = money(agent.treasuryPaid + s.treasury);
+    state.treasury.balance = money(state.treasury.balance + s.treasury);
+    agent.ledger.push({ ts: Date.now(), kind: 'harvest', fee: amt, ...s });
+    syncAgentCapacity(agent);
+    persist();
+    return { agent: agentId, fee: amt, split: s, bond_capacity_usdg: bondCapacity(agentRawBond(agent), agent.params) };
+  }
+
+  // On a launched agent's settled task: protocol fee (burn/treasury) out of the
+  // payout, then net routed owner / token-buyback / bond top-up.
+  function routeAgentRevenue(agent, settledPrice) {
+    const f = protocolFeeSplit(settledPrice, agent.params);
+    state.treasury.balance = money(state.treasury.balance + f.treasury);
+    state.treasury.burned = money(state.treasury.burned + f.burn);
+    agent.burned = money(agent.burned + f.burn);
+    agent.treasuryPaid = money(agent.treasuryPaid + f.treasury);
+    const net = netPayoutSplit(f.net, agent.params);
+    agent.ownerPaid = money(agent.ownerPaid + net.owner);
+    agent.buyback = money(agent.buyback + net.buyback);
+    state.treasury.buyback = money(state.treasury.buyback + net.buyback);
+    if (agent.token.twapUsdg > 0) agent.bond.tokenQty = money(agent.bond.tokenQty + net.bond / agent.token.twapUsdg);
+    agent.bondToppedUp = money(agent.bondToppedUp + net.bond);
+    agent.ledger.push({ ts: Date.now(), kind: 'revenue', price: f.price, fee: f.fee, burn: f.burn, treasury: f.treasury, net: f.net, ...net });
+    syncAgentCapacity(agent);
+  }
+
+  // Owner requests unbonding; the amount can't back new quotes and stays
+  // slashable until the cooldown passes. Public event.
+  function requestUnbond(agentId, tokenQty) {
+    const agent = state.agents[agentId];
+    if (!agent) throw new ApiError(404, 'not_found', `No agent ${agentId}.`);
+    const qty = Math.min(Number(tokenQty) || 0, agent.bond.tokenQty);
+    if (!(qty > 0)) throw new ApiError(400, 'invalid_input', 'tokenQty must be positive');
+    agent.unbonding = { tokenQty: qty, requestedAt: Date.now(), releaseAt: Date.now() + agent.params.unbondingCooldownMs };
+    agent.ledger.push({ ts: Date.now(), kind: 'unbond_request', tokenQty: qty, release_at: agent.unbonding.releaseAt });
+    syncAgentCapacity(agent);
+    persist();
+    return publicAgent(agent);
+  }
+
+  // Sandbox price feed: move an agent token's TWAP / liquidity. A price drop
+  // shrinks capacity (no liquidation); open tasks continue.
+  function setAgentPrice(agentId, { twap_usdg, pool_liquidity_usdg } = {}) {
+    const agent = state.agents[agentId];
+    if (!agent) throw new ApiError(404, 'not_found', `No agent ${agentId}.`);
+    if (twap_usdg !== undefined) agent.token.twapUsdg = Math.max(0, Number(twap_usdg) || 0);
+    if (pool_liquidity_usdg !== undefined) agent.token.poolLiquidityUsdg = Math.max(0, Number(pool_liquidity_usdg) || 0);
+    syncAgentCapacity(agent);
+    persist();
+    return publicAgent(agent);
+  }
+
+  function getAgent(agentId) {
+    const a = state.agents[agentId];
+    if (!a) throw new ApiError(404, 'not_found', `No agent ${agentId}.`);
+    return publicAgent(a);
+  }
+  function listAgents() { return Object.values(state.agents).map(publicAgent); }
+
   // ---- disputes -----------------------------------------------------------
 
   async function resolveDispute(dispute, task) {
@@ -1004,5 +1152,6 @@ export function createEngine(cfg = {}) {
     openDispute, getDispute, registerProvider,
     listProviders, getProvider, insuranceStats, getAttestation, attestorKey,
     verifyOutput, createWorkflow, getWorkflow,
+    launchAgent, harvestFees, requestUnbond, setAgentPrice, getAgent, listAgents,
   };
 }
