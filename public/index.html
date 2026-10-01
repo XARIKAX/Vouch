@@ -64,8 +64,7 @@
 /* final cta */
 .cta-final{padding:110px 0}
 .cta-final .inner{text-align:center;position:relative}
-.cta-final .inner::before{content:"";position:absolute;left:50%;top:50%;width:min(80vw,760px);aspect-ratio:1;border:1px solid rgba(242,239,228,.08);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
-.cta-final .inner::after{content:"";position:absolute;left:50%;top:50%;width:min(56vw,520px);aspect-ratio:1;border:1px solid rgba(242,239,228,.08);border-radius:50%;transform:translate(-50%,-50%);pointer-events:none}
+.cta-final .rail::before,.cta-final .rail::after{display:none}
 .cta-final h2{font-size:clamp(34px,6vw,84px);text-transform:uppercase;letter-spacing:-.04em;line-height:.92;margin:18px auto 22px;position:relative}
 .cta-final h2 span{display:block}
 .cta-final p{position:relative;max-width:46ch;margin:0 auto 30px}
