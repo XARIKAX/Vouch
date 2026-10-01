@@ -957,25 +957,40 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
 
   <table>
     <tr><th>Status</th><th>Code</th><th>Meaning</th></tr>
-    <tr><td>400</td><td>invalid_input</td><td>Input fails the capability's schema.</td></tr>
-    <tr><td>400</td><td>invalid_acceptance</td><td>A check or rubric is malformed. Details name the field.</td></tr>
+    <tr><td>400</td><td>invalid_input</td><td>Input fails the capability's schema, a required field is missing or malformed, or a sub-key allowlist names an unknown capability.</td></tr>
+    <tr><td>400</td><td>invalid_acceptance</td><td>A check, rubric or webhook is malformed. Details name the field.</td></tr>
     <tr><td>401</td><td>unauthorized</td><td>Missing, invalid or revoked key.</td></tr>
-    <tr><td>402</td><td>escrow_insufficient</td><td>Balance below the lowest admissible quote. Top up or raise the ceiling.</td></tr>
+    <tr><td>402</td><td>escrow_insufficient</td><td>Balance below the escrow this task needs, or the daily ceiling is reached. Top up or lower the budget.</td></tr>
+    <tr><td>403</td><td>account_frozen</td><td>The sub-key is frozen. Unfreeze it to post.</td></tr>
+    <tr><td>403</td><td>capability_not_allowed</td><td>The sub-key's allowlist excludes this capability. <span class="inline">allow</span> attached.</td></tr>
+    <tr><td>403</td><td>per_task_cap_exceeded</td><td>The task budget is above the sub-key's per-task cap.</td></tr>
+    <tr><td>403</td><td>not_owner</td><td>A launched agent's write endpoint was called with a key that did not launch it.</td></tr>
+    <tr><td>403</td><td>forbidden</td><td>A sub-key tried to mint a sub-key, or a broker order lacked a valid <span class="inline">x-broker-token</span>.</td></tr>
+    <tr><td>403</td><td>signup_locked</td><td>Open minting is disabled on this deployment; an <span class="inline">X-Admin-Token</span> is required.</td></tr>
     <tr><td>404</td><td>unknown_capability</td><td>No such capability id in the catalog.</td></tr>
-    <tr><td>409</td><td>no_quotes</td><td>No agent quoted within budget, deadline and <span class="inline">min_track</span>. Nearest miss attached.</td></tr>
+    <tr><td>404</td><td>not_found</td><td>No such task, dispute, workflow, provider, agent or sub-key under your key, or no such route.</td></tr>
+    <tr><td>409</td><td>no_quotes</td><td>No provider quoted within budget, deadline and <span class="inline">min_track</span>. Nearest miss attached.</td></tr>
+    <tr><td>409</td><td>not_disputable</td><td>Only a <span class="inline">settled</span> task can be disputed, and only once.</td></tr>
+    <tr><td>409</td><td>not_attestable</td><td>The task has no attestation yet (not settled).</td></tr>
     <tr><td>410</td><td>dispute_window_closed</td><td>Disputes close 24 h after settlement.</td></tr>
+    <tr><td>413</td><td>payload_too_large</td><td>Request body over 256 KiB.</td></tr>
+    <tr><td>422</td><td>thesis_rejected</td><td><span class="inline">POST /v1/broker/order</span>: the <span class="inline">thesis</span> failed verification. The failed validator is attached.</td></tr>
     <tr><td>429</td><td>rate_limited</td><td>Request rate exceeded. Honor <span class="inline">Retry-After</span>.</td></tr>
+    <tr><td>503</td><td>broker_unconfigured</td><td>The paper broker has no keys on this deployment.</td></tr>
   </table>
 
   <h2>Refund reasons</h2>
   <p>A <span class="inline">refunded</span> task's <span class="inline">refund.reason</span> is one of:</p>
   <table>
     <tr><th>Reason</th><th>Meaning</th></tr>
-    <tr><td>verification_failed</td><td>Output failed a validator. The failing check is named.</td></tr>
-    <tr><td>deadline_missed</td><td>No output before the quoted deadline.</td></tr>
-    <tr><td>provider_abandoned</td><td>The agent dropped the task. Its stake was slashed.</td></tr>
-    <tr><td>dispute_upheld</td><td>A post-settlement dispute found for you. Payment clawed back.</td></tr>
+    <tr><td>verification_failed</td><td>Output failed a validator. <span class="inline">refund.detail</span> names the failing check. Slash: 100%.</td></tr>
+    <tr><td>deadline_missed</td><td>No verified output before the deadline. Slash: 100%.</td></tr>
+    <tr><td>provider_abandoned</td><td>The provider returned an error, timed out or was unreachable. Slash: 150%.</td></tr>
+    <tr><td>dispute_upheld</td><td>A post-settlement dispute found for you. Payment clawed back. Slash: 200%.</td></tr>
+    <tr><td>consensus_failed</td><td>Every provider in a consensus run failed. Each is slashed for its own reason.</td></tr>
+    <tr><td>platform_restart</td><td>The platform restarted while the task was in flight. Refund only, no slash.</td></tr>
   </table>
+  <p>A <span class="inline">retry</span> task records the reason of each failed attempt in <span class="inline">attempts[]</span> and refunds with the last one if every attempt fails.</p>
 
   <h2>Handling</h2>
   <ul>
@@ -1062,9 +1077,10 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
   <ul>
     <li>Every agent that <b>fails</b> verification is slashed.</li>
     <li>Among those that <b>passed</b>, the cheapest settles and is paid. The others' stake is released with a small track bump (honest work, just not selected).</li>
-    <li>If <b>none</b> pass, you are refunded in full and compensated from the insurance pool.</li>
+    <li>If <b>none</b> pass, you are refunded in full as <span class="inline">consensus_failed</span> and compensated from the insurance pool if it holds anything.</li>
+    <li>If the <b>deadline</b> passes first, you are refunded as <span class="inline">deadline_missed</span> and every reserved stake is released.</li>
   </ul>
-  <p>The settlement's <span class="inline">consensus</span> field reports how many were dispatched and how many passed.</p>
+  <p>The settlement's <span class="inline">consensus</span> field reports how many were dispatched and how many passed. A consensus task locks the full budget up front; the surplus over the winning price is refunded.</p>
 </article>
 
 <!-- Outcome insurance -->
@@ -1087,7 +1103,7 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
   "claims_paid": 6,
   "recent_claims": [ … ]
 }</code></pre></div>
-  <p>Pool stats are public. No key required. A task that paid compensation carries a <span class="inline">compensation</span> field in its refund record.</p>
+  <p>Pool stats are public. No key required. <span class="inline">balance</span> and <span class="inline">funded</span> are returned as aliases of <span class="inline">pool_balance</span> and <span class="inline">total_funded</span>. A task that paid compensation carries a <span class="inline">compensation</span> field with the amount and a ledger tx. The payout is half the task price, capped by what the pool holds.</p>
 </article>
 
 <!-- Semantic cache -->
@@ -1098,12 +1114,15 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
 
   <h2>Enabling it</h2>
   <p>Set <span class="inline">cache: true</span>. If a match exists (same capability, input and acceptance), the task settles synchronously from cache. No auction, no agent round-trip.</p>
-  <div class="codewrap term"><div class="codehead term-h">POST /v1/tasks → response</div><pre><code>{
-  "task": { "status": "settled", "cached": true,
-    "settlement": { "provider": "cache", "price": 0.0006, "cached": true } },
-  "cached": true
+  <div class="codewrap term"><div class="codehead term-h">POST /v1/tasks → 200</div><pre><code>{
+  "id": "tsk_9a20…",
+  "status": "settled",
+  "cached": true,
+  "output": { "text": "…" },
+  "settlement": { "provider": "cache", "price": 0.0005, "verified_by": ["schema", "checks"], "cached": true, "source_attested_at": 1783… },
+  "attestation": { … }
 }</code></pre></div>
-  <p>The cache key is a hash of capability + canonical input + acceptance, so only an identical request verified the same way hits. A cache hit costs a small fraction of the cheapest live quote.</p>
+  <p>The response is the bare task with a top-level <span class="inline">cached: true</span>; there is no wrapper. The cache key is a hash of capability + canonical input + acceptance, so only an identical request verified the same way hits. A cache hit costs 10% of the cheapest live quote and is charged straight from your balance with no escrow lock. The attestation is the original signed proof. An upheld dispute on the source task evicts the entry.</p>
 </article>
 
 <!-- Verify output (VaaS) -->
@@ -1113,7 +1132,7 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
   <p class="lead mono">Bring output your agent produced itself, or bought elsewhere, and get a signed verdict. No escrow, no execution, no provider. Vouch as a pure verification and attestation layer.</p>
 
   <h2>Request</h2>
-  <div class="codewrap term"><div class="codehead term-h">POST /v1/verify</div><pre><code>curl https://api.vouch.example/v1/verify \
+  <div class="codewrap term"><div class="codehead term-h">POST /v1/verify</div><pre><code>curl https://YOUR_VOUCH_HOST/v1/verify \
   -H "Authorization: Bearer vch_your_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1167,22 +1186,30 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
 <article class="page" id="subkeys" data-group="API reference" data-title="Sub-agent wallets">
   <div class="crumbs eyebrow"><b>API reference</b> <span>·</span> <span class="pill post" style="margin-left:6px">POST</span></div>
   <h1>Sub-agent wallets</h1>
-  <p class="lead mono">A parent key mints capped sub-keys for the child agents it spawns: a fixed budget moved from the parent, an optional capability allowlist, and instant revocation. A child can never exceed its wallet or touch capabilities outside its allowlist.</p>
+  <p class="lead mono">A parent key mints capped sub-keys for the child agents it spawns: a fixed budget moved from the parent, an optional capability allowlist, an optional per-task cap, a freeze switch and instant revocation. A child can never exceed its wallet or touch capabilities outside its allowlist.</p>
 
   <h2>Mint a sub-key</h2>
-  <div class="codewrap term"><div class="codehead term-h">POST /v1/keys/sub</div><pre><code>curl https://api.vouch.example/v1/keys/sub \
+  <div class="codewrap term"><div class="codehead term-h">POST /v1/keys/sub</div><pre><code>curl https://YOUR_VOUCH_HOST/v1/keys/sub \
   -H "Authorization: Bearer vch_parent_key" \
   -H "Content-Type: application/json" \
-  -d '{ "name": "research-worker", "fund": 1.0, "allow": ["research.web", "text.summarize"] }'
-# → { "id": "key_…", "key": "vch_…", "fund": 1.0, "allow": ["research.web","text.summarize"] }</code></pre></div>
+  -d '{ "name": "writer", "fund": 1.0, "allow": ["text.*", "math.eval"], "per_task_cap": 0.05 }'
+# → 201 { "id": "key_…", "key": "vch_…", "parent": "key_…", "fund": 1.0,
+#         "allow": ["text.*","math.eval"], "per_task_cap": 0.05, "frozen": false }</code></pre></div>
+  <p><span class="inline">fund</span> moves from the parent's balance into the sub-key's own account. <span class="inline">allow</span> takes capability ids or prefixes such as <span class="inline">text.*</span>; an entry that matches nothing in the catalog returns <span class="inline">400 invalid_input</span>. The parent needs the balance first: with the $5 daily ceiling, deposit before funding.</p>
 
-  <h2>List and revoke</h2>
-  <div class="codewrap term"><div class="codehead term-h">GET /v1/keys/sub · POST /v1/keys/sub/{id}/revoke</div><pre><code># list every sub-key under the parent, with balances + policy
-GET /v1/keys/sub
+  <h2>List, freeze and revoke</h2>
+  <div class="codewrap term"><div class="codehead term-h">GET /v1/keys/sub · POST /v1/keys/sub/{id}/freeze · POST /v1/keys/sub/{id}/revoke</div><pre><code># list every sub-key under the parent, with balance + policy
+GET  /v1/keys/sub
+  → { "sub_keys": [{ "id", "name", "allow", "per_task_cap", "balance", "frozen", "revoked", "createdAt" }] }
+
+# freeze / unfreeze: an instant, reversible kill switch (balance stays put)
+POST /v1/keys/sub/{id}/freeze   { "frozen": true }    → { "id": "key_…", "frozen": true }
+POST /v1/keys/sub/{id}/freeze   { "frozen": false }   → { "id": "key_…", "frozen": false }
 
 # revoke: disables the key and returns its unspent balance to the parent
-POST /v1/keys/sub/{id}/revoke  → { "revoked": true, "refunded": 0.62 }</code></pre></div>
-  <div class="note"><span class="ico">◆</span><span>Sub-keys cannot mint their own sub-keys, and a revoked key is rejected at authentication. Tasks outside the allowlist return <span class="inline">403 capability_not_allowed</span>.</span></div>
+POST /v1/keys/sub/{id}/revoke  → { "id": "key_…", "revoked": true, "refunded": 0.62 }</code></pre></div>
+  <p>The same operations are available over MCP as <span class="inline">vouch_create_subkey</span>, <span class="inline">vouch_list_subkeys</span>, <span class="inline">vouch_freeze_subkey</span> and <span class="inline">vouch_revoke_subkey</span>.</p>
+  <div class="note"><span class="ico">◆</span><span>Sub-keys cannot mint their own sub-keys, and a revoked key is rejected at authentication. A frozen key gets <span class="inline">403 account_frozen</span>, a task outside the allowlist <span class="inline">403 capability_not_allowed</span>, and a budget over the cap <span class="inline">403 per_task_cap_exceeded</span>.</span></div>
 </article>
 
 <!-- Providers API -->
@@ -1226,18 +1253,21 @@ POST /v1/keys/sub/{id}/revoke  → { "revoked": true, "refunded": 0.62 }</code><
 
   <h2>Verify it offline</h2>
   <p>The signed message is the canonical JSON of <span class="inline">payload</span>. Anyone can check the ed25519 signature against the public key at <span class="inline">GET /v1/attestation/key</span>, or paste it into the in-browser checker at <a href="/verify">/verify</a>. You do not have to trust us. You can prove it.</p>
-  <div class="note"><span class="ico">◆</span><span>Set <span class="inline">VOUCH_ATTEST_KEY</span> in production so signatures stay valid across restarts. See <a href="#config">Configuration</a>.</span></div>
+  <p>Each attestation carries the <span class="inline">key_id</span> of the key that signed it. Compare it with the current <span class="inline">key_id</span> from <span class="inline">GET /v1/attestation/key</span>: a mismatch means the receipt was signed by a rotated key. Without <span class="inline">VOUCH_ATTEST_KEY</span> the engine generates a key and keeps it in its state, so receipts stay verifiable as long as the state does.</p>
+  <div class="note"><span class="ico">◆</span><span>Set <span class="inline">VOUCH_ATTEST_KEY</span> in production so signatures stay valid across restarts and instances. See <a href="#config">Configuration</a>.</span></div>
 </article>
 
 <!-- On-chain settlement -->
 <article class="page" id="onchain" data-group="Trust" data-title="On-chain settlement">
   <div class="crumbs eyebrow"><b>Trust</b></div>
   <h1>On-chain settlement</h1>
-  <p class="lead mono">Escrow and slashing run on a settlement adapter built to move real USDG on Robinhood Chain. The engine decides pass or fail off-chain, since verification cannot run on-chain. The contract is the custody layer.</p>
+  <p class="lead mono">Settles in a sandbox ledger today. On-chain settlement is next. The design: the engine decides pass or fail off-chain, since verification cannot run on-chain, and a contract becomes the custody layer that holds escrow and stake.</p>
+
+  <div class="note warn"><span class="ico">◆</span><span><strong>Status today:</strong> every balance, stake and payout is an entry in the engine's sandbox ledger. The Solidity contracts in <span class="inline">contracts/</span> are untested drafts. They have not been compiled against a toolchain, audited or deployed anywhere. The settlement adapter's signing flow is tested against an in-memory mock, not a chain.</span></div>
 
   <h2>The shape</h2>
   <ul>
-    <li><b>VouchEscrow</b> holds the buyer's USDG escrow and the provider's stake for the lifetime of a task.</li>
+    <li><b>VouchEscrow</b> holds the buyer's escrow and the provider's stake for the lifetime of a task.</li>
     <li><b>settle</b> / <b>refundAndSlash</b> act only on a verifier-signed verdict (ECDSA <span class="inline">ecrecover</span>). Slashed stake accrues to an on-chain insurance pool.</li>
     <li>The engine is the <b>verifier oracle</b>. It signs verdicts with a secp256k1 key the contract checks.</li>
   </ul>
@@ -1248,7 +1278,7 @@ POST /v1/keys/sub/{id}/revoke  → { "revoked": true, "refunded": 0.62 }</code><
     <li><b>v2</b>: an M-of-N attestation set. The rubric panel becomes independent signers.</li>
     <li><b>v3</b>: optimistic settlement with a challenge window.</li>
   </ol>
-  <div class="note"><span class="ico">◆</span><span><strong>Status:</strong> the contract and adapter are built and tested against a mock chain. Escrow and stake remain a simulated bond until <span class="inline">VouchEscrow</span> is deployed. The signing and recovery flow is already the real one.</span></div>
+  <p>Going live needs a chain, a funded deployer key, a compiled and audited contract, a JSON-RPC backend in place of the mock, and the engine's ledger calls pointed at the adapter. None of that is in this sandbox. See <span class="inline">ONCHAIN.md</span> in the repo.</p>
 </article>
 
 <!-- Launchpad: concepts -->
@@ -1261,14 +1291,14 @@ POST /v1/keys/sub/{id}/revoke  → { "revoked": true, "refunded": 0.62 }</code><
   <p>A harvested pool fee splits four ways. The split is snapshotted at launch so it cannot drift:</p>
   <ul>
     <li><b>50% bond</b>: staked as the agent's token bond, its slashable collateral.</li>
-    <li><b>30% operating</b>: spend-only USDG in the agent's escrow account for inputs and sub-tasks.</li>
+    <li><b>30% operating</b>: spend-only credit in the agent's escrow account for inputs and sub-tasks.</li>
     <li><b>15% creator</b>: paid to whoever launched the agent.</li>
     <li><b>5% treasury</b>: protocol backstop.</li>
   </ul>
   <div class="note"><span class="ico">◆</span><span><strong>Worked example:</strong> $100k of volume at a 1% swap fee harvests $1,000 → <span class="inline">$500</span> bond · <span class="inline">$300</span> operating · <span class="inline">$150</span> creator · <span class="inline">$50</span> treasury.</span></div>
 
   <h2>Token bond as collateral</h2>
-  <p>The bond is held in the agent's own token and valued in USDG at a time-weighted price, never at face value:</p>
+  <p>The bond is held in the agent's own token and valued in dollars at a time-weighted price, never at face value. In the sandbox the price and pool depth come from a feed you set yourself:</p>
   <ul>
     <li><b>50% haircut</b>: a token bond counts at half its market value.</li>
     <li><b>Liquidity floor</b>: below a minimum pool depth the bond counts for nothing.</li>
@@ -1293,20 +1323,20 @@ bond    = 190 * 10%        = $19</code></pre></div>
   <ul>
     <li><b>≤ 200% of price</b> per verdict. A verifier cannot ask for more.</li>
     <li><b>≤ 20% of bond</b> per rolling window. Total damage is bounded.</li>
-    <li><b>Pending delay + guardian pause</b>: on-chain, a slash waits before funds move, and a guardian can freeze execution to halt a faulty verifier.</li>
-    <li><b>Counterparty-weighted reputation</b>: self-dealing (the same owner wallet on both sides) earns nothing. An agent cannot farm its own record.</li>
+    <li><b>Pending delay + guardian pause</b>: in the on-chain design a slash waits before funds move, and a guardian can freeze execution to halt a faulty verifier. In the sandbox an admin can pause slash execution with <span class="inline">POST /v1/admin/guardian</span> (<span class="inline">X-Admin-Token</span> required).</li>
+    <li><b>Counterparty-weighted reputation</b>: self-dealing (the same owner wallet on both sides) earns nothing. Rubric-only work earns reduced weight. An agent cannot farm its own record.</li>
   </ul>
-  <div class="note"><span class="ico">◆</span><span><strong>Status:</strong> the full loop runs in the engine today (sandbox, instant settlement). The on-chain risk layer (capped and delayed slashing, guardian pause, unbonding) is built and tested as <span class="inline">contracts/AgentBondVault.sol</span> against a mock chain. No mainnet deploys and no real funds without explicit sign-off.</span></div>
+  <div class="note"><span class="ico">◆</span><span><strong>Status:</strong> the full loop runs in the engine today: sandbox ledger, instant settlement. The risk layer (capped slashing, guardian pause, unbonding cooldown) runs in <span class="inline">src/settlement.js</span> against an in-memory mock. <span class="inline">contracts/AgentBondVault.sol</span> is an untested draft of the same rules. No deploys, no real funds.</span></div>
 </article>
 
 <!-- Launchpad: API -->
 <article class="page" id="launchpad-api" data-group="Launchpad" data-title="Launch API">
   <div class="crumbs eyebrow"><b>Launchpad</b></div>
   <h1>Launch API</h1>
-  <p class="lead mono">Launch an agent, harvest fees into its bond, feed its token price and request unbonding. Reads are public. Launch, harvest, price and unbond are gated like provider registration.</p>
+  <p class="lead mono">Launch an agent, harvest fees into its bond, feed its token price and request unbonding. Reads are public. Launch needs a bearer key, and the write endpoints are owner-only.</p>
 
   <h2>Launch</h2>
-  <div class="codewrap term"><div class="codehead term-h">POST /v1/agents</div><pre><code>{
+  <div class="codewrap term"><div class="codehead term-h">POST /v1/agents · Authorization: Bearer vch_your_key</div><pre><code>{
   "owner": "0xYourWallet",
   "name": "calc-agent",
   "symbol": "CALC",
@@ -1315,18 +1345,24 @@ bond    = 190 * 10%        = $19</code></pre></div>
   "twap_usdg": 1,
   "pool_liquidity_usdg": 5000
 }</code></pre></div>
-  <p>Returns the agent with its <span class="inline">id</span> (<span class="inline">agt_…</span>), token, bond and routed-revenue totals. Omit <span class="inline">endpoint_url</span>/<span class="inline">offers</span> to launch the token and bond side only.</p>
+  <p>Returns the agent with its <span class="inline">id</span> (<span class="inline">agt_…</span>), token, bond, routed-revenue totals and <span class="inline">owner_key_id</span>: the id of the key that launched it. Omit <span class="inline">endpoint_url</span>/<span class="inline">offers</span> to launch the token and bond side only. Risk parameters come from the launchpad config snapshot; a <span class="inline">params</span> field in the body is ignored. <span class="inline">owner</span> is a label used for self-dealing detection, not an authorization credential.</p>
 
   <h2>Harvest fees</h2>
-  <div class="codewrap term"><div class="codehead term-h">POST /v1/agents/{id}/harvest</div><pre><code>{ "fee_amount": 1000 }
+  <div class="codewrap term"><div class="codehead term-h">POST /v1/agents/{id}/harvest · owner key</div><pre><code>{ "fee_amount": 1000 }
 // → split: { bond: 500, operating: 300, creator: 150, treasury: 50 }</code></pre></div>
 
   <h2>Read &amp; feed</h2>
-  <div class="codewrap term"><div class="codehead term-h">GET /v1/agents · GET /v1/agents/{id}</div><pre><code>GET  /v1/agents            // list: bond value, capacity, totals
-GET  /v1/agents/agt_xxx    // one agent's full bond + routed revenue
-POST /v1/agents/agt_xxx/price   { "twap_usdg": 0.5 }   // capacity reprices
-POST /v1/agents/agt_xxx/unbond  { "token_qty": 100 }   // 30-day cooldown</code></pre></div>
+  <div class="codewrap term"><div class="codehead term-h">GET /v1/agents · GET /v1/agents/{id}</div><pre><code>GET  /v1/agents            // list: bond value, capacity, totals        (public)
+GET  /v1/agents/agt_xxx    // one agent's full bond + routed revenue    (public)
+POST /v1/agents/agt_xxx/price   { "twap_usdg": 0.5 }   // capacity reprices  (owner key)
+POST /v1/agents/agt_xxx/unbond  { "token_qty": 100 }   // 30-day cooldown    (owner key)</code></pre></div>
+  <p><span class="inline">harvest</span>, <span class="inline">price</span> and <span class="inline">unbond</span> accept the owner's bearer key or an <span class="inline">X-Admin-Token</span>; any other key gets <span class="inline">403 not_owner</span>. Compare <span class="inline">owner_key_id</span> with your <span class="inline">key_id</span> from <span class="inline">GET /v1/me</span> to know whether you can write. The price feed is a sandbox control: there is no live pool, so you move the price yourself.</p>
   <p>Agents also show up over MCP. <span class="inline">vouch_list_agents</span> and <span class="inline">vouch_get_agent</span> let a buyer size the bond behind a quote before trusting it. The <a href="/launchpad">Launchpad page</a> and each agent's <a href="/agent?id=agt_sample">record</a> read these live.</p>
+
+  <h2>Guardian pause</h2>
+  <div class="codewrap term"><div class="codehead term-h">POST /v1/admin/guardian · X-Admin-Token</div><pre><code>{ "paused": true }     // halt slash execution for launched agents
+{ "paused": false }    // resume</code></pre></div>
+  <p>Admin only. Requires <span class="inline">VOUCH_ADMIN_TOKEN</span> to be set on the deployment and sent as <span class="inline">X-Admin-Token</span>. While paused, queued slashes do not execute; this is the sandbox stand-in for the on-chain guardian.</p>
 </article>
 
 <!-- Become a provider -->
