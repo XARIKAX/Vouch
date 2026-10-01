@@ -77,13 +77,12 @@ h1 em,h2 em,h3 em{font-style:normal;color:var(--ink3)}            /* two-tone he
 nav.top{position:sticky;top:0;z-index:60;height:64px;display:flex;align-items:center;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line2)}
 nav.top .wrap{display:flex;align-items:center;gap:28px;width:100%}
 .logo{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:900;font-size:21px;letter-spacing:-.03em;text-transform:none}
-.logo .mark{width:26px;height:26px;flex:none}
-/* the mark: an ink square, the accent tile, the check — pure CSS, one <span class="mark"> */
-.logo .mark,.flogo .mark{position:relative;background:var(--ink);display:block;overflow:hidden}
-.logo .mark::before,.flogo .mark::before{content:"";position:absolute;right:4px;top:4px;width:7px;height:7px;background:var(--accent)}
-.logo .mark::after,.flogo .mark::after{content:"";position:absolute;left:6px;top:9px;width:9px;height:9px;border-left:2.5px solid var(--cream);border-bottom:2.5px solid var(--cream);transform:rotate(-45deg) translate(1px,-2px)}
+.logo .mark{width:28px;height:28px;flex:none}
+/* the mark: the Vouch logo tile (public/assets/logo.svg) */
+.logo .mark,.flogo .mark{display:block;background:url(/assets/logo.svg) center/contain no-repeat;border-radius:0}
+.logo .mark::before,.flogo .mark::before,.logo .mark::after,.flogo .mark::after{content:none}
 .logo .mark svg,.flogo .mark svg{display:none}
-.flogo .mark{background:var(--cream)}.flogo .mark::after{border-color:var(--ink)}
+.flogo .mark{background:url(/assets/logo.svg) center/contain no-repeat}
 .nav-links{margin-left:8px;flex:1;display:flex;gap:4px;align-items:center}
 .nav-links a{color:var(--ink2);font-family:var(--sans);font-size:14px;font-weight:500;letter-spacing:0;text-transform:none;padding:8px 11px;transition:.15s}
 .nav-links a:hover{color:var(--ink)}
