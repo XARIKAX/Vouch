@@ -21,8 +21,8 @@
 .hero .lead{max-width:52ch;margin:24px 0 30px}
 .hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 /* sandbox banner: a soft pill, sans caps, violet-lit key phrase */
-.banner{display:inline-flex;align-items:center;gap:10px;line-height:1.5;margin-top:22px;font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);border:1px solid var(--line);background:var(--paper2);border-radius:999px;padding:10px 18px 10px 14px;box-shadow:var(--shadow)}
-.banner::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--grad);flex:none;box-shadow:0 0 0 3px var(--acc-soft)}
+.banner{display:inline-block;line-height:1.6;margin-top:22px;font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);border:1px solid var(--line);background:var(--paper2);border-radius:var(--r);padding:10px 18px 10px 14px;box-shadow:var(--shadow);max-width:100%}
+.banner::before{content:"";display:inline-block;vertical-align:1px;width:8px;height:8px;border-radius:50%;background:var(--grad);margin-right:10px;box-shadow:0 0 0 3px var(--acc-soft)}
 .banner[hidden]{display:none}
 .banner b{color:var(--accent-deep);font-weight:700}
 
