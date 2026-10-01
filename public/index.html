@@ -24,7 +24,10 @@
 .hero-sub{margin-top:26px;display:flex;gap:22px;flex-wrap:wrap;font-size:13.5px}
 /* the skyline: a 2:3 pixel stage, never taller than the viewport so the spire is never cropped */
 .sky-stage{aspect-ratio:2/3;width:100%;max-width:520px;max-height:min(760px,82vh);margin-left:auto;border-radius:18px;overflow:hidden;background:#0b1544;box-shadow:0 40px 90px rgba(11,21,68,.28),inset 0 0 0 1px rgba(255,255,255,.04)}
-.sky-stage canvas{width:100%;height:100%;display:block}
+.sky-stage canvas{width:100%;height:100%;display:block;cursor:grab}
+.sky-cap{margin:12px 0 0;max-width:520px;margin-left:auto;text-align:center;font-family:var(--mono);font-size:11.5px;letter-spacing:.3px;color:var(--ink3)}
+.sky-cap b{color:var(--ink2);font-weight:500}
+@media(max-width:940px){.sky-cap{margin-inline:auto}}
 @media(max-width:940px){.hero{padding-top:44px}.hero-grid{grid-template-columns:1fr;gap:26px}.sky-stage{max-width:400px;margin:0 auto;max-height:70vh}}
 
 /* economics bars (launchpad section) */
@@ -104,7 +107,8 @@
       </div>
     </div>
     <div class="hero-visual rv d1">
-      <div class="sky-stage"><canvas id="skyline" aria-label="A pixel skyscraper being constructed floor by floor: a navy glass tower with warm lit windows rising from a night city, its spire assembled last."></canvas></div>
+      <div class="sky-stage"><canvas id="skyline" aria-label="A pixel skyscraper constructed floor by floor: a navy glass tower with warm lit windows rising from a night city, its spire assembled last. Drag to turn it."></canvas></div>
+      <p class="sky-cap">Built block by block. <b>Drag to turn it.</b></p>
     </div>
     </div>
   </div>
