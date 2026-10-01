@@ -89,12 +89,12 @@ th{padding:10px 12px}
 th:first-child,td:first-child{padding-left:0}
 td{color:var(--ink2);vertical-align:top;line-height:1.6}
 td:first-child{color:var(--ink);white-space:nowrap}
-table.vs td:first-child{font-family:var(--serif);font-weight:800;font-size:12px;letter-spacing:.01em;text-transform:uppercase;white-space:normal}
+table.vs td:first-child{font-family:var(--sans);font-weight:700;font-size:13px;letter-spacing:-.01em;white-space:normal}
 table.vs td:nth-child(3){color:var(--ink)}
 
 /* callouts */
-.note{display:flex;gap:12px;background:var(--paper2);border:1px solid var(--line2);border-left:3px solid var(--accent);padding:14px 16px;font-size:13.5px;line-height:1.6;color:var(--ink2);margin:0 0 20px;max-width:72ch}
-.note.warn{border-left-color:var(--red)}
+.note{display:flex;gap:12px;background:var(--paper2);border:1px solid var(--line);border-radius:14px;box-shadow:inset 3px 0 0 var(--accent),var(--shadow);padding:16px 18px 16px 20px;font-size:13.5px;line-height:1.6;color:var(--ink2);margin:0 0 22px;max-width:72ch}
+.note.warn{box-shadow:inset 3px 0 0 var(--red),var(--shadow)}
 .note .ico{color:var(--accent);margin-top:2px;font-size:11px}
 .note.warn .ico{color:var(--red)}
 
@@ -107,7 +107,7 @@ table.vs td:nth-child(3){color:var(--ink)}
 
 /* status flow */
 .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 22px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
-.flow .st{border:1px solid var(--line2);padding:7px 11px;color:var(--ink);background:var(--paper2)}
+.flow .st{border:1px solid var(--line2);border-radius:999px;padding:7px 13px;color:var(--ink);background:var(--paper2)}
 .flow .st.ok{background:var(--accent);color:var(--cream);border-color:var(--accent)}
 .flow .st.bad{color:var(--red);border-color:var(--red)}
 .flow .ar{color:var(--ink3)}
