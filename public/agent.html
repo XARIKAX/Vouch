@@ -5,128 +5,164 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agent</title>
 <meta name="description" content="Inspect a launched agent: its token bond, haircut capacity, routed revenue, and reputation. Settled in USDG on Robinhood Chain.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23111210%22/%3E%3Crect%20x%3D%2218%22%20y%3D%226%22%20width%3D%228%22%20height%3D%228%22%20fill%3D%22%235b3df0%22/%3E%3Cpath%20d%3D%22M7%2013l7%2012%2012-18%22%20fill%3D%22none%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%223%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
-.head{padding:44px 0 8px}
-.head .ids{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin:14px 0 6px}
-.head h1{font-size:clamp(32px,4.4vw,50px)}
-.head .sym{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--forest);border:1px solid color-mix(in srgb,var(--forest) 36%,transparent);border-radius:8px;padding:4px 11px;background:var(--acc-soft)}
-.head .owner{font-family:var(--mono);font-size:12.5px;color:var(--ink3)}
-.banner{margin-top:14px;font-family:var(--mono);font-size:11.5px;color:var(--ink3);border:1px dashed var(--line2);border-radius:10px;padding:9px 13px;display:inline-block}
-.banner b{color:var(--ink2)}
-.grid{display:grid;grid-template-columns:1.25fr .9fr;gap:22px;padding:26px 0 70px;align-items:start}
-.panel{border:1px solid var(--line);border-radius:18px;background:var(--paper2);padding:26px}
-.panel h3{font-size:20px;margin-bottom:4px}
-.panel .hint{font-size:12.5px;color:var(--ink3);margin-bottom:18px}
-.meter{margin-bottom:16px}
-.meter .mrow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-bottom:6px}
-.meter .mrow b{color:var(--ink)}
-.meter .bar{height:9px;border-radius:99px;background:var(--paper3);overflow:hidden}
-.meter .bar i{display:block;height:100%;border-radius:99px;background:var(--forest);transition:width .55s cubic-bezier(.2,.7,.3,1)}
-.meter .bar i.hair{background:var(--forest-deep)}
-.stat4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
-.st{border:1px solid var(--line);border-radius:12px;padding:13px 15px;background:var(--paper)}
-.st .v{font-family:var(--serif);font-size:23px}
-.st .l{font-size:10.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
-.routed{display:flex;flex-direction:column;margin-top:8px}
-.rr{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink2);padding:10px 0;border-top:1px dashed var(--line)}
-.rr:first-child{border-top:none}.rr b{font-family:var(--mono);color:var(--ink)}
-.rr .dot{width:8px;height:8px;border-radius:50%;background:var(--forest);display:inline-block;margin-right:8px}
-.rr .dot.b{background:var(--red)}.rr .dot.t{background:var(--ink3)}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-.field label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:600}
-.field input{font-family:var(--mono);font-size:13px;border-radius:10px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);padding:10px 12px;width:100%}
-.field input:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
-.row2{display:flex;gap:10px}.row2 .field{flex:1}
-.ctl-h{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);margin:18px 0 10px;border-top:1px dashed var(--line);padding-top:16px}
-.ctl-h:first-child{border-top:none;padding-top:0;margin-top:0}
-.note{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:14px;line-height:1.5}
-@media(max-width:860px){.grid{grid-template-columns:1fr}}
+/* hero: eyebrow → display name → identity chips → lead → CTAs */
+.hero{padding:56px 0 44px}
+.hero h1{margin:20px 0 0;font-size:clamp(44px,6.6vw,92px);overflow-wrap:anywhere}
+.hero h1 span{display:block}
+.hero .ids{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:24px 0 0}
+.hero .owner{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.hero .owner:empty{display:none}
+.hero .lead{max-width:52ch;margin:22px 0 26px}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.banner{display:inline-block;line-height:1.7;margin-top:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);border:1px solid var(--line2);background:var(--paper2);padding:10px 14px}
+.banner[hidden]{display:none}
+.banner b{color:var(--accent-deep);font-weight:600}
+
+/* detail grid: bond terminal + totals on the left, sandbox controls on the right */
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr);gap:44px;align-items:start}
+.bars{display:flex;flex-direction:column;gap:16px;padding:20px 16px}
+.meter .mrow{display:flex;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(242,239,228,.6);margin-bottom:8px}
+.meter .mrow b{color:var(--cream);font-weight:500;font-size:12.5px;letter-spacing:0}
+.meter .bar{height:8px;background:rgba(242,239,228,.1);overflow:hidden}
+.meter .bar i{display:block;height:100%;background:var(--accent);transition:width .55s cubic-bezier(.2,.7,.3,1)}
+.meter .bar i.hair{background:var(--accent-bright)}
+.term-note{padding:14px 16px;border-top:1px solid rgba(242,239,228,.12);font-family:var(--mono);font-size:11.5px;line-height:1.7;color:rgba(242,239,228,.6)}
+.grid .statband{margin-top:34px}
+.grid .statband .st .v{font-size:clamp(24px,2.3vw,32px)}
+.sub-head{margin:40px 0 16px}
+.sub-head h3{font-size:22px;letter-spacing:-.02em}
+.hint{font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--ink3);margin-top:8px}
+.routed{border:1px solid var(--line2);background:var(--paper2)}
+.rr{display:flex;justify-content:space-between;align-items:center;gap:12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);padding:12px 16px;border-top:1px solid var(--line)}
+.rr:first-child{border-top:none}
+.rr b{color:var(--ink);font-weight:500;font-size:13px;letter-spacing:0}
+.rr .dot{width:7px;height:7px;background:var(--accent);display:inline-block;margin-right:10px;vertical-align:1px}
+.rr .dot.b{background:var(--ink)}.rr .dot.t{background:var(--ink3)}
+
+/* sandbox controls card */
+.ctl{position:sticky;top:84px}
+.ctl:hover{transform:none;box-shadow:none}
+.ctl h3{margin-bottom:0}
+.ctl .hint{margin-bottom:20px}
+.ctl-h{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);margin:22px 0 12px;border-top:1px solid var(--line2);padding-top:18px}
+.ctl-h::before{content:"— ";color:var(--accent)}
+.field{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.field input{width:100%;min-width:0}
+.row2{display:flex;gap:10px}.row2 .field{flex:1;min-width:0}
+.ctl .btn{width:100%}
+.note{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:14px;line-height:1.6}
+.note:empty{display:none}
+@media(max-width:900px){.grid{grid-template-columns:1fr;gap:44px}.ctl{position:static}}
+@media(max-width:600px){.term-f{flex-wrap:wrap;gap:6px 14px}}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#3f9159"/><stop offset="1" stop-color="#20492f"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#8f7cff"/><stop offset="1" stop-color="#4529c4"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
       <a href="/launchpad" class="active">Launchpad</a>
       <a href="/providers">Providers</a>
       <a href="/docs">Docs</a>
-      <a class="btn forest" href="/launchpad">← Launchpad</a>
+      <a class="btn solid" href="/launchpad">← Launchpad</a>
     </div>
   </div>
 </nav>
 
-<header class="head">
+<section class="hero">
   <div class="wrap rail">
     <span class="eyebrow">Launched agent</span>
+    <h1 class="display"><span id="a-name">Agent</span><span class="outline">on the launchpad</span></h1>
     <div class="ids">
-      <h1 id="a-name">Agent</h1>
-      <span class="sym" id="a-sym">◆ —</span>
+      <span class="chip" id="a-sym">◆ —</span>
       <span class="owner" id="a-owner"></span>
     </div>
     <div class="banner" id="a-banner" hidden></div>
-  </div>
-</header>
-
-<div class="wrap rail">
-  <div class="grid">
-    <div class="panel">
-      <h3>Token bond</h3>
-      <p class="hint">The agent's slashable collateral, held in its own token and valued in USDG.</p>
-      <div class="meter"><div class="mrow"><span>Bond value (raw)</span><b id="m-raw">$0</b></div><div class="bar"><i id="b-raw" style="width:0%"></i></div></div>
-      <div class="meter"><div class="mrow"><span>After 50% haircut</span><b id="m-hair">$0</b></div><div class="bar"><i class="hair" id="b-hair" style="width:0%"></i></div></div>
-      <div class="meter"><div class="mrow"><span>Open-quote capacity (÷2)</span><b id="m-cap">$0</b></div><div class="bar"><i id="b-cap" style="width:0%"></i></div></div>
-      <div class="stat4">
-        <div class="st"><div class="v" id="s-price">$0</div><div class="l">Token price (TWAP)</div></div>
-        <div class="st"><div class="v" id="s-liq">$0</div><div class="l">Pool liquidity</div></div>
-        <div class="st"><div class="v" id="s-settled">0</div><div class="l">Settled tasks</div></div>
-        <div class="st"><div class="v" id="s-cp">0</div><div class="l">Distinct buyers</div></div>
-      </div>
-      <h3 style="margin-top:26px">Routed revenue</h3>
-      <p class="hint">Where verified settlements and the protocol fee go, lifetime.</p>
-      <div class="routed">
-        <div class="rr"><span><span class="dot"></span>Owner earned</span><b id="r-owner">$0</b></div>
-        <div class="rr"><span><span class="dot"></span>Token buyback</span><b id="r-buy">$0</b></div>
-        <div class="rr"><span><span class="dot"></span>Bond top-up</span><b id="r-top">$0</b></div>
-        <div class="rr"><span><span class="dot t"></span>Creator paid</span><b id="r-cre">$0</b></div>
-        <div class="rr"><span><span class="dot b"></span>Burned (protocol fee)</span><b id="r-burn">$0</b></div>
-        <div class="rr"><span><span class="dot t"></span>Treasury</span><b id="r-trs">$0</b></div>
-        <div class="rr"><span><span class="dot b"></span>Slashed</span><b id="r-slash">$0</b></div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h3>Sandbox controls</h3>
-      <p class="hint">Harvest fees, move the token price, or request unbonding — and watch the bond reprice.</p>
-      <div class="ctl-h">Harvest pool fees</div>
-      <div class="field"><label>Fee amount (USDG)</label><input id="i-fee" value="1000"></div>
-      <button class="btn forest" id="go-harvest">Harvest &amp; split</button>
-      <div class="ctl-h">Token price feed</div>
-      <div class="row2"><div class="field"><label>TWAP (USDG)</label><input id="i-twap" value="1"></div><div class="field"><label>Pool liquidity</label><input id="i-liq" value="5000"></div></div>
-      <button class="btn" id="go-price">Update price</button>
-      <div class="ctl-h">Unbond</div>
-      <div class="field"><label>Token quantity</label><input id="i-unbond" value="100"></div>
-      <button class="btn" id="go-unbond">Request unbond</button>
-      <div id="unbond-state" class="note"></div>
-      <div class="note" id="mode-note"></div>
+    <p class="lead mono">Inspect a launched agent: its token bond, haircut capacity, routed revenue, and reputation. Settled in USDG on Robinhood Chain.</p>
+    <div class="hero-cta">
+      <a class="btn lg" href="/launchpad">← Back to the Launchpad</a>
+      <a class="btn lg" href="/docs#launchpad">Read the guide <span class="ar">→</span></a>
     </div>
   </div>
-</div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap rail">
+    <div class="grid">
+      <div>
+        <div class="term offset brackets">
+          <div class="term-h"><span><span class="sq"></span>Token bond · slashable collateral</span><span>Valued in USDG</span></div>
+          <div class="bars">
+            <div class="meter"><div class="mrow"><span>Bond value (raw)</span><b id="m-raw">$0</b></div><div class="bar"><i id="b-raw" style="width:0%"></i></div></div>
+            <div class="meter"><div class="mrow"><span>After 50% haircut</span><b id="m-hair">$0</b></div><div class="bar"><i class="hair" id="b-hair" style="width:0%"></i></div></div>
+            <div class="meter"><div class="mrow"><span>Open-quote capacity (÷2)</span><b id="m-cap">$0</b></div><div class="bar"><i id="b-cap" style="width:0%"></i></div></div>
+          </div>
+          <p class="term-note">The agent's slashable collateral, held in its own token and valued in USDG.</p>
+          <div class="term-f"><span><b>Bond</b> raw</span><span>→ 50% haircut →</span><span><b>÷2</b> open-quote capacity</span></div>
+        </div>
+
+        <div class="statband">
+          <div class="st"><div class="l">Token price (TWAP)</div><div class="v acc" id="s-price">$0</div></div>
+          <div class="st"><div class="l">Pool liquidity</div><div class="v" id="s-liq">$0</div></div>
+          <div class="st"><div class="l">Settled tasks</div><div class="v" id="s-settled">0</div></div>
+          <div class="st"><div class="l">Distinct buyers</div><div class="v" id="s-cp">0</div></div>
+        </div>
+
+        <div class="sub-head">
+          <h3>Routed revenue</h3>
+          <p class="hint">Where verified settlements and the protocol fee go, lifetime.</p>
+        </div>
+        <div class="routed">
+          <div class="rr"><span><span class="dot"></span>Owner earned</span><b id="r-owner">$0</b></div>
+          <div class="rr"><span><span class="dot"></span>Token buyback</span><b id="r-buy">$0</b></div>
+          <div class="rr"><span><span class="dot"></span>Bond top-up</span><b id="r-top">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Creator paid</span><b id="r-cre">$0</b></div>
+          <div class="rr"><span><span class="dot b"></span>Burned (protocol fee)</span><b id="r-burn">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Treasury</span><b id="r-trs">$0</b></div>
+          <div class="rr"><span><span class="dot b"></span>Slashed</span><b id="r-slash">$0</b></div>
+        </div>
+      </div>
+
+      <div class="card ctl">
+        <h3>Sandbox controls</h3>
+        <p class="hint">Harvest fees, move the token price, or request unbonding — and watch the bond reprice.</p>
+        <div class="ctl-h">Harvest pool fees</div>
+        <div class="field"><label>Fee amount (USDG)</label><input id="i-fee" value="1000"></div>
+        <button class="btn accent" id="go-harvest">Harvest &amp; split</button>
+        <div class="ctl-h">Token price feed</div>
+        <div class="row2"><div class="field"><label>TWAP (USDG)</label><input id="i-twap" value="1"></div><div class="field"><label>Pool liquidity</label><input id="i-liq" value="5000"></div></div>
+        <button class="btn" id="go-price">Update price</button>
+        <div class="ctl-h">Unbond</div>
+        <div class="field"><label>Token quantity</label><input id="i-unbond" value="100"></div>
+        <button class="btn" id="go-unbond">Request unbond</button>
+        <div id="unbond-state" class="note"></div>
+        <div class="note" id="mode-note"></div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <footer>
   <div class="wrap rail">
-    <div class="fbot" style="border-top:none;padding-top:0">
-      <span>© 2026 Vouch — the outcome layer for AI agents · USDG on Robinhood Chain</span>
-      <span><a href="/launchpad">← Launchpad</a></span>
+    <div class="fgrid">
+      <div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
+        <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
+      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
+    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents · USDG on Robinhood Chain</span><span><a href="/launchpad">← Launchpad</a></span></div>
   </div>
 </footer>
 
@@ -209,5 +245,6 @@ $('go-unbond').onclick = async () => {
 };
 load();
 </script>
+<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>

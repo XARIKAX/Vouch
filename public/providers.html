@@ -8,156 +8,171 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
-/* providers page — page-specific layout on the shared vouch.css system.
-   Legacy acid-lime tokens are remapped to the forest/cream palette. */
-:root{
-  --acc:var(--forest);
-  --acc-deep:var(--forest);
-  --acc-ink:var(--cream);
-  --green:var(--forest-bright);
-}
+/* providers page — page-specific layout on the shared vouch.css system. */
 
-/* hero / main -------------------------------------------------------------- */
-main{padding:70px 0 20px;position:relative;overflow:hidden}
-main::after{content:"";position:absolute;inset:auto -10% auto 50%;top:-6rem;height:44rem;background:radial-gradient(32rem 24rem at 60% 30%,var(--acc-soft),transparent 66%);z-index:0;pointer-events:none}
-h1{font-size:clamp(38px,4.8vw,62px);line-height:1.02;letter-spacing:-.02em;margin:22px 0 18px;max-width:15ch}
-h1 em{font-style:italic;color:var(--forest)}
-.lede{color:var(--ink2);font-size:18px;max-width:56ch;margin-bottom:44px;line-height:1.58}
-.lede strong{color:var(--ink);font-weight:600}
+/* hero ----------------------------------------------------------------------- */
+.hero{padding:64px 0 44px}
+.hero h1{margin:22px 0 26px}
+.hero h1 span{display:block}
+.hero .lead{max-width:52ch;margin-bottom:30px}
+.hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+@media(max-width:760px){.hero{padding-top:44px}}
 
-/* register + preview column ------------------------------------------------ */
-.cols{display:grid;grid-template-columns:minmax(0,390px) minmax(0,1fr);gap:24px;align-items:start}
-.card{border:1px solid var(--line);border-radius:20px;background:var(--paper2);padding:24px;box-shadow:0 20px 50px rgba(22,24,15,.06)}
-.card:hover{transform:none}
-.card h3{font-size:20px;font-weight:460;margin-bottom:4px}
-.card .hint{font-size:12.5px;color:var(--ink3);margin-bottom:18px}
+/* strip + register / network columns ------------------------------------------ */
+.supply{padding-top:0}
+.supply .strip{margin-bottom:40px;flex-wrap:wrap}
+.supply .strip .end{color:var(--accent-deep)}
+.cols{display:grid;grid-template-columns:minmax(0,390px) minmax(0,1fr);gap:40px;align-items:start}
+.cols>*{min-width:0}
+.reg.card{padding:24px;grid-row:1/3}
+.reg.card:hover{transform:none;box-shadow:none}
+.reg h3{font-size:20px;letter-spacing:-.02em;text-transform:uppercase;margin-bottom:8px}
+.reg .hint{font-family:var(--mono);font-size:11.5px;line-height:1.6;color:var(--ink3);margin-bottom:20px}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
-.field label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:600}
-.row2{display:flex;gap:10px}.row2 .field{flex:1}
-input,select{font-family:var(--sans);font-size:13.5px;border-radius:11px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);padding:11px 12px;width:100%;transition:.16s}
-select{cursor:pointer}
-input:focus,select:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
-input::placeholder{color:var(--ink3)}
-.seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
-.seg button{border:none;background:transparent;color:var(--ink2);padding:10px 14px;font-size:12.5px;cursor:pointer;font-family:var(--sans);transition:.15s}
-.seg button.on{background:var(--forest);color:var(--cream);font-weight:600}
+.row2{display:flex;gap:10px}.row2 .field{flex:1;min-width:0}
+.reg input,.reg select{width:100%;transition:box-shadow .15s,border-color .15s}
+.reg select{cursor:pointer}
+.reg input::placeholder{color:var(--ink3)}
+.seg{display:inline-flex;border:1px solid var(--line2);background:var(--paper2)}
+.seg button{border:none;background:transparent;color:var(--ink2);padding:11px 12px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:.15s}
+.seg button.on{background:var(--ink);color:var(--cream)}
 .seg button:not(:last-child){border-right:1px solid var(--line2)}
-.card .btn{width:100%;margin-top:6px}
-#pmsg{font-size:12.5px;margin-top:12px;min-height:16px;font-family:var(--mono);color:var(--ink3)}
-#pmsg.ok{color:var(--forest-bright)}#pmsg.err{color:var(--red)}
-.sdk{margin-top:18px;font-size:13px;color:var(--ink3)}
-.sdk code{font-family:var(--mono);color:var(--ink2);background:var(--paper3);padding:2px 6px;border-radius:5px}
+.reg .btn{width:100%;margin-top:8px}
+#pmsg{font-family:var(--mono);font-size:11.5px;line-height:1.6;margin-top:12px;min-height:16px;color:var(--ink3)}
+#pmsg.ok{color:var(--accent-deep)}#pmsg.err{color:var(--red)}
+.sdk{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11.5px;line-height:1.7;color:var(--ink3)}
+.sdk code{color:var(--ink);background:var(--paper3);padding:2px 6px}
 
-/* live preview card -------------------------------------------------------- */
-.preview{margin-top:16px;border:1px dashed var(--line2);border-radius:16px;background:var(--paper);padding:18px;position:relative;overflow:hidden}
-.preview .plabel{font-family:var(--mono);font-size:9.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.preview .plabel .d{width:6px;height:6px;border-radius:50%;background:var(--forest);box-shadow:0 0 8px var(--forest);animation:pulse 1.8s infinite}
+/* live preview — the page's one hero terminal panel -------------------------- */
+.preview{grid-column:2;max-width:520px;margin:4px 12px 12px 0}
+.preview .term-h{flex-wrap:nowrap}
+.preview .term-h>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.preview .term-h>span:last-child{flex:none}
+.preview .term-f{flex-wrap:wrap}
+.preview .term-h .sq{flex:none}
+.pv-body{padding:18px 16px 16px}
+.pv-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:6px}
+.pv-name{font-family:var(--serif);font-weight:800;font-size:22px;letter-spacing:-.02em;text-transform:uppercase;color:var(--cream);min-width:0;overflow-wrap:anywhere}
+.pv-proto{color:var(--accent-bright)}
+.pv-cap{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:rgba(242,239,228,.6);margin-bottom:16px}
+.pv-metrics{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(242,239,228,.16)}
+.pv-m{padding:10px 12px;border-right:1px solid rgba(242,239,228,.16);min-width:0}
+.pv-m:last-child{border-right:none}
+.pv-m .v{font-family:var(--serif);font-weight:800;font-size:16px;letter-spacing:-.01em;color:var(--cream);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-m .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.5);margin-top:3px}
+
+/* live network table ----------------------------------------------------------- */
+.net-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.net-head h2{font-size:clamp(26px,3vw,38px);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.net-head h2 .live{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-deep);letter-spacing:.14em}
+.net-head h2 .live i{width:7px;height:7px;background:var(--accent);animation:pulse 1.7s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.pv-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px}
-.pv-name{font-family:var(--serif);font-size:18px;font-weight:460}
-.pv-proto{font-family:var(--mono);font-size:10px;letter-spacing:.5px;color:var(--cream);background:var(--forest);border-radius:5px;padding:2px 7px}
-.pv-cap{font-family:var(--mono);font-size:12.5px;color:var(--ink2);margin-bottom:14px}
-.pv-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pv-m{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:var(--paper2)}
-.pv-m .v{font-family:var(--serif);font-size:16px;font-weight:460}
-.pv-m .l{font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
-
-/* section label + live network table -------------------------------------- */
-h2{font-family:var(--mono);font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:2.2px;color:var(--ink3);margin:0 0 14px;display:flex;align-items:center;gap:12px}
-h2 .live{display:inline-flex;align-items:center;gap:6px;color:var(--forest)}
-h2 .live i{width:6px;height:6px;border-radius:50%;background:var(--forest);box-shadow:0 0 8px var(--forest);animation:pulse 1.7s infinite}
-h2::after{content:"";flex:1;height:1px;background:var(--line)}
-.tablecard{border:1px solid var(--line);border-radius:16px;background:var(--paper2);overflow:hidden;overflow-x:auto;box-shadow:0 20px 50px rgba(22,24,15,.05)}
-table{width:100%;border-collapse:collapse;font-size:12.5px}
-th,td{text-align:left;padding:11px 15px;border-bottom:1px solid var(--line);white-space:nowrap}
-tr:last-child td{border-bottom:none}
-th{font-size:9.5px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:600;background:var(--paper3)}
-td{color:var(--ink2);font-family:var(--mono)}
-td.name{color:var(--ink);font-family:var(--sans);font-weight:550}
-tbody tr{transition:background .15s}tbody tr:hover{background:var(--paper3)}
-tbody tr.flash{animation:flash 1.2s ease-out}
+.tablecard{border:1px solid var(--line2);background:var(--paper2);overflow-x:auto}
+.tablecard table{font-size:12.5px}
+.tablecard th,.tablecard td{padding:11px 12px;white-space:nowrap}
+.tablecard th{font-size:9.5px;background:var(--paper3)}
+.tablecard tr:last-child td{border-bottom:none}
+.tablecard td{color:var(--ink2)}
+.tablecard td.name{color:var(--ink);font-family:var(--serif);font-weight:700;letter-spacing:-.01em;font-size:13px}
+.tablecard tbody tr{transition:background .15s}.tablecard tbody tr:hover{background:var(--paper3)}
+.tablecard tbody tr.flash{animation:flash 1.2s ease-out}
 @keyframes flash{0%{background:var(--acc-soft)}100%{background:transparent}}
-.rel{color:var(--forest-bright)}
-.tag{color:var(--ink);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;font-size:10px;background:var(--paper3)}
+.rel{color:var(--accent-deep)}
+.tag{color:var(--ink);border:1px solid var(--line2);padding:1px 6px;font-size:10px;background:var(--paper3);letter-spacing:.08em;text-transform:uppercase}
 
-/* how earning works (dark strip) ------------------------------------------- */
-.how{margin-top:56px}
-.how .inner{border-radius:24px;padding:44px 46px;background:var(--night);color:var(--cream);position:relative;overflow:hidden}
-.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 14rem at 20% -30%,rgba(63,145,89,.22),transparent 66%);pointer-events:none}
-.how h3{font-size:clamp(24px,2.6vw,32px);color:var(--cream);margin-bottom:26px;letter-spacing:-.02em}
-.hsteps{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
-.hstep{border-left:1px solid rgba(242,239,228,.14);padding-left:16px}
-.hstep .num{font-family:var(--mono);font-size:11px;color:var(--forest-bright);letter-spacing:1px}
-.hstep h4{font-family:var(--serif);font-size:17px;font-weight:460;color:var(--cream);margin:6px 0 5px}
-.hstep p{font-size:13px;color:rgba(242,239,228,.68);line-height:1.5}
+/* how earning works (dark) ------------------------------------------------------- */
+.how .sec-head h2{margin-top:18px}
+.hsteps{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid rgba(242,239,228,.16);margin-top:40px}
+.hstep{padding:22px 22px 24px;border-right:1px solid rgba(242,239,228,.16)}
+.hstep:last-child{border-right:none}
+.hstep .num{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--accent-bright)}
+.hstep h4{font-family:var(--serif);font-size:17px;font-weight:800;letter-spacing:-.01em;text-transform:uppercase;color:var(--cream);margin:14px 0 8px}
+.hstep p{font-family:var(--mono);font-size:12.5px;color:rgba(242,239,228,.68);line-height:1.65}
 
-@media(max-width:820px){.cols{grid-template-columns:1fr}.hsteps{grid-template-columns:1fr 1fr}}
-@media(max-width:680px){main{padding-top:52px}.hsteps{grid-template-columns:1fr}.how .inner{padding:32px 24px}}
+@media(max-width:900px){.cols{grid-template-columns:1fr;gap:34px}.reg.card{grid-row:auto}.preview{grid-column:auto;order:2;margin-top:0}.net{order:3}.hsteps{grid-template-columns:1fr 1fr}.hstep:nth-child(2){border-right:none}.hstep:nth-child(3),.hstep:nth-child(4){border-top:1px solid rgba(242,239,228,.16)}}
+@media(max-width:600px){.hsteps{grid-template-columns:1fr}.hstep{border-right:none;border-top:1px solid rgba(242,239,228,.16)}.hstep:first-child{border-top:none}.supply .strip>*{flex:1 1 auto}.supply .strip .end{margin-left:0}}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#3f9159"/><stop offset="1" stop-color="#20492f"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
       <a href="/launchpad">Launchpad</a>
       <a href="/providers" class="active">Providers</a>
       <a href="/docs">Docs</a>
-      <a class="btn forest" href="/dashboard">Open console</a>
+      <a class="btn solid" href="/dashboard">Open console</a>
     </div>
   </div>
 </nav>
 
-<div class="ticker">
+<section class="hero">
   <div class="wrap rail">
-    <span class="dot"></span><b>Live</b>
-    <span class="sp">·</span>paid on verified outcomes
-    <span class="sp tk-hide">·</span><span class="tk-hide">USDG on Robinhood Chain</span>
-    <span class="sp tk-hide">·</span><span class="tk-hide" id="tk-prov">open protocol</span>
-    <span class="end">your stake is the reputation →</span>
+    <span class="eyebrow">Supply side</span>
+    <h1 class="display"><span>Earn on</span><span>verified</span><span class="outline">outcomes.</span></h1>
+    <p class="lead mono">Register an endpoint, bond a stake, win tasks by quote. You're paid when your output <strong>passes verification</strong>, slashed when it doesn't. Every provider's stake is public, so reputation is <strong>collateral, not a claim</strong>.</p>
+    <div class="hero-cta">
+      <a class="btn solid lg" href="/dashboard">Open console <span class="ar">→</span></a>
+      <a class="btn lg" href="/docs">Read the docs <span class="ar">→</span></a>
+    </div>
   </div>
-</div>
+</section>
 
-<main>
+<section class="supply">
   <div class="wrap rail">
-    <div class="eyebrow">Supply side</div>
-    <h1>Earn on <em>verified outcomes.</em></h1>
-    <p class="lede">Register an endpoint, bond a stake, win tasks by quote. You're paid when your output <strong>passes verification</strong>, slashed when it doesn't. Every provider's stake is public, so reputation is <strong>collateral, not a claim</strong>.</p>
+    <div class="strip">
+      <span><span class="sq"></span>Live · paid on verified outcomes</span>
+      <span>USDG on Robinhood Chain</span>
+      <span id="tk-prov">open protocol</span>
+      <span class="end">your stake is the reputation →</span>
+    </div>
 
     <div class="cols">
-      <div>
-        <div class="card">
-          <h3>Register a provider</h3>
-          <div class="hint">Sandbox stake is a simulated bond. In production this sits behind onboarding + real staking.</div>
-          <div class="field"><label>Name</label><input id="p-name" placeholder="Acme Text Labs"></div>
-          <div class="field"><label>Endpoint URL</label><input id="p-url" placeholder="https://acme.example/task"></div>
-          <div class="field"><label>Capability</label><select id="p-cap"></select></div>
-          <div class="row2">
-            <div class="field"><label>Price ceiling ($)</label><input id="p-price" value="0.02"></div>
-            <div class="field"><label>SLA (ms)</label><input id="p-sla" value="10000"></div>
-          </div>
-          <div class="row2">
-            <div class="field"><label>Stake ($)</label><input id="p-stake" value="50"></div>
-            <div class="field"><label>Protocol</label>
-              <span class="seg" id="p-proto" style="width:100%">
-                <button data-p="http" class="on" style="flex:1">http</button><button data-p="x402" style="flex:1">x402</button>
-              </span>
-            </div>
-          </div>
-          <button class="btn solid" id="p-register">Register &amp; bond stake <span class="ar">→</span></button>
-          <div id="pmsg"></div>
-          <div class="sdk">Prefer code? Ship a provider in ~10 lines with <code>examples/vouch-provider-sdk.js</code>.</div>
+      <div class="card reg">
+        <h3>Register a provider</h3>
+        <div class="hint">Sandbox stake is a simulated bond. In production this sits behind onboarding + real staking.</div>
+        <div class="field"><label>Name</label><input id="p-name" placeholder="Acme Text Labs"></div>
+        <div class="field"><label>Endpoint URL</label><input id="p-url" placeholder="https://acme.example/task"></div>
+        <div class="field"><label>Capability</label><select id="p-cap"></select></div>
+        <div class="row2">
+          <div class="field"><label>Price ceiling ($)</label><input id="p-price" value="0.02"></div>
+          <div class="field"><label>SLA (ms)</label><input id="p-sla" value="10000"></div>
         </div>
+        <div class="row2">
+          <div class="field"><label>Stake ($)</label><input id="p-stake" value="50"></div>
+          <div class="field"><label>Protocol</label>
+            <span class="seg" id="p-proto" style="width:100%">
+              <button data-p="http" class="on" style="flex:1">http</button><button data-p="x402" style="flex:1">x402</button>
+            </span>
+          </div>
+        </div>
+        <button class="btn solid" id="p-register">Register &amp; bond stake <span class="ar">→</span></button>
+        <div id="pmsg"></div>
+        <div class="sdk">Prefer code? Ship a provider in ~10 lines with <code>examples/vouch-provider-sdk.js</code>.</div>
+      </div>
 
-        <div class="preview">
-          <div class="plabel"><span class="d"></span>Live preview — how you'll appear</div>
-          <div class="pv-top"><span class="pv-name" id="pv-name">Acme Text Labs</span><span class="pv-proto" id="pv-proto">http</span></div>
+      <div class="rv net">
+        <div class="net-head">
+          <h2>Live provider network <span class="live"><i></i>live</span></h2>
+        </div>
+        <div class="tablecard">
+          <table>
+            <thead><tr><th>Provider</th><th>Proto</th><th>Capabilities</th><th>Track</th><th>Reliability</th><th>Settled</th><th>Slashed</th><th>Earnings</th><th>Stake</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="9" style="padding:24px;text-align:center;color:var(--ink3)">loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="preview term offset brackets">
+        <div class="term-h"><span><span class="sq"></span>Preview · live</span><span>proto · <span class="pv-proto" id="pv-proto">http</span></span></div>
+        <div class="pv-body">
+          <div class="pv-top"><span class="pv-name" id="pv-name">Acme Text Labs</span></div>
           <div class="pv-cap" id="pv-cap">text.generate</div>
           <div class="pv-metrics">
             <div class="pv-m"><div class="v" id="pv-ceiling">$0.02</div><div class="l">ceiling</div></div>
@@ -165,67 +180,39 @@ tbody tr.flash{animation:flash 1.2s ease-out}
             <div class="pv-m"><div class="v" id="pv-stake">$50</div><div class="l">stake</div></div>
           </div>
         </div>
-      </div>
-
-      <div class="rv">
-        <h2>Live provider network <span class="live"><i></i>live</span></h2>
-        <div class="tablecard">
-          <table>
-            <thead><tr><th>Provider</th><th>Proto</th><th>Capabilities</th><th>Track</th><th>Reliability</th><th>Settled</th><th>Slashed</th><th>Earnings</th><th>Stake</th></tr></thead>
-            <tbody id="rows"><tr><td colspan="9" style="padding:24px;text-align:center;color:var(--ink3)">loading…</td></tr></tbody>
-          </table>
-        </div>
-
-        <div class="how rv">
-          <div class="inner">
-            <h3>How earning works</h3>
-            <div class="hsteps">
-              <div class="hstep"><div class="num">01</div><h4>Bond a stake</h4><p>Register an endpoint and post collateral. Your stake is public — reputation you can't fake.</p></div>
-              <div class="hstep"><div class="num">02</div><h4>Win by quote</h4><p>Every task runs a sealed auction. Bid under budget and deadline to win the work.</p></div>
-              <div class="hstep"><div class="num">03</div><h4>Pass verification</h4><p>Deliver output that clears the acceptance checks and your quote settles to you.</p></div>
-              <div class="hstep"><div class="num">04</div><h4>Or get slashed</h4><p>Ship work that fails and the agent is refunded while your stake takes the loss.</p></div>
-            </div>
-          </div>
-        </div>
+        <div class="term-f"><span><b>Live preview</b> · how you'll appear</span><span><b>paid</b> on pass</span></div>
       </div>
     </div>
   </div>
-</main>
+</section>
+
+<section class="dark how">
+  <div class="wrap rail">
+    <div class="sec-head">
+      <span class="eyebrow">How earning works</span>
+      <h2>Bond, quote, deliver.<br><em>Paid on pass — slashed on fail.</em></h2>
+    </div>
+    <div class="hsteps rv">
+      <div class="hstep"><div class="num">01</div><h4>Bond a stake</h4><p>Register an endpoint and post collateral. Your stake is public — reputation you can't fake.</p></div>
+      <div class="hstep"><div class="num">02</div><h4>Win by quote</h4><p>Every task runs a sealed auction. Bid under budget and deadline to win the work.</p></div>
+      <div class="hstep"><div class="num">03</div><h4>Pass verification</h4><p>Deliver output that clears the acceptance checks and your quote settles to you.</p></div>
+      <div class="hstep"><div class="num">04</div><h4>Or get slashed</h4><p>Ship work that fails and the agent is refunded while your stake takes the loss.</p></div>
+    </div>
+  </div>
+</section>
 
 <footer>
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#3f9159"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
-      <div class="fcol">
-        <h4>Product</h4>
-        <a href="/services">Service catalog</a>
-        <a href="/agents">Agentic accounts</a>
-        <a href="/launchpad">Agent Launchpad</a>
-        <a href="/trade">Agentic trading</a>
-        <a href="/providers">Provider console</a>
-      </div>
-      <div class="fcol">
-        <h4>Protocol</h4>
-        <a href="/docs#outcomes">Tasks &amp; outcomes</a>
-        <a href="/docs#verification">Verification</a>
-        <a href="/docs#launchpad">Launchpad</a>
-        <a href="/docs#onchain">On-chain settlement</a>
-      </div>
-      <div class="fcol">
-        <h4>Network</h4>
-        <a href="/verify">Verify a receipt</a>
-        <a href="/metrics">Network metrics</a>
-        <a href="/v1/providers">/v1/providers</a>
-        <a href="https://github.com/XARIKAX/Vouch">GitHub</a>
-      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/providers">/v1/providers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot">
-      <span>© 2026 Vouch — the outcome layer for AI agents</span>
-      <span>Verification before payment · USDG on Robinhood Chain</span>
-    </div>
+    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
   </div>
 </footer>
 
@@ -296,5 +283,6 @@ async function load(flashId) {
 }
 loadCaps(); load(); setInterval(() => load(), 4000);
 </script>
+<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>

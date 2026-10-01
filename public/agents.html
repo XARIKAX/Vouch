@@ -5,156 +5,129 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agentic Accounts</title>
 <meta name="description" content="Let your agent buy outcomes. Connect via MCP, fund a dedicated agentic account, and your agent buys verified work within a budget — with a per-task cap, an allowlist, and an instant kill switch. Settled in USDG on Robinhood Chain.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20fill%3D%22%23111210%22/%3E%3Crect%20x%3D%2218%22%20y%3D%226%22%20width%3D%228%22%20height%3D%228%22%20fill%3D%22%235b3df0%22/%3E%3Cpath%20d%3D%22M7%2013l7%2012%2012-18%22%20fill%3D%22none%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%223%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
-/* ===== page-specific — agentic accounts console. Tokens + shared classes live in vouch.css ===== */
-
-/* generic heading/sub for sections without .sec-head */
-h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
-.sub{color:var(--ink2);font-size:17px;max-width:46rem;margin-bottom:44px;line-height:1.6}
-
-/* danger button (not in the shared system) */
-.btn.danger{border-color:rgba(178,59,46,.5);color:var(--red)}
-.btn.danger:hover{background:rgba(178,59,46,.08);border-color:var(--red)}
+/* ===== page-specific — agentic accounts. Tokens + shared classes live in vouch.css ===== */
 
 /* hero */
-.hero{padding:70px 0 40px;position:relative;overflow:hidden}
-.hero::after{content:"";position:absolute;inset:auto -10% -60% 46%;height:52rem;background:radial-gradient(34rem 26rem at 60% 40%,var(--acc-soft),transparent 66%);z-index:0;pointer-events:none}
-.hero h1{font-size:clamp(40px,5.4vw,74px);line-height:1.01;letter-spacing:-.02em;margin:24px 0 18px;max-width:14ch}
-.lede{font-size:18.5px;color:var(--ink2);max-width:52ch;line-height:1.58;margin-bottom:30px}
-.lede strong{color:var(--ink);font-weight:600}
-.cta-row{display:flex;gap:13px;flex-wrap:wrap;align-items:center}
-.chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-top:28px}
-.chip{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;color:var(--ink2);border:1px solid var(--line);border-radius:9px;padding:6px 11px;background:var(--paper2)}
-.chip b{color:var(--forest);font-weight:600}
+.hero{padding:64px 0 40px;position:relative}
+.hero h1{margin:22px 0 26px}
+.hero h1 span{display:block}
+.hero .lead{max-width:52ch;margin-bottom:30px}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-top:34px}
+@media(max-width:680px){.hero{padding-top:44px}}
 
 /* steps */
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.stepc{border:1px solid var(--line);border-radius:18px;background:var(--paper2);padding:28px;position:relative;transition:.25s}
-.stepc:hover{border-color:var(--ink3);transform:translateY(-3px);box-shadow:0 22px 50px rgba(22,24,15,.08)}
-.stepc .num{font-family:var(--mono);font-size:12px;color:var(--forest);letter-spacing:1.5px}
-.stepc h4{font-size:21px;font-weight:500;margin:12px 0 8px}
-.stepc p{font-size:14px;color:var(--ink2)}
-.stepc .mini{margin-top:16px;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:12px 13px;font-family:var(--mono);font-size:11.5px;color:var(--ink2);overflow-x:auto}
-.stepc .mini .g{color:var(--forest)}.stepc .mini .c{color:var(--ink3)}
+.stepc .num{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:14px}
+.stepc h3{text-transform:uppercase;letter-spacing:-.01em}
+.stepc .mini{margin-top:18px;border:1px solid var(--line2);background:var(--night);color:var(--cream);padding:12px 13px;font-family:var(--mono);font-size:11.5px;line-height:1.7;overflow-x:auto}
+.stepc .mini .g{color:var(--accent-bright)}.stepc .mini .c{color:rgba(242,239,228,.45)}
 
-/* console (interactive) */
-.console-wrap{border:1px solid var(--line2);border-radius:24px;background:var(--paper2);box-shadow:0 30px 80px rgba(22,24,15,.1);overflow:hidden}
+/* console (interactive) — the page's hero panel */
+.console-wrap{border:1px solid var(--ink);background:var(--paper2);margin-top:44px}
+.console-wrap .term-h{border-bottom:1px solid var(--line2);color:var(--ink2)}
 .cw-grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr)}
-.cw-cfg{padding:26px;border-right:1px solid var(--line)}
-.cw-cfg h3{font-size:19px;font-weight:500;margin-bottom:4px}
-.cw-cfg .hint{font-size:12.5px;color:var(--ink3);margin-bottom:18px}
-.field{display:flex;flex-direction:column;gap:6px;margin-bottom:13px}
-.field label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);font-weight:600}
-.field input{font-family:var(--sans);font-size:13.5px;border-radius:11px;border:1px solid var(--line2);background:var(--paper);color:var(--ink);padding:11px 12px;width:100%;transition:.16s}
-.field input:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
+.cw-cfg{padding:26px;border-right:1px solid var(--line2)}
+.cw-cfg h3{font-size:22px;text-transform:uppercase;letter-spacing:-.02em;margin-bottom:6px}
+.cw-cfg .hint{font-family:var(--mono);font-size:11.5px;color:var(--ink3);margin-bottom:20px;line-height:1.6}
+.field{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+.field input{width:100%}
 .row2{display:flex;gap:10px}.row2 .field{flex:1}
 .allow{display:flex;flex-wrap:wrap;gap:6px}
-.allow .a{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-radius:7px;padding:5px 9px;color:var(--ink2);cursor:pointer;user-select:none;transition:.14s}
-.allow .a.on{background:var(--forest);color:var(--cream);border-color:transparent;font-weight:600}
+.allow .a{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;border:1px solid var(--line2);padding:6px 9px;color:var(--ink2);background:var(--paper2);cursor:pointer;user-select:none;transition:.14s}
+.allow .a:hover{border-color:var(--ink)}
+.allow .a.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
 .cw-live{padding:26px;display:flex;flex-direction:column;min-height:440px}
-.acct-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-.acct-name{font-family:var(--serif);font-size:20px;font-weight:500}
-.acct-state{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line2);border-radius:99px;padding:4px 11px;display:inline-flex;align-items:center;gap:6px}
-.acct-state.on{color:var(--forest);border-color:color-mix(in srgb,var(--forest) 42%,transparent)}
-.acct-state.frozen{color:var(--red);border-color:rgba(178,59,46,.4)}
-.acct-state i{width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor}
+.acct-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.acct-name{font-family:var(--serif);font-size:20px;font-weight:800;letter-spacing:-.02em;text-transform:uppercase}
+.acct-state{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line2);padding:5px 10px;display:inline-flex;align-items:center;gap:8px}
+.acct-state.on{color:var(--accent-deep);border-color:var(--accent)}
+.acct-state.frozen{color:var(--red);border-color:var(--red)}
+.acct-state i{width:6px;height:6px;background:currentColor}
 .acct-state.on i{animation:pulse 1.6s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .meter{margin-bottom:6px}
-.meter .mrow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--ink2);margin-bottom:6px}
-.meter .mrow b{color:var(--ink)}
-.meter .bar{height:8px;border-radius:99px;background:var(--paper3);overflow:hidden}
-.meter .bar i{display:block;height:100%;border-radius:99px;background:var(--forest);transition:width .5s cubic-bezier(.2,.7,.3,1)}
-.acct-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
-.am{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper)}
-.am .v{font-family:var(--serif);font-size:19px;font-weight:500}
-.am .l{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
-.feed-h{font-family:var(--mono);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);margin:6px 0 8px}
-.feed{flex:1;overflow-y:auto;max-height:210px;display:flex;flex-direction:column;gap:7px}
-.ev{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--paper);font-size:12.5px;opacity:0;transform:translateY(4px);animation:rise .34s forwards}
+.meter .mrow{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.meter .mrow b{color:var(--ink);font-weight:500}
+.meter .bar{height:8px;background:var(--line);overflow:hidden}
+.meter .bar i{display:block;height:100%;background:var(--accent);transition:width .5s cubic-bezier(.2,.7,.3,1)}
+.acct-metrics{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line2);margin:16px 0}
+.am{padding:12px 14px;border-right:1px solid var(--line2)}
+.am:last-child{border-right:none}
+.am .v{font-family:var(--serif);font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1}
+.am .l{font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;margin-top:6px}
+.feed-h{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin:6px 0 8px}
+.feed{flex:1;overflow-y:auto;max-height:210px;display:flex;flex-direction:column;gap:6px}
+.ev{display:flex;align-items:center;gap:10px;border:1px solid var(--line);padding:9px 11px;background:var(--paper);font-size:12.5px;opacity:0;transform:translateY(4px);animation:rise .34s forwards}
 @keyframes rise{to{opacity:1;transform:none}}
-.ev .k{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;font-size:11px;flex:none}
-.ev.ok .k{background:var(--forest);color:var(--cream)}
-.ev.no .k{background:rgba(178,59,46,.12);color:var(--red);border:1px solid rgba(178,59,46,.35)}
+.ev .k{width:20px;height:20px;display:grid;place-items:center;font-family:var(--mono);font-size:11px;flex:none}
+.ev.ok .k{background:var(--ink);color:var(--cream)}
+.ev.no .k{color:var(--red);border:1px solid var(--red)}
 .ev .lb{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ev .cap{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+.ev .cap{font-family:var(--mono);font-size:10.5px;color:var(--ink3);letter-spacing:.04em}
 .ev .amt{margin-left:auto;font-family:var(--mono);font-size:12px;flex:none}
 .ev.ok .amt{color:var(--ink)}.ev.no .amt{color:var(--red)}
-.feed-empty{color:var(--ink3);font-size:13px;text-align:center;padding:40px 0}
-.acct-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
-.mcp-line{margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--ink3);border-top:1px dashed var(--line);padding-top:12px}
-.mcp-line b{color:var(--ink2)}
+.feed-empty{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;color:var(--ink3);text-align:center;padding:40px 0;margin:auto 0}
+.acct-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn.danger{border-color:var(--red);color:var(--red)}
+.btn.danger:hover{box-shadow:3px 3px 0 var(--red)}
+.mcp-line{margin-top:16px;font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--ink3);border-top:1px solid var(--line);padding-top:12px}
+.mcp-line b{color:var(--ink2);font-weight:500}
 
 /* safety (dark) */
-.safety .inner{border-radius:24px;padding:52px 46px;background:var(--night);color:var(--cream);position:relative;overflow:hidden}
-.safety .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(32rem 16rem at 22% -30%,rgba(63,145,89,.22),transparent 66%);pointer-events:none}
-.safety h2{color:var(--cream);margin-bottom:8px}
-.safety .sub{color:rgba(242,239,228,.7)}
-.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
-.sitem{border-left:1px solid rgba(242,239,228,.14);padding-left:16px}
-.sitem .si{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(63,145,89,.14);color:var(--forest-bright);margin-bottom:12px}
+.sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:40px}
+.sitem{border-top:1px solid rgba(242,239,228,.18);padding-top:18px}
+.sitem .si{width:34px;height:34px;display:grid;place-items:center;background:var(--accent);color:var(--cream);margin-bottom:16px}
 .sitem .si svg{width:17px;height:17px}
-.sitem h4{font-size:17px;font-weight:500;color:var(--cream);margin-bottom:5px}
-.sitem p{font-size:13px;color:rgba(242,239,228,.68);line-height:1.5}
+.sitem h3{font-size:18px;text-transform:uppercase;letter-spacing:-.01em;margin-bottom:8px}
+.sitem p{font-size:13.5px;color:rgba(242,239,228,.68);line-height:1.6}
 
 /* interop */
-.interop{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
-.interop h2{margin-bottom:14px}
-.interop p{color:var(--ink2);font-size:16px;margin-bottom:14px}
-.interop p strong{color:var(--ink);font-weight:600}
-.codecard{border:1px solid var(--line2);border-radius:16px;background:var(--night);overflow:hidden;box-shadow:0 26px 60px rgba(22,24,15,.16)}
-.codecard .h{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid rgba(242,239,228,.1);font-family:var(--mono);font-size:11.5px;color:rgba(242,239,228,.5)}
-.codecard .h i{width:9px;height:9px;border-radius:50%;background:rgba(242,239,228,.13);display:inline-block}
-.codecard pre{padding:18px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.75;color:#dfe7cf}
-.codecard .g{color:var(--forest-bright)}.codecard .c{color:#7b8a63}.codecard .k{color:#8fd0e8}
+.interop{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:44px;align-items:center}
+.interop>*{min-width:0}
+.interop h2{margin:18px 0 16px;font-size:clamp(30px,4.2vw,54px)}
+.interop p.mono{margin-bottom:14px}
+.interop p.mono strong{color:var(--ink);font-weight:600}
+.term pre{padding:18px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.8;color:#dfe3f0}
+.term .c{color:rgba(242,239,228,.4)}.term .g{color:var(--accent-bright)}.term .k{color:var(--cream)}
 
-/* cta band (dark) */
-.cta-band .inner{border-radius:24px;padding:60px 40px;background:var(--night);color:var(--cream);text-align:center;position:relative;overflow:hidden}
-.cta-band .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(30rem 16rem at 50% -30%,rgba(63,145,89,.24),transparent 64%);pointer-events:none}
-.cta-band h2{color:var(--cream);margin:0 auto 14px;max-width:20ch;position:relative}
-.cta-band p{color:rgba(242,239,228,.72);max-width:40rem;margin:0 auto 30px;position:relative}
-.cta-band .cta-row{position:relative}
+/* final cta */
+.cta-final .inner{text-align:center}
+.cta-final h2{font-size:clamp(34px,5.6vw,78px);text-transform:uppercase;letter-spacing:-.04em;line-height:.92;margin:18px auto 22px}
+.cta-final h2 span{display:block}
+.cta-final p{max-width:46ch;margin:0 auto 30px}
+.cta-final .cta-row{justify-content:center}
 
-@media(max-width:920px){.steps,.sgrid{grid-template-columns:1fr}.cw-grid{grid-template-columns:1fr}.cw-cfg{border-right:none;border-bottom:1px solid var(--line)}.interop{grid-template-columns:1fr;gap:24px}}
-@media(max-width:680px){.hero{padding-top:54px}}
+@media(max-width:920px){.sgrid{grid-template-columns:1fr;gap:22px}.cw-grid{grid-template-columns:1fr}.cw-cfg{border-right:none;border-bottom:1px solid var(--line2)}.interop{grid-template-columns:minmax(0,1fr);gap:26px}}
+@media(max-width:480px){.acct-metrics{grid-template-columns:1fr}.am{border-right:none;border-bottom:1px solid var(--line2)}.am:last-child{border-bottom:none}}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#3f9159"/><stop offset="1" stop-color="#20492f"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a class="active" href="/agents">Agents</a>
       <a href="/launchpad">Launchpad</a>
       <a href="/providers">Providers</a>
       <a href="/docs">Docs</a>
-      <a class="btn forest" href="/dashboard">Open console</a>
+      <a class="btn solid" href="/dashboard">Open console</a>
     </div>
   </div>
 </nav>
 
-<div class="ticker">
+<section class="hero">
   <div class="wrap rail">
-    <span class="dot"></span><b>Live</b>
-    <span class="sp">·</span>verification before payment
-    <span class="sp tk-hide">·</span><span class="tk-hide">USDG on Robinhood Chain</span>
-    <span class="sp tk-hide">·</span><span class="tk-hide" id="tk-prov">open protocol</span>
-    <span class="end">$0 lost to bad work →</span>
-  </div>
-</div>
-
-<header class="hero">
-  <div class="wrap rail">
-    <span class="eyebrow">Agentic accounts</span>
-    <h1>Let your agent<br><em>buy outcomes.</em></h1>
-    <p class="lede">Market access for AI agents — but for <strong>work, not trades</strong>. Connect via MCP, fund a dedicated account, and your agent buys <strong>verified outcomes</strong> within a budget. Every result is checked before a cent moves — so a wallet-carrying agent can't overpay for a wrong answer.</p>
+    <span class="eyebrow">Agentic accounts · market access for work</span>
+    <h1 class="display"><span>Let your</span><span>agent buy</span><span class="outline">outcomes.</span></h1>
+    <p class="lead mono">Market access for AI agents — but for <strong>work, not trades</strong>. Connect via MCP, fund a dedicated account, and your agent buys <strong>verified outcomes</strong> within a budget. Every result is checked before a cent moves — so a wallet-carrying agent can't overpay for a wrong answer.</p>
     <div class="cta-row">
       <a class="btn solid lg" href="#console">Create an agentic account <span class="ar">→</span></a>
       <a class="btn lg" href="/docs#mcp">Connect via MCP</a>
@@ -167,30 +140,30 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
       <span class="chip"><b>◆</b> Settled in USDG on Robinhood Chain</span>
     </div>
   </div>
-</header>
+</section>
 
-<section style="padding-top:20px">
+<section style="padding-top:40px">
   <div class="wrap rail">
     <div class="sec-head">
-      <div class="eyebrow rv">Set up in minutes</div>
-      <h2 class="rv">Three steps to an<br>autonomous <em>spending agent.</em></h2>
+      <span class="eyebrow rv">Set up in minutes</span>
+      <h2 class="rv">Three steps to an<br><em>autonomous spending agent.</em></h2>
     </div>
-    <div class="steps" style="margin-top:36px">
-      <div class="stepc rv">
-        <div class="num">01</div>
-        <h4>Connect via MCP</h4>
+    <div class="cols3" style="margin-top:40px">
+      <div class="card stepc rv">
+        <div class="num">01 — Connect</div>
+        <h3>Connect via MCP</h3>
         <p>Paste one URL into your agent's MCP config. It runs alongside any other MCP server you already use.</p>
         <div class="mini"><span class="c">// mcp config</span><br>"vouch": {<br>&nbsp;&nbsp;"url": <span class="g">"https://mcp.vouch.dev"</span><br>}</div>
       </div>
-      <div class="stepc rv d1">
-        <div class="num">02</div>
-        <h4>Create an agentic account</h4>
+      <div class="card stepc rv d1">
+        <div class="num">02 — Fund</div>
+        <h3>Create an agentic account</h3>
         <p>Fund a wallet scoped to your agent — a budget, a per-task cap, and a capability allowlist. Its stake can never exceed the wallet.</p>
         <div class="mini"><span class="c">// scoped, capped, allowlisted</span><br>budget <span class="g">$25</span> · cap <span class="g">$0.05</span>/task<br>allow: text.* · research.* · math.*</div>
       </div>
-      <div class="stepc rv d2">
-        <div class="num">03</div>
-        <h4>Run your strategy</h4>
+      <div class="card stepc rv d2">
+        <div class="num">03 — Run</div>
+        <h3>Run your strategy</h3>
         <p>Your agent posts tasks and buys verified outcomes on its own. A task settles only if it passes — spend and activity stay visible live.</p>
         <div class="mini"><span class="g">✓</span> settled · verified 3/3<br><span class="g">✓</span> settled · verified 2/2<br><span class="c">↺ refunded · provider slashed</span></div>
       </div>
@@ -201,12 +174,13 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
 <section id="console" style="padding-top:10px">
   <div class="wrap rail">
     <div class="sec-head">
-      <div class="eyebrow rv">Try it live</div>
-      <h2 class="rv">Fund an account.<br>Watch it <em>spend safely.</em></h2>
-      <p class="sub rv d1">Runs entirely in your browser — a working preview of the agentic-account model. Set a budget and policy, run the strategy, freeze it anytime.</p>
+      <span class="eyebrow rv">Try it live</span>
+      <h2 class="rv">Fund an account.<br><em>Watch it spend safely.</em></h2>
+      <p class="sub mono rv d1">Runs entirely in your browser — a working preview of the agentic-account model. Set a budget and policy, run the strategy, freeze it anytime.</p>
     </div>
 
-    <div class="console-wrap rv">
+    <div class="console-wrap offset brackets rv">
+      <div class="term-h"><span><span class="sq"></span>Agentic account · browser preview</span><span>budget · cap · allowlist · kill switch</span></div>
       <div class="cw-grid">
         <div class="cw-cfg">
           <h3>New agentic account</h3>
@@ -253,45 +227,43 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
   </div>
 </section>
 
-<section class="safety">
+<section class="dark safety">
   <div class="wrap rail">
-    <div class="inner rv">
-      <div class="sec-head">
-        <div class="eyebrow" style="color:var(--forest-bright)">Designed for safety</div>
-        <h2>Your agent spends. You stay in control.</h2>
-        <p class="sub">A dedicated budget, a hard per-task cap, an allowlist, and a kill switch — the guarantees a wallet-carrying agent needs.</p>
+    <div class="sec-head">
+      <span class="eyebrow">Designed for safety</span>
+      <h2>Your agent spends.<br><em>You stay in control.</em></h2>
+      <p class="sub mono">A dedicated budget, a hard per-task cap, an allowlist, and a kill switch — the guarantees a wallet-carrying agent needs.</p>
+    </div>
+    <div class="sgrid">
+      <div class="sitem rv">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="0"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>Dedicated budget</h3>
+        <p>The account holds only what you fund it with. It can never touch your main balance or exceed the wallet.</p>
       </div>
-      <div class="sgrid">
-        <div class="sitem">
-          <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-          <h4>Dedicated budget</h4>
-          <p>The account holds only what you fund it with. It can never touch your main balance or exceed the wallet.</p>
-        </div>
-        <div class="sitem">
-          <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg></div>
-          <h4>A receipt on every task</h4>
-          <p>Each task is logged the moment it settles or fails — a full record of what your agent bought and what it paid.</p>
-        </div>
-        <div class="sitem">
-          <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></div>
-          <h4>Disconnect anytime</h4>
-          <p>Freeze the account in one click and it stops posting instantly. Reversible — it keeps its balance and history.</p>
-        </div>
+      <div class="sitem rv d1">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3>A receipt on every task</h3>
+        <p>Each task is logged the moment it settles or fails — a full record of what your agent bought and what it paid.</p>
+      </div>
+      <div class="sitem rv d2">
+        <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg></div>
+        <h3>Disconnect anytime</h3>
+        <p>Freeze the account in one click and it stops posting instantly. Reversible — it keeps its balance and history.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="interop">
+<section>
   <div class="wrap rail interop">
     <div class="rv">
-      <div class="eyebrow" style="margin-bottom:14px">Works with your stack</div>
-      <h2>MCP-native.<br>Runs alongside everything.</h2>
-      <p>Vouch is a standard <strong>MCP server</strong>, so your agent connects it the way it connects any other account — one URL in the config. An agent can <strong>trade on one MCP and buy verified work on Vouch</strong> from the same setup.</p>
-      <p>Settlement is <strong>USDG on Robinhood Chain</strong>. Every outcome ships with a signed proof you can verify offline.</p>
+      <span class="eyebrow">Works with your stack</span>
+      <h2>MCP-native.<br><em>Runs alongside everything.</em></h2>
+      <p class="mono">Vouch is a standard <strong>MCP server</strong>, so your agent connects it the way it connects any other account — one URL in the config. An agent can <strong>trade on one MCP and buy verified work on Vouch</strong> from the same setup.</p>
+      <p class="mono">Settlement is <strong>USDG on Robinhood Chain</strong>. Every outcome ships with a signed proof you can verify offline.</p>
     </div>
-    <div class="codecard rv d1">
-      <div class="h"><i></i><i></i><i></i><span style="margin-left:4px">~/.config/agent/mcp.json</span></div>
+    <div class="term brackets rv d1">
+      <div class="term-h"><span><span class="sq"></span>~/.config/agent/mcp.json</span><span>one config · many accounts</span></div>
       <pre><span class="c"># one config, many agentic accounts</span>
 {
   <span class="k">"mcpServers"</span>: {
@@ -302,18 +274,20 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
 
 <span class="c"># now the agent can trade — and buy outcomes</span>
 <span class="c"># it only pays for once they're verified.</span></pre>
+      <div class="term-f"><span><b>MCP</b> connected</span><span>→ verify →</span><span><b>USDG</b> · Robinhood Chain</span></div>
     </div>
   </div>
 </section>
 
-<section class="cta-band" style="padding-top:0">
+<section class="dark cta-final">
   <div class="wrap rail">
     <div class="inner rv">
-      <h2>Give your agent a wallet<br>it can't <em>waste.</em></h2>
-      <p>Create an agentic account with a budget, a cap, and a kill switch — and let it buy only verified outcomes. No signup.</p>
-      <div class="cta-row" style="justify-content:center">
-        <a class="btn forest lg" href="#console">Create an account <span class="ar">→</span></a>
-        <a class="btn lg" href="/docs#mcp" style="color:var(--cream);border-color:rgba(242,239,228,.24)">Read the MCP docs</a>
+      <span class="eyebrow" style="justify-content:center;display:inline-flex">No signup · faucet-funded</span>
+      <h2><span>Give your agent</span><span>a wallet</span><span class="outline">it can't waste.</span></h2>
+      <p class="mono">Create an agentic account with a budget, a cap, and a kill switch — and let it buy only verified outcomes. No signup.</p>
+      <div class="cta-row">
+        <a class="btn accent lg" href="#console">Create an account <span class="ar">→</span></a>
+        <a class="btn lg" href="/docs#mcp">Read the MCP docs</a>
       </div>
     </div>
   </div>
@@ -323,36 +297,14 @@ h2{font-size:clamp(30px,3.6vw,46px);line-height:1.05;margin-bottom:16px}
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#3f9159"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
-      <div class="fcol">
-        <h4>Product</h4>
-        <a href="/services">Service catalog</a>
-        <a href="/agents">Agentic accounts</a>
-        <a href="/launchpad">Agent Launchpad</a>
-        <a href="/trade">Agentic trading</a>
-        <a href="/providers">Provider console</a>
-      </div>
-      <div class="fcol">
-        <h4>Protocol</h4>
-        <a href="/docs#outcomes">Tasks &amp; outcomes</a>
-        <a href="/docs#verification">Verification</a>
-        <a href="/docs#launchpad">Launchpad</a>
-        <a href="/docs#onchain">On-chain settlement</a>
-      </div>
-      <div class="fcol">
-        <h4>Network</h4>
-        <a href="/verify">Verify a receipt</a>
-        <a href="/metrics">Network metrics</a>
-        <a href="/v1/offers">/v1/offers</a>
-        <a href="https://github.com/XARIKAX/Vouch">GitHub</a>
-      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot">
-      <span>© 2026 Vouch — the outcome layer for AI agents</span>
-      <span>Verification before payment · USDG on Robinhood Chain</span>
-    </div>
+    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
   </div>
 </footer>
 
@@ -455,5 +407,6 @@ $('a-run').onclick = async () => {
 
 render();
 </script>
+<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>
