@@ -61,25 +61,26 @@ article p a:hover,article li a:hover,article td a:hover,.note a:hover{border-bot
 td.inline{background:none;border:none;border-bottom:1px solid var(--line);padding:10px 12px 10px 0;font-size:12.5px}
 
 /* code panels: .term (vouch.css) + a .term-h header; the copy button is injected by the script */
-.codewrap{margin:0 0 18px}
-.codewrap.offset{margin-bottom:32px}
+.codewrap{margin:0 0 20px}
+.codewrap.offset{margin-bottom:32px;box-shadow:var(--shadow-dark)}
 .codewrap .codehead{padding-right:46px}
-pre{padding:16px;overflow-x:auto;font-size:12.5px;line-height:1.75;scrollbar-width:thin}
+pre{padding:18px 20px;overflow-x:auto;font-size:12.5px;line-height:1.75;scrollbar-width:thin}
 pre code{color:#dfe3f0}
-.copy-btn{position:absolute;top:5px;right:6px;display:grid;place-items:center;width:26px;height:26px;border:1px solid transparent;border-radius:0;background:transparent;color:rgba(242,239,228,.4);transition:color .14s,border-color .14s}
+.copy-btn{position:absolute;top:7px;right:8px;display:grid;place-items:center;width:28px;height:28px;border:1px solid transparent;border-radius:999px;background:transparent;color:rgba(242,239,228,.4);transition:color .14s,border-color .14s,background .14s}
 .codewrap:hover .copy-btn{color:rgba(242,239,228,.65)}
-.copy-btn:hover{border-color:rgba(242,239,228,.2);color:var(--accent-bright)}
+.copy-btn:hover{border-color:rgba(242,239,228,.2);background:rgba(242,239,228,.06);color:var(--accent-bright)}
 .copy-btn.ok{color:var(--accent-bright)}
 
 /* tabs */
-.tabs{margin:0 0 18px}
-.tab-bar{display:flex;gap:0;border-bottom:1px solid rgba(242,239,228,.12);padding:0 6px}
-.tab-bar button{padding:11px 12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.5);background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .14s}
+.tabs{margin:0 0 20px}
+.tab-bar{display:flex;gap:6px;border-bottom:1px solid rgba(242,239,228,.1);padding:10px 12px}
+.tab-bar button{padding:7px 14px;font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:0;text-transform:none;color:rgba(242,239,228,.55);background:none;border:1px solid transparent;border-radius:999px;transition:color .14s,background .14s,border-color .14s}
 .tab-bar button:hover{color:var(--cream)}
-.tab-bar button.active{color:var(--accent-bright);border-bottom-color:var(--accent)}
+.tab-bar button.active{color:var(--cream);background:rgba(242,239,228,.1);border-color:rgba(242,239,228,.18)}
 .tab-pane{display:none}
 .tab-pane.active{display:block}
-.tabs .codewrap{border:none;margin:0}
+.tabs .codewrap{border:none;margin:0;background:none;box-shadow:none}
+.tabs .codewrap::before{content:none}
 .tabs .codewrap pre{padding-right:44px}
 
 /* tables: hairline rows, mono cells (vouch.css) */
