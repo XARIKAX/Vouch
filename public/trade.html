@@ -290,7 +290,7 @@ function formThesis(sym) {
   };
   const flaw = Math.random();
   if (flaw < 0.08) delete t.risk;                                   // fails json_parseable (has: risk)
-  else if (flaw < 0.16) t.rationale = 'looks ' + dir + 'ish';        // fails length_between (min 120)
+  else if (flaw < 0.16) { t.rationale = 'looks ' + dir + 'ish'; t.risk = 'none'; } // fails length_between (min 120)
   else if (flaw < 0.21) t.confidence = Math.round((1.05 + Math.random() * 0.4) * 100) / 100; // fails the confidence regex
   return t;
 }
