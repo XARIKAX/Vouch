@@ -24,7 +24,9 @@
 }
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15.5px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;
-  background-image:radial-gradient(120% 56% at 50% -8%,rgba(91,61,240,.13),transparent 62%),radial-gradient(70% 40% at 100% 100%,rgba(91,61,240,.07),transparent 60%);background-repeat:no-repeat}
+  background-image:radial-gradient(120% 56% at 50% -8%,rgba(91,61,240,.13),transparent 62%),radial-gradient(70% 40% at 100% 100%,rgba(91,61,240,.07),transparent 60%),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='70' height='40'><path d='M0 0L70 40M0 40L70 0' stroke='rgba(17,18,16,.075)' stroke-width='1'/></svg>");
+  background-repeat:no-repeat,no-repeat,repeat;background-size:auto,auto,70px 40px;background-position:0 0,0 0,center top}
+/* the lattice: an isometric diamond weave — the voxel tower's own geometry, not ruled squares */
 /* film grain: one fixed SVG turbulence tile, multiplied in at low opacity */
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.16;mix-blend-mode:multiply;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");background-size:220px 220px}
@@ -108,7 +110,7 @@ section{padding:88px 0;position:relative}
 .sec-head h2{font-size:clamp(32px,4.6vw,58px);margin-bottom:18px}
 .sec-head .sub{color:var(--ink2);font-size:15.5px;max-width:46rem;line-height:1.65}
 .sec-head .sub.mono{font-size:13px}
-.dark{background:var(--night);color:var(--cream);background-image:radial-gradient(80% 70% at 88% 0%,rgba(91,61,240,.28),transparent 58%),radial-gradient(60% 50% at 0% 100%,rgba(143,124,255,.1),transparent 60%)}
+.dark{background:var(--night);color:var(--cream);background-image:radial-gradient(80% 70% at 88% 0%,rgba(91,61,240,.28),transparent 58%),radial-gradient(60% 50% at 0% 100%,rgba(143,124,255,.1),transparent 60%),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='70' height='40'><path d='M0 0L70 40M0 40L70 0' stroke='rgba(242,239,228,.055)' stroke-width='1'/></svg>");background-repeat:no-repeat,no-repeat,repeat;background-size:auto,auto,70px 40px;background-position:0 0,0 0,center top}
 .dark h1,.dark h2,.dark h3,.dark h4{color:var(--cream)}
 .dark h1 em,.dark h2 em{color:rgba(242,239,228,.5)}
 .dark .sub,.dark .lead,.dark p.mono{color:rgba(242,239,228,.68)}
@@ -169,7 +171,7 @@ td{font-family:var(--mono);font-size:12.5px;padding:10px 12px;border-bottom:1px 
 code,pre{font-family:var(--mono)}
 
 /* footer ------------------------------------------------------------------- */
-footer{background:var(--night);color:rgba(242,239,228,.6);padding:56px 0 40px;background-image:radial-gradient(70% 60% at 0% 0%,rgba(91,61,240,.22),transparent 60%);border-top:1px solid rgba(242,239,228,.1)}
+footer{background:var(--night);color:rgba(242,239,228,.6);padding:56px 0 40px;background-image:radial-gradient(70% 60% at 0% 0%,rgba(91,61,240,.22),transparent 60%),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='70' height='40'><path d='M0 0L70 40M0 40L70 0' stroke='rgba(242,239,228,.055)' stroke-width='1'/></svg>");background-repeat:no-repeat,repeat;background-size:auto,70px 40px;background-position:0 0,center top;border-top:1px solid rgba(242,239,228,.1)}
 footer .fgrid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:30px;padding-bottom:36px;border-bottom:1px solid rgba(242,239,228,.14)}
 footer h4{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(242,239,228,.45);font-weight:500;margin-bottom:14px}
 footer h4::before{content:"■ ";color:var(--accent)}
