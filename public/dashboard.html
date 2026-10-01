@@ -79,7 +79,7 @@
 .term tbody tr:hover{background:rgba(242,239,228,.035)}
 .term .empty{color:rgba(242,239,228,.45);padding:26px 16px;text-align:center}
 .term .pill{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;background:transparent;color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.25)}
-.term .pill::before{content:"";width:14px;height:2px;background:currentColor}
+.term .pill::before{content:"";width:6px;height:6px;background:currentColor}
 .term .pill.settled{color:var(--green);border-color:var(--green)}
 .term .pill.refunded{color:var(--red);border-color:var(--red)}
 .term .pill.dispatched,.term .pill.verifying,.term .pill.submitted,.term .pill.disputed{color:var(--accent-bright);border-color:var(--accent-bright)}
@@ -184,7 +184,7 @@
     <div class="sec-head tight"><span class="eyebrow">Event log</span></div>
     <div class="stack">
       <div class="term rv">
-        <div class="term-h"><span><span class="sq"></span>Tasks</span><span>Settles or slashes on verification</span></div>
+        <div class="term-h"><span><span class="sq"></span>Tasks</span><span>escrow → verify → settle</span></div>
         <div class="tbl">
           <table>
             <thead><tr><th>Task</th><th>Capability</th><th>Status</th><th>Provider</th><th>Price</th><th>Detail</th></tr></thead>
