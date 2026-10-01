@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agentic Trading</title>
-<meta name="description" content="A paper-trading desk your AI agent runs on its own — but every trade is gated by a Vouch-verified thesis. No real money, no real orders.">
+<meta name="description" content="A paper trading desk your AI agent runs on its own. No order fires until its thesis passes Vouch verification. Paper only, no real money.">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 <link rel="apple-touch-icon" href="/assets/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -134,9 +134,9 @@
 
 <section class="hero">
   <div class="wrap rail">
-    <span class="eyebrow">Agentic trading · verified first</span>
-    <h1 class="display"><span>Your agent trades.</span><span>Every move is</span><span class="outline">verified first.</span></h1>
-    <p class="lead mono">Hand your agent a paper portfolio and a strategy. It reads the market and trades on its own — but <strong>every order is gated by a Vouch-verified thesis</strong>, so it can't act on reasoning that didn't pass. You set the budget, the per-trade cap, and the kill switch.</p>
+    <span class="eyebrow">Agentic trading · paper desk</span>
+    <h1 class="display"><span>Your agent trades.</span><span>No verified thesis,</span><span class="outline">no order.</span></h1>
+    <p class="lead mono">A paper trading desk your agent runs on its own, paper only. It reads the market and trades, but <strong>no order fires until its thesis passes verification</strong>. You set the budget, the per-trade cap and the kill switch.</p>
     <div class="hero-cta">
       <a class="btn solid lg" href="#desk">Open the desk <span class="ar">→</span></a>
       <a class="btn lg" href="/docs#verification">How verification works</a>
@@ -151,11 +151,11 @@
     <div class="tgrid">
       <div class="tcfg rv">
         <h3>Trading desk</h3>
-        <div class="hint">A paper portfolio your agent runs on its own.</div>
+        <div class="hint">A paper portfolio your agent runs on its own. No real money.</div>
         <div class="field"><label>Desk name</label><input id="t-name" value="Momentum Agent"></div>
         <div class="row2">
           <div class="field"><label>Starting cash ($)</label><input id="t-cash" value="10000"></div>
-          <div class="field"><label>Max / trade ($)</label><input id="t-cap" value="1500"></div>
+          <div class="field"><label>Per-trade cap ($)</label><input id="t-cap" value="1500"></div>
         </div>
         <div class="field"><label>Universe</label><div class="uni" id="t-uni"></div></div>
         <div class="field"><label>Market data</label>
@@ -163,14 +163,14 @@
             <button data-s="sim" class="on">Simulated</button>
             <button data-s="alpaca" disabled>Alpaca (paper)</button>
           </span>
-          <div class="soon">Bring-your-own-keys Alpaca paper trading — coming next.</div>
+          <div class="soon">Alpaca paper trading with your own keys. Coming next.</div>
         </div>
         <button class="btn solid" id="t-create">Open the desk</button>
-        <div class="note-base">Settlement of the <b>verification</b> is USDG on Robinhood Chain · trades are simulated.</div>
+        <div class="note-base">The <b>verification</b> settles in USDG on Robinhood Chain · trades are paper only.</div>
       </div>
 
       <div class="tlive term offset brackets rv d1">
-        <div class="term-h"><span><span class="sq"></span>Portfolio · paper</span><span>Thesis verified before each trade</span></div>
+        <div class="term-h"><span><span class="sq"></span>Portfolio · paper</span><span>Thesis verified before every order</span></div>
         <div class="term-body">
           <div class="pf-empty" id="pf-empty">Open a desk, then run the strategy.</div>
           <div id="pf" hidden>
@@ -199,7 +199,7 @@
                 </div>
               </div>
               <div class="live-col">
-                <div class="subh">Agent activity — thesis verified before each trade</div>
+                <div class="subh">Agent activity · thesis verified before every order</div>
                 <div class="feed" id="feed"></div>
               </div>
             </div>
@@ -224,14 +224,14 @@
   <div class="wrap rail">
     <div class="sec-head">
       <span class="eyebrow">How it works</span>
-      <h2>The trade that can't fire<br><em>on a bad idea.</em></h2>
-      <p class="sub mono">Robinhood lets an agent place the order. Vouch verifies the <em>reasoning first</em> — the difference between an autonomous desk and a reckless one.</p>
+      <h2>No order fires<br><em>on a failed thesis.</em></h2>
+      <p class="sub mono">Your agent forms a thesis for every trade. Vouch verifies it <em>before the order</em>. A thesis that fails places nothing.</p>
     </div>
     <div class="hsteps">
-      <div class="hstep rv"><div class="num">01</div><h4>Agent forms a thesis</h4><p>For a ticker it's watching: a direction, a confidence, a rationale, a risk note.</p></div>
-      <div class="hstep rv d1"><div class="num">02</div><h4>Vouch verifies it</h4><p>The thesis must clear acceptance checks — structure, confidence bounds, a real rationale. Junk is rejected and the provider is slashed.</p></div>
-      <div class="hstep rv d2"><div class="num">03</div><h4>Only then it trades</h4><p>A verified thesis unlocks one paper trade within the per-trade cap. No verified thesis, no trade.</p></div>
-      <div class="hstep rv d3"><div class="num">04</div><h4>You stay in control</h4><p>Budget, per-trade cap, live P&L, and a freeze switch that halts the desk instantly.</p></div>
+      <div class="hstep rv"><div class="num">01</div><h4>Agent forms a thesis</h4><p>For a ticker it watches: a direction, a confidence, a rationale and a risk note.</p></div>
+      <div class="hstep rv d1"><div class="num">02</div><h4>Vouch verifies it</h4><p>The thesis must pass acceptance checks: structure, confidence bounds, a real rationale. Junk fails, and the agent is slashed.</p></div>
+      <div class="hstep rv d2"><div class="num">03</div><h4>Only then it trades</h4><p>A passed thesis allows one paper trade within the per-trade cap. No pass, no order.</p></div>
+      <div class="hstep rv d3"><div class="num">04</div><h4>You stay in control</h4><p>Budget, per-trade cap, live P&L, and a kill switch. Freeze halts the desk at once.</p></div>
     </div>
   </div>
 </section>
@@ -241,13 +241,13 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settled in USDG on Robinhood Chain.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
   </div>
 </footer>
 

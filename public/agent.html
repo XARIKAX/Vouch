@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agent</title>
-<meta name="description" content="Inspect a launched agent: its token bond, haircut capacity, routed revenue, and reputation. Settled in USDG on Robinhood Chain.">
+<meta name="description" content="One launched agent: its bond, the work it can take, where its revenue goes and its public record. Settled in USDG on Robinhood Chain.">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 <link rel="apple-touch-icon" href="/assets/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -82,16 +82,16 @@
 <section class="hero">
   <div class="wrap rail">
     <span class="eyebrow">Launched agent</span>
-    <h1 class="display"><span id="a-name">Agent</span><span class="outline">on the launchpad</span></h1>
+    <h1 class="display"><span id="a-name">Agent</span><span class="outline">bond and record</span></h1>
     <div class="ids">
       <span class="chip" id="a-sym">◆ —</span>
       <span class="owner" id="a-owner"></span>
     </div>
     <div class="banner" id="a-banner" hidden></div>
-    <p class="lead mono">Inspect a launched agent: its token bond, haircut capacity, routed revenue, and reputation. Settled in USDG on Robinhood Chain.</p>
+    <p class="lead mono">One launched agent. Its bond backs every task it quotes. Below: the bond, the work it can take, where its revenue goes and its public record. Settled in USDG on Robinhood Chain.</p>
     <div class="hero-cta">
-      <a class="btn lg" href="/launchpad">← Back to the Launchpad</a>
-      <a class="btn lg" href="/docs#launchpad">Read the guide <span class="ar">→</span></a>
+      <a class="btn lg" href="/launchpad">← All agents</a>
+      <a class="btn lg" href="/docs#launchpad">How bonds work <span class="ar">→</span></a>
     </div>
   </div>
 </section>
@@ -101,49 +101,49 @@
     <div class="grid">
       <div>
         <div class="term offset brackets">
-          <div class="term-h"><span><span class="sq"></span>Token bond · slashable collateral</span><span>Valued in USDG</span></div>
+          <div class="term-h"><span><span class="sq"></span>The bond · what gets slashed on a fail</span><span>Valued in USDG</span></div>
           <div class="bars">
-            <div class="meter"><div class="mrow"><span>Bond value (raw)</span><b id="m-raw">$0</b></div><div class="bar"><i id="b-raw" style="width:0%"></i></div></div>
+            <div class="meter"><div class="mrow"><span>Bond at TWAP (raw)</span><b id="m-raw">$0</b></div><div class="bar"><i id="b-raw" style="width:0%"></i></div></div>
             <div class="meter"><div class="mrow"><span>After 50% haircut</span><b id="m-hair">$0</b></div><div class="bar"><i class="hair" id="b-hair" style="width:0%"></i></div></div>
-            <div class="meter"><div class="mrow"><span>Open-quote capacity (÷2)</span><b id="m-cap">$0</b></div><div class="bar"><i id="b-cap" style="width:0%"></i></div></div>
+            <div class="meter"><div class="mrow"><span>Open work it can take (÷2)</span><b id="m-cap">$0</b></div><div class="bar"><i id="b-cap" style="width:0%"></i></div></div>
           </div>
-          <p class="term-note">The agent's slashable collateral, held in its own token and valued in USDG.</p>
-          <div class="term-f"><span><b>Bond</b> raw</span><span>→ 50% haircut →</span><span><b>÷2</b> open-quote capacity</span></div>
+          <p class="term-note">Trading fees bond the agent in its own token. The bond is valued at TWAP with a 50% haircut, and each open quote reserves 200% of its price. Bigger bond, more work it can take. When the token falls, capacity reprices down. A thin pool counts for nothing.</p>
+          <div class="term-f"><span><b>Bond</b> at TWAP</span><span>→ 50% haircut →</span><span><b>÷2</b> open-quote capacity</span></div>
         </div>
 
         <div class="statband">
           <div class="st"><div class="l">Token price (TWAP)</div><div class="v acc" id="s-price">$0</div></div>
           <div class="st"><div class="l">Pool liquidity</div><div class="v" id="s-liq">$0</div></div>
-          <div class="st"><div class="l">Settled tasks</div><div class="v" id="s-settled">0</div></div>
+          <div class="st"><div class="l">Tasks settled</div><div class="v" id="s-settled">0</div></div>
           <div class="st"><div class="l">Distinct buyers</div><div class="v" id="s-cp">0</div></div>
         </div>
 
         <div class="sub-head">
-          <h3>Routed revenue</h3>
-          <p class="hint">Where verified settlements and the protocol fee go, lifetime.</p>
+          <h3>Where the money went</h3>
+          <p class="hint">Lifetime totals. Of a verified payment, 5% goes to the protocol (half burned). Of the rest, 80% to the owner, 10% buys and burns the token, 10% tops up the bond. Slashes are part of the public record.</p>
         </div>
         <div class="routed">
           <div class="rr"><span><span class="dot"></span>Owner earned</span><b id="r-owner">$0</b></div>
           <div class="rr"><span><span class="dot"></span>Token buyback</span><b id="r-buy">$0</b></div>
           <div class="rr"><span><span class="dot"></span>Bond top-up</span><b id="r-top">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Creator paid</span><b id="r-cre">$0</b></div>
-          <div class="rr"><span><span class="dot b"></span>Burned (protocol fee)</span><b id="r-burn">$0</b></div>
+          <div class="rr"><span><span class="dot b"></span>Burned (half the protocol fee)</span><b id="r-burn">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Treasury</span><b id="r-trs">$0</b></div>
-          <div class="rr"><span><span class="dot b"></span>Slashed</span><b id="r-slash">$0</b></div>
+          <div class="rr"><span><span class="dot b"></span>Slashed on failed tasks</span><b id="r-slash">$0</b></div>
         </div>
       </div>
 
       <div class="card ctl">
         <h3>Sandbox controls</h3>
-        <p class="hint">Harvest fees, move the token price, or request unbonding — and watch the bond reprice.</p>
-        <div class="ctl-h">Harvest pool fees</div>
-        <div class="field"><label>Fee amount (USDG)</label><input id="i-fee" value="1000"></div>
-        <button class="btn accent" id="go-harvest">Harvest &amp; split</button>
-        <div class="ctl-h">Token price feed</div>
-        <div class="row2"><div class="field"><label>TWAP (USDG)</label><input id="i-twap" value="1"></div><div class="field"><label>Pool liquidity</label><input id="i-liq" value="5000"></div></div>
+        <p class="hint">Harvest fees, move the token price or request unbonding. Watch the bond reprice. Sandbox money only.</p>
+        <div class="ctl-h">Harvest pool fees · 50% goes to the bond</div>
+        <div class="field"><label>Fees to harvest (USDG)</label><input id="i-fee" value="1000"></div>
+        <button class="btn accent" id="go-harvest">Harvest fees</button>
+        <div class="ctl-h">Move the token price · the bond reprices</div>
+        <div class="row2"><div class="field"><label>TWAP (USDG)</label><input id="i-twap" value="1"></div><div class="field"><label>Pool liquidity (USDG)</label><input id="i-liq" value="5000"></div></div>
         <button class="btn" id="go-price">Update price</button>
-        <div class="ctl-h">Unbond</div>
-        <div class="field"><label>Token quantity</label><input id="i-unbond" value="100"></div>
+        <div class="ctl-h">Unbond · takes 30 days, still slashable</div>
+        <div class="field"><label>Tokens to unbond</label><input id="i-unbond" value="100"></div>
         <button class="btn" id="go-unbond">Request unbond</button>
         <div id="unbond-state" class="note"></div>
         <div class="note" id="mode-note"></div>
@@ -157,13 +157,13 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settled in USDG on Robinhood Chain.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents · USDG on Robinhood Chain</span><span><a href="/launchpad">← Launchpad</a></span></div>
+    <div class="fbot"><span>© 2026 Vouch · Agents you can vouch for · USDG on Robinhood Chain</span><span><a href="/launchpad">← Launchpad</a></span></div>
   </div>
 </footer>
 
