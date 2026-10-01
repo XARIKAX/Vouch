@@ -25,16 +25,16 @@
 .hero .lead b{color:var(--ink);font-weight:600}
 .keyrow{display:flex;flex-wrap:wrap;gap:10px;padding:16px 14px}
 .keyrow input{flex:1 1 220px;min-width:0}
-.term-f #msg{flex:1;min-height:18px;text-transform:none;letter-spacing:.02em;font-size:11.5px;line-height:1.5;color:rgba(242,239,228,.6)}
-.term-f #msg.ok{color:var(--accent-bright)}
-.term-f #msg.err{color:var(--red)}
+.term-f #msg,.term-f #c-msg{flex:1;min-height:18px;text-transform:none;letter-spacing:.02em;font-size:11.5px;line-height:1.5;color:rgba(242,239,228,.6);overflow-wrap:anywhere}
+.term-f #msg.ok,.term-f #c-msg.ok{color:var(--accent-bright)}
+.term-f #msg.err,.term-f #c-msg.err{color:var(--red)}
 @media(max-width:940px){.hero{padding-top:44px}.hero-grid{grid-template-columns:1fr;gap:34px}}
 
 /* ledger: five cells, hairline grid */
 .ledger .strip{border-bottom:none}
 .statband.five{grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line2)}
-.statband.five .st{border:none;background:var(--paper2)}
-.statband.five .st .v{font-size:clamp(26px,2.6vw,38px)}
+.statband.five .st{border:none;background:var(--paper2);min-width:0}
+.statband.five .st .v{font-size:clamp(26px,2.6vw,38px);overflow-wrap:anywhere}
 @media(max-width:900px){.statband.five{grid-template-columns:repeat(2,1fr)}.statband.five .st:last-child{grid-column:1/-1}}
 
 /* fields and buttons inside a terminal */
@@ -53,6 +53,7 @@
 .term .btn.accent:hover{box-shadow:3px 3px 0 var(--cream)}
 .composer-body{padding:18px 14px 20px}
 .crow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end}
+.crow[hidden]{display:none}
 .crow.last{justify-content:space-between;align-items:center;margin-bottom:0;padding-top:14px;border-top:1px solid rgba(242,239,228,.12)}
 .field{display:flex;flex-direction:column;gap:7px;flex:1 1 150px;min-width:0}
 .field.w-cap{flex:0 1 220px}.field.w-num{flex:0 1 150px}
@@ -83,10 +84,10 @@
 .term .pill::before{content:"";width:6px;height:6px;background:currentColor}
 .term .pill.settled{color:var(--green);border-color:var(--green)}
 .term .pill.refunded{color:var(--red);border-color:var(--red)}
-.term .pill.dispatched,.term .pill.verifying,.term .pill.submitted,.term .pill.disputed{color:var(--accent-bright);border-color:var(--accent-bright)}
-.term .pill.dispatched::before,.term .pill.verifying::before,.term .pill.submitted::before{animation:pulse 1.6s infinite}
+.term .pill.quoting,.term .pill.dispatched,.term .pill.verifying,.term .pill.submitted,.term .pill.disputed{color:var(--accent-bright);border-color:var(--accent-bright)}
+.term .pill.quoting::before,.term .pill.dispatched::before,.term .pill.verifying::before,.term .pill.submitted::before{animation:pulse 1.6s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.term .linkbtn{color:var(--accent-bright);cursor:pointer;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid currentColor;margin-left:8px;white-space:nowrap}
+.term .linkbtn{color:var(--accent-bright);cursor:pointer;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid currentColor;margin-left:8px;white-space:nowrap;text-decoration:none}
 .term .linkbtn:hover{color:var(--cream)}
 .stack{display:grid;gap:28px}
 .stack>*,.hero-visual,.hero-copy{min-width:0}
@@ -115,7 +116,7 @@
       <div class="hero-copy">
         <span class="eyebrow">Sandbox console · faucet-funded · no signup</span>
         <h1 class="display"><span>Watch it</span><span class="outline">settle.</span></h1>
-        <p class="lead mono">This is the sandbox console. Mint a key, post a task with pass-or-fail criteria and a budget, then watch it verify. <b>Pass: the agent is paid. Fail: you are refunded in full.</b> Everything runs in this browser, no signup.</p>
+        <p class="lead mono">This is the sandbox console. Mint a key, post a task with pass-or-fail criteria and a budget, then watch it verify. <b>Pass: the agent is paid. Fail: you are refunded in full.</b> Every call hits the real sandbox API. No signup.</p>
       </div>
       <div class="hero-visual">
         <div class="term offset brackets">
@@ -141,11 +142,11 @@
       <span class="end">Settle or refund · a fail costs you $0</span>
     </div>
     <div class="statband five rv">
-      <div class="st"><div class="l">Escrow balance</div><div class="v acc" id="s-balance">$0</div></div>
-      <div class="st"><div class="l">Locked in open tasks</div><div class="v" id="s-locked">$0</div></div>
-      <div class="st"><div class="l">Settled</div><div class="v" id="s-settled">0</div></div>
-      <div class="st"><div class="l">Refunded (you paid $0)</div><div class="v" id="s-refunded">0</div></div>
-      <div class="st"><div class="l">Insurance pool</div><div class="v acc" id="s-insurance">$0</div></div>
+      <div class="st"><div class="l">Escrow balance</div><div class="v acc" id="s-balance">—</div></div>
+      <div class="st"><div class="l">Locked in open tasks</div><div class="v" id="s-locked">—</div></div>
+      <div class="st"><div class="l">Settled</div><div class="v" id="s-settled">—</div></div>
+      <div class="st"><div class="l">Refunded (you paid $0)</div><div class="v" id="s-refunded">—</div></div>
+      <div class="st"><div class="l">Insurance pool</div><div class="v acc" id="s-insurance">—</div></div>
     </div>
   </div>
 </section>
@@ -157,13 +158,14 @@
       <div class="term-h"><span><span class="sq"></span>Post a task</span><span>budget is escrowed on post</span></div>
       <div class="composer-body">
         <div class="crow">
-          <div class="field w-cap"><label>Capability</label><select id="c-cap"></select></div>
-          <div class="field"><label id="c-input-label">Input</label><textarea id="c-input" placeholder="Describe what you want done…"></textarea></div>
+          <div class="field w-cap"><label for="c-cap">Capability</label><select id="c-cap"></select></div>
+          <div class="field"><label id="c-input-label" for="c-input">Input</label><textarea id="c-input" placeholder="Describe what you want done…"></textarea></div>
         </div>
+        <div class="crow" id="c-extra" hidden></div>
         <div class="crow">
-          <div class="field w-num"><label>Budget (USDG)</label><input id="c-budget" value="0.03"></div>
-          <div class="field w-num"><label>Deadline (ms)</label><input id="c-deadline" value="10000"></div>
-          <div class="field"><label>Pass-or-fail criteria (optional rubric)</label><input id="c-rubric" placeholder="e.g. substantive, on-topic, no filler"></div>
+          <div class="field w-num"><label for="c-budget">Budget ($)</label><input id="c-budget" value="0.03"></div>
+          <div class="field w-num"><label for="c-deadline">Deadline (ms)</label><input id="c-deadline" value="10000"></div>
+          <div class="field"><label for="c-rubric">Pass-or-fail criteria (optional rubric)</label><input id="c-rubric" placeholder="e.g. substantive, on-topic, no filler"></div>
         </div>
         <div class="crow last">
           <div class="toggles">
@@ -176,6 +178,7 @@
           <button id="c-post" class="acc btn accent">Post task <span class="ar">→</span></button>
         </div>
       </div>
+      <div class="term-f"><div id="c-msg"></div></div>
     </div>
   </div>
 </section>
@@ -212,260 +215,298 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
-<script>
+<script type="module">
 /* =========================================================================
-   Vouch dashboard — a self-contained, in-browser sandbox.
-   Mint creates a working session; deposit / sample / post all execute,
-   verify and settle-or-slash entirely client-side, so the whole console
-   works on any static host with nothing to configure.
+   Vouch console. Every action here is a real call to the sandbox API:
+   one key per browser (ensureKey), real deposits, real POST /v1/tasks,
+   the task list from GET /v1/tasks, offers from GET /v1/offers and the
+   ledger from GET /v1/balance + GET /v1/insurance. No money is computed
+   in the browser; every number on this page came back from the server.
    ========================================================================= */
+import { api, ensureKey, getKey, waitTask } from '/assets/vouch.js';
+
 const $ = (id) => document.getElementById(id);
-const keyInput = $('key');
-const note = (t, cls) => { const m = $('msg'); m.textContent = t; m.className = cls || ''; };
-const fmt = (n) => '$' + (Math.round((n + Number.EPSILON) * 1e6) / 1e6);
-const r6 = (n) => Math.round((n + Number.EPSILON) * 1e6) / 1e6;
-const rid = (p) => p + Array.from({ length: 10 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const money = (n) => '$' + String(Math.round((Number(n) || 0) * 1e6) / 1e6);
+const say = (el) => (t, cls) => { const m = $(el); m.textContent = t; m.className = cls || ''; };
+const note = say('msg');     // session terminal footer
+const cnote = say('c-msg');  // composer footer
+const TERMINAL = new Set(['settled', 'refunded']);
 
-const CAPS = ['text.generate', 'text.summarize', 'math.eval', 'code.generate', 'translate.text',
-  'extract.structured', 'classify.text', 'embed.text', 'image.generate', 'audio.speak'];
-const INPUT_FIELD = { 'math.eval': 'expression', 'text.summarize': 'text', 'translate.text': 'text',
-  'extract.structured': 'text', 'classify.text': 'text', 'audio.speak': 'text', 'embed.text': 'text' };
-const inputKey = (cap) => INPUT_FIELD[cap] || 'prompt';
-
-const PROVIDERS = [
-  { id: 'prv_calder', track: 96, ceiling: 0.05, sla: 12000, stake: 200 },
-  { id: 'prv_norn', track: 88, ceiling: 0.04, sla: 12000, stake: 150 },
-  { id: 'prv_shade', track: 71, ceiling: 0.05, sla: 9000, stake: 90 },
-];
-
-/* ---------- session state (persisted so a reload keeps your sandbox) ---------- */
-let S = null;
-try { S = JSON.parse(localStorage.getItem('vouch_sandbox') || 'null'); } catch { S = null; }
-const save = () => localStorage.setItem('vouch_sandbox', JSON.stringify(S));
-
-/* ---------- capability dropdown ---------- */
-$('c-cap').innerHTML = CAPS.map((c) => '<option value="' + c + '">' + c + '</option>').join('');
-function updateInputLabel() {
-  const key = inputKey($('c-cap').value);
-  $('c-input-label').textContent = key[0].toUpperCase() + key.slice(1);
-  $('c-input').placeholder = key === 'expression' ? '19 * (2 + 3)'
-    : key === 'text' ? 'Paste text to process…' : 'Describe what you want done…';
+/* ---------- API errors, worded with the server's own detail ---------- */
+function reason(e) {
+  const d = e.detail || {};
+  let s = e.code && e.code !== 'http_error' ? `${e.status} ${e.code} · ${e.message}` : e.message;
+  if (e.status === 402 && d.required !== undefined) s += ` Required ${money(d.required)}, balance ${money(d.balance)}.`;
+  if (e.status === 402 && d.ceiling !== undefined) s += ` Daily ceiling ${money(d.ceiling)}, locked today ${money(d.locked_today)}.`;
+  if (e.status === 409 && d.nearest_miss) {
+    const n = d.nearest_miss;
+    s += ` Nearest: ${n.provider} at ${money(n.price)}, ${n.deadline_ms} ms, track ${n.track}; missed on ${n.violated}.`;
+  }
+  if (e.status === 409 && d.nearest_miss === null) s += ' No provider serves this capability.';
+  if (e.status === 401) s += ' Click Mint sandbox key to get a fresh one.';
+  return s;
 }
-$('c-cap').onchange = updateInputLabel; updateInputLabel();
+
+/* ---------- capabilities and the composer's fields ---------- */
+// Fallback mirrors src/catalog.js in case GET /v1/capabilities is unreachable.
+const FALLBACK_CAPS = {
+  'text.generate': { prompt: 'string' }, 'image.generate': { prompt: 'string', width: 'integer?', height: 'integer?' },
+  'text.summarize': { text: 'string' }, 'audio.speak': { text: 'string', voice: 'string?' }, 'embed.text': { text: 'string' },
+  'math.eval': { expression: 'string' }, 'code.generate': { prompt: 'string', language: 'string?' },
+  'translate.text': { text: 'string', target_lang: 'string' }, 'extract.structured': { text: 'string', fields: 'string?' },
+  'classify.text': { text: 'string', labels: 'object' }, 'research.web': { question: 'string' },
+};
+const PRIMARY = ['prompt', 'text', 'expression', 'question'];
+const HINTS = { target_lang: 'fr', labels: 'positive, negative, neutral' };
+let caps = {}; // id -> input_schema
+
+function fieldsFor(cap) {
+  const schema = caps[cap] || FALLBACK_CAPS[cap] || { prompt: 'string' };
+  const required = Object.entries(schema).filter(([, t]) => !String(t).endsWith('?'));
+  const primary = (required.find(([k]) => PRIMARY.includes(k)) || required[0] || ['prompt'])[0];
+  return { primary, extra: required.filter(([k]) => k !== primary) };
+}
+const title = (k) => k.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+function renderFields() {
+  const { primary, extra } = fieldsFor($('c-cap').value);
+  $('c-input-label').textContent = title(primary);
+  $('c-input').placeholder = primary === 'expression' ? '19 * (2 + 3)'
+    : primary === 'text' ? 'Paste text to process…'
+    : primary === 'question' ? 'Ask a question…' : 'Describe what you want done…';
+  $('c-extra').innerHTML = extra.map(([k, t]) =>
+    `<div class="field"><label for="c-f-${esc(k)}">${esc(title(k))}${t === 'object' ? ' (comma separated)' : ''}</label>` +
+    `<input id="c-f-${esc(k)}" data-type="${esc(t)}" placeholder="${esc(HINTS[k] || '')}"></div>`).join('');
+  $('c-extra').hidden = !extra.length;
+}
+async function loadCaps() {
+  try {
+    const j = await api('/v1/capabilities', { key: null });
+    for (const c of j.capabilities || []) caps[c.id] = c.input_schema;
+  } catch { /* fall back to the mirrored catalog */ }
+  if (!Object.keys(caps).length) caps = { ...FALLBACK_CAPS };
+  $('c-cap').innerHTML = Object.keys(caps).map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  renderFields();
+}
+$('c-cap').onchange = renderFields;
 
 let consensusN = 1;
-['tg-retry', 'tg-cache'].forEach((id) => $(id).onclick = () => $(id).classList.toggle('on'));
-document.querySelectorAll('#seg-consensus button').forEach((b) => b.onclick = () => {
-  document.querySelectorAll('#seg-consensus button').forEach((x) => x.classList.remove('on'));
-  b.classList.add('on'); consensusN = Number(b.dataset.n);
+['tg-retry', 'tg-cache'].forEach((id) => { $(id).onclick = () => $(id).classList.toggle('on'); });
+document.querySelectorAll('#seg-consensus button').forEach((b) => {
+  b.onclick = () => {
+    document.querySelectorAll('#seg-consensus button').forEach((x) => x.classList.remove('on'));
+    b.classList.add('on'); consensusN = Number(b.dataset.n);
+  };
 });
 
-/* ---------- the tiny in-browser engine ---------- */
-function evalExpr(e) {
-  if (!/^[-+*/().\s0-9]+$/.test(String(e))) throw new Error('bad expression');
-  const v = Function('"use strict";return (' + e + ')')();
-  if (typeof v !== 'number' || !isFinite(v)) throw new Error('bad expression');
-  return v;
+/* ---------- ledger: GET /v1/balance + GET /v1/insurance ---------- */
+async function refreshInsurance() {
+  try {
+    const ins = await api('/v1/insurance', { key: null });
+    $('s-insurance').textContent = money(ins.pool_balance ?? ins.balance);
+  } catch { $('s-insurance').textContent = '—'; }
 }
-function sampleText(p) {
-  const topic = p ? String(p).replace(/\s+/g, ' ').trim().slice(0, 70) : 'verified outcomes';
-  return 'Verified outcomes beat blind retries: the agent posts acceptance criteria, escrow locks the budget, '
-    + 'and payment only releases when the work passes. On "' + topic + '", the provider delivered a checked, on-spec result.';
-}
-function execute(cap, input) {
-  if (cap === 'math.eval') return { result: evalExpr(input.expression) };
-  if (cap === 'translate.text') return { translation: '(translated) ' + (input.text || '') };
-  if (cap === 'extract.structured') return { data: { entity: 'Acme', amount: 42 } };
-  if (cap === 'classify.text') return { label: 'positive' };
-  if (cap === 'code.generate') return { code: 'export function handler(req, res) {\n  return res.json({ ok: true });\n}' };
-  if (cap === 'embed.text') return { embedding: [0.12, -0.04, 0.88] };
-  if (cap === 'image.generate') return { url: 'ipfs://bafy…render' };
-  return { text: sampleText(input.prompt || input.text) };
-}
-function primaryString(o) {
-  for (const k of ['text', 'translation', 'code', 'label', 'summary']) if (typeof o[k] === 'string') return o[k];
-  return JSON.stringify(o);
-}
-function getPath(o, p) { return p ? String(p).split('.').reduce((a, k) => (a == null ? a : a[k]), o) : o; }
-function runCheck(c, out) {
-  const s = primaryString(out); const v = getPath(out, c.path);
-  switch (c.assert) {
-    case 'equals': return JSON.stringify(v) === JSON.stringify(c.value);
-    case 'length_between': return s.length >= (c.min ?? 0) && s.length <= (c.max ?? 1e9);
-    case 'word_count': { const n = s.trim() ? s.trim().split(/\s+/).length : 0; return n >= (c.min ?? 0) && n <= (c.max ?? 1e9); }
-    case 'contains_all': return (c.values || []).every((x) => s.toLowerCase().includes(String(x).toLowerCase()));
-    case 'contains_none': return !(c.values || []).some((x) => s.toLowerCase().includes(String(x).toLowerCase()));
-    case 'regex': try { return new RegExp(c.pattern).test(s); } catch { return false; }
-    case 'numeric_between': return typeof v === 'number' && v >= (c.min ?? -1e9) && v <= (c.max ?? 1e9);
-    case 'one_of': return (c.values || []).includes(v);
-    case 'json_parseable': try { JSON.parse(s); return true; } catch { return false; }
-    default: return true;
-  }
-}
-function describeFail(c) {
-  if (!c) return 'below acceptance threshold';
-  if (c.assert === 'contains_all') return 'checks.contains_all: output missing required value "' + esc((c.values || [])[0]) + '"';
-  if (c.assert === 'equals') return 'checks.equals(' + (c.path || 'result') + '): expected ' + esc(JSON.stringify(c.value));
-  if (c.assert === 'length_between') return 'checks.length_between: length outside [' + (c.min ?? 0) + ', ' + (c.max ?? '∞') + ']';
-  return 'checks.' + c.assert + ': failed';
-}
-function auction(body) {
-  const budget = Number(body.budget) || 0.03;
-  const minTrack = Number(body.min_track) || 0;
-  const quotes = PROVIDERS.filter((p) => p.track >= minTrack)
-    .map((p) => ({ p, price: r6(Math.min(p.ceiling, budget) * (0.55 + Math.random() * 0.28)) }))
-    .filter((q) => q.price <= budget);
-  if (!quotes.length) return null;
-  quotes.sort((a, b) => a.price - b.price || b.p.track - a.p.track);
-  return { id: quotes[0].p.id, price: quotes[0].price, track: quotes[0].p.track };
+async function refreshLedger() {
+  if (!getKey()) return null;
+  const [bal] = await Promise.all([api('/v1/balance'), refreshInsurance()]);
+  $('s-balance').textContent = money(bal.balance);
+  $('s-locked').textContent = money(bal.locked);
+  return bal;
 }
 
-/* ---------- render ---------- */
-const pill = (s) => '<span class="pill ' + s + '">' + s + '</span>';
+/* ---------- tasks: GET /v1/tasks?limit=30, polled while anything is open ---------- */
+let tasks = [];
+let pollTimer = null;
+const pill = (s) => `<span class="pill ${esc(s)}">${esc(s)}</span>`;
+
+function detail(t) {
+  const s = t.settlement, r = t.refund;
+  if (t.status === 'settled' && s) {
+    const bits = [`verified by [${(s.verified_by || []).join(', ')}]`];
+    if (s.cached) bits.push('served from cache');
+    if (s.consensus) bits.push(`consensus ${s.consensus.passed}/${s.consensus.dispatched}`);
+    if (s.attempts > 1) bits.push(`settled on attempt ${s.attempts}`);
+    return esc(bits.join(' · ')) + ` <a class="linkbtn" href="/verify?task=${esc(t.id)}" target="_blank" rel="noopener">proof ↗</a>`;
+  }
+  if (t.status === 'refunded') {
+    const bits = [r ? `${r.reason}: ${r.detail}` : 'refunded'];
+    if (t.slash?.amount) bits.push(`provider slashed −${money(t.slash.amount)}`);
+    if (t.compensation?.amount) bits.push(`insurance paid you ${money(t.compensation.amount)}`);
+    if (t.attempts?.length > 1) bits.push(`${t.attempts.length} attempts`);
+    return esc(bits.join(' · '));
+  }
+  const last = t.events?.[t.events.length - 1];
+  if (last?.status === 'verifying' && last.validators) return esc(`verifying [${last.validators.join(', ')}]`);
+  if (last?.status === 'retrying') return esc(`retry ${last.attempt} → ${last.next_provider} (${last.reason})`);
+  if (last?.status === 'disputed') return esc(`dispute ${last.dispute?.id || ''} under review`);
+  if (t.consensus) return esc(`consensus ×${t.consensus} · ${(t.consensusQuotes || []).map((q) => q.provider).join(', ')}`);
+  return esc(last?.status || t.status) + '…';
+}
 function rowHtml(t) {
-  return '<tr><td class="mono">' + esc(t.id) + '</td><td class="mono">' + esc(t.cap) + '</td><td>' +
-    pill(t.status) + '</td><td class="mono">' + esc(t.prov) + '</td><td class="mono">' + fmt(t.price) +
-    '</td><td>' + (t.detail || '') + '</td></tr>';
+  const agent = t.settlement?.provider ?? t.quote?.provider ?? '—';
+  const price = t.settlement?.price ?? t.quote?.price ?? t.escrow?.locked;
+  return `<tr data-id="${esc(t.id)}"><td class="mono">${esc(t.id)}</td><td class="mono">${esc(t.capability)}</td><td>${pill(t.status)}</td>` +
+    `<td class="mono">${esc(agent)}</td><td class="mono">${price === undefined ? '—' : money(price)}</td><td>${detail(t)}</td></tr>`;
 }
-function render() {
-  if (!S) {
-    keyInput.value = '';
-    $('s-balance').textContent = '$0'; $('s-locked').textContent = '$0'; $('s-insurance').textContent = '$0';
-    $('s-settled').textContent = '0'; $('s-refunded').textContent = '0';
-    $('tasks').innerHTML = '<tr><td colspan="6" class="empty">Mint a sandbox key to begin.</td></tr>';
-    return;
+function renderTasks() {
+  $('tasks').innerHTML = tasks.length ? tasks.map(rowHtml).join('')
+    : '<tr><td colspan="6" class="empty">No tasks yet. Compose one above, or hit Quick sample.</td></tr>';
+  $('s-settled').textContent = String(tasks.filter((t) => t.status === 'settled').length);
+  $('s-refunded').textContent = String(tasks.filter((t) => t.status === 'refunded').length);
+}
+function patchRow(t) {
+  const i = tasks.findIndex((x) => x.id === t.id);
+  if (i >= 0) tasks[i] = t; else tasks.unshift(t);
+  renderTasks();
+}
+async function refreshTasks() {
+  if (!getKey()) return;
+  clearTimeout(pollTimer); pollTimer = null;
+  try {
+    tasks = (await api('/v1/tasks?limit=30')).tasks || [];
+  } catch (e) { note(reason(e), 'err'); return; }
+  renderTasks();
+  if (tasks.some((t) => !TERMINAL.has(t.status))) {
+    pollTimer = setTimeout(() => { refreshTasks(); refreshLedger().catch(() => {}); }, 2000);
   }
-  keyInput.value = S.key;
-  $('s-balance').textContent = fmt(S.balance);
-  $('s-locked').textContent = fmt(S.locked);
-  $('s-settled').textContent = S.settled;
-  $('s-refunded').textContent = S.refunded;
-  $('s-insurance').textContent = fmt(S.insurance);
-  $('tasks').innerHTML = S.tasks.length ? S.tasks.map(rowHtml).join('')
-    : '<tr><td colspan="6" class="empty">No tasks yet — compose one above, or hit Quick sample.</td></tr>';
-  $('tasks').querySelectorAll('[data-open]').forEach((el) => el.onclick = () => window.open(el.dataset.open, '_blank'));
-}
-function renderOffers() {
-  const rows = [];
-  ['text.generate', 'text.summarize', 'math.eval', 'code.generate'].forEach((cap) =>
-    PROVIDERS.forEach((p) => rows.push(
-      '<tr><td class="mono">' + cap + '</td><td class="mono">' + p.id + '</td><td class="mono">' + fmt(p.ceiling) +
-      '</td><td class="mono">' + p.sla + 'ms</td><td class="mono">' + p.track + '</td><td class="mono">' + fmt(p.stake) + '</td></tr>')));
-  $('offers').innerHTML = rows.join('');
 }
 
-/* ---------- actions ---------- */
-$('mint').onclick = () => {
-  S = { key: rid('vch_'), balance: 5, locked: 0, settled: 0, refunded: 0, insurance: 0, tasks: [] };
-  save(); render();
-  note('Sandbox key minted with a $5 faucet — deposit, then post a task.', 'ok');
+/* ---------- offers: GET /v1/offers ---------- */
+async function refreshOffers() {
+  try {
+    const { offers } = await api('/v1/offers', { key: null });
+    $('offers').innerHTML = offers.length ? offers.map((o) =>
+      `<tr><td class="mono">${esc(o.capability)}</td><td class="mono">${esc(o.provider)}</td><td class="mono">${money(o.price_ceiling)}</td>` +
+      `<td class="mono">${esc(o.sla_deadline_ms)}ms</td><td class="mono">${esc(o.track)}</td><td class="mono">${money(o.stake_available)}</td></tr>`).join('')
+      : '<tr><td colspan="6" class="empty">No open quotes.</td></tr>';
+  } catch (e) {
+    $('offers').innerHTML = `<tr><td colspan="6" class="empty">${esc(reason(e))}</td></tr>`;
+  }
+}
+
+/* ---------- session ---------- */
+async function session() {
+  $('key').value = getKey() || '';
+  const [bal] = await Promise.all([refreshLedger(), refreshTasks()]);
+  return bal;
+}
+
+$('mint').onclick = async () => {
+  const had = getKey();
+  $('mint').disabled = true;
+  try {
+    const key = await ensureKey();
+    const bal = await session();
+    note(had && had === key
+      ? `This browser already holds a sandbox key. Balance ${money(bal?.balance)}.`
+      : `Sandbox key minted. Faucet credit applied, balance ${money(bal?.balance)}. Deposit, then post a task.`, 'ok');
+  } catch (e) { note(reason(e), 'err'); }
+  finally { $('mint').disabled = false; }
 };
-$('deposit').onclick = () => {
-  if (!S) return note('Mint a sandbox key first.', 'err');
-  S.balance = r6(S.balance + 2); save(); render();
-  note('Deposited $2 — escrow balance ' + fmt(S.balance) + '.', 'ok');
+
+$('deposit').onclick = async () => {
+  if (!getKey()) return note('Mint a sandbox key first.', 'err');
+  $('deposit').disabled = true;
+  try {
+    const r = await api('/v1/escrow/deposit', { method: 'POST', body: { amount: 2 } });
+    note(`Deposited ${money(r.credited)}. Escrow balance ${money(r.balance)}.`, 'ok');
+    await refreshLedger();
+  } catch (e) { note(reason(e), 'err'); }
+  finally { $('deposit').disabled = false; }
 };
 
-async function runTask(body, label) {
-  if (!S) return note('Mint a sandbox key first.', 'err');
-  const budget = Number(body.budget) || 0.03;
-  if (budget > S.balance - S.locked) return note('Not enough free escrow — deposit more.', 'err');
-  const won = auction(body);
-  if (!won) return note('No provider quoted under budget — raise the budget.', 'err');
-  const n = Math.max(1, Number(body.consensus) || 1);
-  const price = r6(won.price * n);
-  if (price > S.balance - S.locked) return note('Consensus ×' + n + ' exceeds free escrow — deposit more.', 'err');
+/* ---------- posting: POST /v1/tasks, then poll the task to terminal ---------- */
+async function post(body, out, btn) {
+  if (!getKey()) return out('Mint a sandbox key first.', 'err');
+  btn.disabled = true;
+  let t;
+  try {
+    t = await api('/v1/tasks', { method: 'POST', body });
+  } catch (e) { btn.disabled = false; return out(reason(e), 'err'); }
+  btn.disabled = false;
 
-  const task = { id: rid('tsk_'), cap: body.capability, status: 'verifying', prov: won.id, price, detail: 'dispatched · executing…' };
-  S.tasks.unshift(task); S.locked = r6(S.locked + price); save(); render();
-  note('Posted ' + task.id + ' — ' + won.id + ' committed ' + fmt(price)
-    + (n > 1 ? ' (consensus ×' + n + ')' : '') + (body.retry ? ' · auto-retry on' : '') + ' — verifying…', 'ok');
-  await sleep(1100 + Math.random() * 700);
+  const flags = [body.consensus ? `consensus ×${body.consensus}` : '', body.retry ? 'auto-retry' : '', body.cache ? 'cache' : ''].filter(Boolean);
+  if (t.settlement?.cached) out(`${t.id} served from the verified cache for ${money(t.settlement.price)}.`, 'ok');
+  else out(`Posted ${t.id}. ${t.quote?.provider ?? 'provider'} committed ${money(t.quote?.price)}${flags.length ? ' · ' + flags.join(' · ') : ''}. Verifying…`, 'ok');
+  patchRow(t);
+  refreshLedger().catch(() => {});
+  if (!pollTimer) refreshTasks();
 
-  const checks = (body.acceptance && body.acceptance.checks) || [];
-  let out, failed = null, passed = true;
-  try { out = execute(body.capability, body.input); }
-  catch (e) { out = { text: 'ERROR: ' + e.message }; }
-  for (const c of checks) { if (!runCheck(c, out)) { passed = false; failed = c; break; } }
-
-  // auto-retry: reroute once to another provider before giving up
-  let retried = false;
-  if (!passed && body.retry) {
-    retried = true;
-    try { out = execute(body.capability, body.input); } catch { /* keep */ }
-    passed = checks.every((c) => runCheck(c, out));
-    if (passed) failed = null;
-  }
-
-  S.locked = r6(S.locked - price);
-  if (passed) {
-    task.status = 'settled'; S.settled += 1; S.balance = r6(S.balance - price);
-    const vb = ['schema', 'checks'].concat(body.acceptance && body.acceptance.rubric ? ['rubric 3/3'] : []);
-    task.detail = 'verified by [' + vb.join(', ') + ']' + (n > 1 ? ' · consensus ' + n + '/' + n : '')
-      + (retried ? ' · settled on retry' : '') + ' <span class="linkbtn" data-open="/verify">proof ↗</span>';
-    note('④ Settled — ' + won.id + ' passed verification. You paid ' + fmt(price) + ' for a verified outcome.', 'ok');
-  } else {
-    task.status = 'refunded'; S.refunded += 1;
-    const slash = r6(won.price * 1.5); S.insurance = r6(S.insurance + slash);
-    task.detail = 'verification_failed — ' + describeFail(failed) + ' · provider slashed −' + fmt(slash)
-      + (retried ? ' (after auto-retry)' : '');
-    note('Refunded in full — output failed verification. ' + won.id + ' slashed −' + fmt(slash) + '. You paid $0.', 'ok');
-  }
-  save(); render();
+  try {
+    const done = await waitTask(t.id, { onUpdate: patchRow });
+    if (done.status === 'settled') {
+      out(`Settled. ${done.settlement.provider} passed verification [${(done.settlement.verified_by || []).join(', ')}]. You paid ${money(done.settlement.price)}.`, 'ok');
+    } else if (done.status === 'refunded') {
+      out(`Refunded in full. ${done.refund?.reason}: ${done.refund?.detail}. You paid $0.`, 'ok');
+    } else {
+      out(`${t.id} is still ${done.status}. The list keeps polling.`, '');
+    }
+    await Promise.all([refreshTasks(), refreshLedger()]);
+  } catch (e) { out(reason(e), 'err'); }
 }
 
-/* Quick sample cycles: a math task (settles), a text task (settles),
-   then a task whose output can't pass (refund + slash) — the whole story. */
+// Quick sample cycles three real tasks against the seed network.
 const SAMPLES = [
   { capability: 'math.eval', input: { expression: '19 * (2 + 3)' },
-    acceptance: { checks: [{ assert: 'equals', path: 'result', value: 95 }] }, budget: 0.01 },
+    acceptance: { checks: [{ assert: 'equals', path: 'result', value: 95 }] }, budget: 0.01, deadline_ms: 5000 },
   { capability: 'text.generate', input: { prompt: 'why escrow beats retries for autonomous agents' },
     acceptance: { checks: [{ assert: 'length_between', min: 120 }, { assert: 'contains_none', values: ['###', 'ERROR'] }], rubric: 'substantive, on-topic' },
-    budget: 0.03 },
-  { capability: 'text.generate', input: { prompt: 'a bargain-bin summary' },
-    acceptance: { checks: [{ assert: 'contains_all', values: ['<<VOUCH-VERIFY-TOKEN-ZZ9>>'] }] }, budget: 0.03 },
+    budget: 0.03, deadline_ms: 10000, min_track: 70 },
+  { capability: 'classify.text', input: { text: 'The settlement landed and the agent was paid on time.', labels: ['positive', 'negative', 'neutral'] },
+    acceptance: { checks: [{ assert: 'one_of', path: 'label', values: ['positive', 'negative', 'neutral'] }] }, budget: 0.01, deadline_ms: 8000 },
 ];
 let sampleIdx = 0;
-$('sample').onclick = () => runTask(SAMPLES[sampleIdx++ % SAMPLES.length], 'sample');
+$('sample').onclick = () => post(SAMPLES[sampleIdx++ % SAMPLES.length], note, $('sample'));
 
 function acceptanceFor(cap, rubric) {
   const a = {};
-  if (cap.startsWith('text')) a.checks = [{ assert: 'length_between', min: 60 }];
-  if (rubric && cap.startsWith('text')) a.rubric = rubric;
+  if (cap.startsWith('text.')) a.checks = [{ assert: 'length_between', min: 60 }];
+  if (rubric) a.rubric = rubric;
   return a;
 }
 $('c-post').onclick = () => {
-  if (!S) return note('Mint a sandbox key first.', 'err');
+  if (!getKey()) return cnote('Mint a sandbox key first.', 'err');
   const cap = $('c-cap').value;
+  const { primary, extra } = fieldsFor(cap);
   const raw = $('c-input').value.trim();
-  if (!raw) return note('Enter an input first.', 'err');
+  if (!raw) return cnote(`Enter ${title(primary).toLowerCase()} first.`, 'err');
+  const input = { [primary]: raw };
+  for (const [k, t] of extra) {
+    const v = ($('c-f-' + k)?.value || '').trim();
+    if (!v) return cnote(`Enter ${title(k).toLowerCase()} first.`, 'err');
+    input[k] = t === 'object' ? v.split(',').map((x) => x.trim()).filter(Boolean) : v;
+  }
   const body = {
-    capability: cap, input: { [inputKey(cap)]: raw },
+    capability: cap, input,
     acceptance: acceptanceFor(cap, $('c-rubric').value.trim()),
-    budget: Number($('c-budget').value) || 0.03,
-    deadline_ms: Number($('c-deadline').value) || 10000,
+    budget: Number($('c-budget').value),
+    deadline_ms: Math.round(Number($('c-deadline').value)),
   };
   if ($('tg-retry').classList.contains('on')) body.retry = true;
+  if ($('tg-cache').classList.contains('on')) body.cache = true;
   if (consensusN > 1) body.consensus = consensusN;
-  runTask(body, 'compose');
+  post(body, cnote, $('c-post'));
 };
 
-renderOffers();
-render();
-if (!S) note('Click Mint sandbox key to start — everything runs right here in your browser.');
+/* ---------- boot ---------- */
+loadCaps();
+refreshOffers();
+refreshInsurance();
+if (getKey()) {
+  ensureKey().then(session).then(() => note('Session restored from this browser\'s sandbox key.', 'ok')).catch((e) => note(reason(e), 'err'));
+} else {
+  note('Click Mint sandbox key to start. Every call goes to the sandbox API.');
+}
 </script>
-<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>

@@ -160,13 +160,13 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
@@ -202,13 +202,15 @@ function countUp(el, target, prefix, suffix) {
 
 async function load() {
   try {
-    const [caps, offers, provs] = await Promise.all([
-      fetch('/v1/capabilities').then((r) => r.json()),
-      fetch('/v1/offers').then((r) => r.json()),
-      fetch('/v1/providers').then((r) => r.json()),
-    ]);
-    CAPS = caps.capabilities;
-    OFFERS = offers.offers;
+    // Every read checks r.ok so a rate limit or outage shows its real message.
+    const get = async (p) => {
+      const r = await fetch(p); let j = null; try { j = await r.json(); } catch { j = null; }
+      if (!r.ok) throw new Error((j && j.error && j.error.message) || (p + ' returned ' + r.status));
+      return j;
+    };
+    const [caps, offers, provs] = await Promise.all([get('/v1/capabilities'), get('/v1/offers'), get('/v1/providers')]);
+    CAPS = caps.capabilities ?? [];
+    OFFERS = offers.offers ?? [];
     PROVIDERS = Object.fromEntries((provs.providers ?? []).map((p) => [p.id, p]));
     renderStats(); renderTabs(); renderCatalog();
   } catch (e) {
@@ -240,8 +242,12 @@ function reliabilityFor(providerIds) {
 function renderStats() {
   const providers = providerIdsFor(new Set(CAPS.map((c) => c.id)));
   const capital = capitalFor(providers);
+  // "Guaranteed" means a bonded provider quotes for it. Open lanes are not counted.
+  const bc = byCap();
+  const guaranteed = CAPS.filter((c) => (bc[c.id] ?? []).length > 0).length;
+  const open = CAPS.length - guaranteed;
   const cells = [
-    { n: CAPS.length, pre: '', suf: '', l: 'capabilities, all guaranteed' },
+    { n: guaranteed, pre: '', suf: '', l: 'capabilities guaranteed' + (open ? ' · ' + open + ' open lane' + (open > 1 ? 's' : '') : '') },
     { n: providers.size, pre: '', suf: '', l: 'staked providers' },
     { n: Math.round(capital), pre: '$', suf: '', l: 'slashable capital behind them' },
     { n: 0, pre: '$', suf: '', l: 'what a failed task costs you' },

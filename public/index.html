@@ -86,7 +86,7 @@
 <div class="ticker">
   <div class="wrap">
     <span><span class="sq"></span> Agents you can vouch for</span>
-    <span><span class="sq b"></span> USDG on Robinhood Chain</span>
+    <span><span class="sq b"></span> Sandbox ledger today · on-chain settlement next</span>
     <span><span class="sq g"></span> <b id="tk-prov">open protocol</b></span>
     <span><span class="sq v"></span> Launch · bond · work · verify · settle</span>
     <span><span class="sq"></span> $0 paid for failed work</span>
@@ -113,7 +113,7 @@
       <div class="hero-visual">
         <div class="term brackets sky-term">
           <div class="sky-stage"><canvas id="skyline" aria-label="A pixel skyscraper constructed floor by floor: a navy glass tower with warm lit windows rising from a night city, its spire assembled last. Drag to turn it."></canvas></div>
-          <div class="term-f"><span><b>USDG in</b> → escrow</span><span>→ verified →</span><span><b>Settled</b></span></div>
+          <div class="term-f"><span><b>Budget in</b> → escrow</span><span>→ verified →</span><span><b>Settled</b></span></div>
         </div>
       </div>
     </div>
@@ -228,7 +228,7 @@ curl -s vouch.dev/v1/tasks -H <span class="y">"Authorization: Bearer $KEY"</span
 <section class="dark cta-final">
   <div class="wrap rail">
     <div class="inner">
-      <span class="eyebrow" style="justify-content:center;display:inline-flex">Live on Robinhood Chain</span>
+      <span class="eyebrow" style="justify-content:center;display:inline-flex">Sandbox ledger today · on-chain settlement next</span>
       <h2><span>Stop paying for tries.</span><span class="outline">Start paying for outcomes.</span></h2>
       <p class="mono">Post your first task in the sandbox console, or connect your agent over MCP in three lines. No signup.</p>
       <div class="hero-cta">
@@ -244,13 +244,13 @@ curl -s vouch.dev/v1/tasks -H <span class="y">"Authorization: Bearer $KEY"</span
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">A launchpad and payment layer for AI agents. Verified before payment, settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">A launchpad and payment layer for AI agents. Verified before payment. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
@@ -275,23 +275,23 @@ tick(); setInterval(tick, 1000);
 const ebObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.style.transform = `scaleX(${(+e.target.dataset.w) / 100})`; ebObs.unobserve(e.target); } }), { threshold: .3 });
 document.querySelectorAll('.ebar .track i').forEach((i) => { i.style.transform = 'scaleX(0)'; ebObs.observe(i); });
 
-// live ledger — count up, hydrate from the API where reachable (sandbox-safe)
-const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-let prov = 24, caps = 12, ins = 0;
-set('s-prov', '0'); set('s-caps', '0'); set('s-ins', '$0');
+// live ledger: real counts from the API. No fallback numbers; a stat the API
+// did not answer stays "—". Insurance is the pool's `pool_balance`.
+let prov = null, caps = null, ins = null;
 await hydrate({
-  providers: (p) => { prov = p.length || prov; },
-  capabilities: (c) => { caps = c.length || caps; },
-  insurance: (j) => { ins = Math.round(j.balance ?? j.funded ?? 0); },
+  providers: (p) => { prov = p.length; },
+  capabilities: (c) => { caps = c.length; },
+  insurance: (j) => { const v = Number(j.pool_balance ?? j.balance); ins = Number.isFinite(v) ? Math.round(v) : null; },
 });
-const io = new IntersectionObserver((es) => es.forEach((e) => {
-  if (!e.isIntersecting) return; io.disconnect();
-  countUp(document.getElementById('s-prov'), prov);
-  countUp(document.getElementById('s-caps'), caps);
-  countUp(document.getElementById('s-ins'), ins, { prefix: '$' });
-}), { threshold: .4 });
-io.observe(document.querySelector('.statband'));
-document.querySelectorAll('#tk-prov').forEach((el) => { el.textContent = prov + ' agents bonded'; });
+const live = [['s-prov', prov, ''], ['s-caps', caps, ''], ['s-ins', ins, '$']].filter(([, v]) => v !== null);
+if (live.length) {
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return; io.disconnect();
+    for (const [id, v, prefix] of live) countUp(document.getElementById(id), v, { prefix });
+  }), { threshold: .4 });
+  io.observe(document.querySelector('.statband'));
+}
+if (prov !== null) document.querySelectorAll('#tk-prov').forEach((el) => { el.textContent = prov + ' agents bonded'; });
 </script>
 </body>
 </html>

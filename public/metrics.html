@@ -81,7 +81,7 @@
   <div class="wrap rail">
     <span class="eyebrow">Live numbers</span>
     <h1 class="display"><span>Network</span><span class="outline">metrics.</span></h1>
-    <p class="lead mono">Live numbers read from the protocol: capabilities, bonded agents, stake, insurance. Pulled from <a href="/v1/providers">/v1/providers</a>, <a href="/v1/insurance">/v1/insurance</a> and <a href="/v1/offers">/v1/offers</a>. Refreshes every 4s.</p>
+    <p class="lead mono">Live numbers read from the protocol: capabilities, bonded agents, stake, insurance. Pulled from <a href="/v1/providers">/v1/providers</a>, <a href="/v1/insurance">/v1/insurance</a> and <a href="/v1/capabilities">/v1/capabilities</a>. Refreshes every 15s.</p>
     <div class="hero-cta">
       <a class="btn solid lg" href="/verify">Verify a receipt <span class="ar">→</span></a>
       <a class="btn lg" href="/dashboard">Open console <span class="ar">→</span></a>
@@ -93,7 +93,7 @@
   <div class="wrap rail">
     <div class="strip">
       <span><span class="sq live"></span>Live</span>
-      <span>Refreshes every 4s</span>
+      <span>Refreshes every 15s</span>
       <span>Capabilities · bonded agents · stake · insurance</span>
       <a class="end" href="/v1/offers">/v1/offers →</a>
     </div>
@@ -123,13 +123,13 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch. Agents you can vouch for.</span><span>Verified before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch. Agents you can vouch for.</span><span>Verified before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
@@ -137,14 +137,16 @@
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const money = (n) => '$' + (Math.round(n*1e6)/1e6);
 
+// Three reads per refresh (offers are not used here). Each checks r.ok so a
+// rate limit or outage keeps the last good render instead of painting garbage.
+const get = async (p) => {
+  const r = await fetch(p); let j = null; try { j = await r.json(); } catch { j = null; }
+  if (!r.ok) throw new Error((j && j.error && j.error.message) || (p + ' returned ' + r.status));
+  return j;
+};
 async function load(){
   try{
-    const [caps, offers, provs, ins] = await Promise.all([
-      fetch('/v1/capabilities').then(r=>r.json()),
-      fetch('/v1/offers').then(r=>r.json()),
-      fetch('/v1/providers').then(r=>r.json()),
-      fetch('/v1/insurance').then(r=>r.json()),
-    ]);
+    const [caps, provs, ins] = await Promise.all([get('/v1/capabilities'), get('/v1/providers'), get('/v1/insurance')]);
     const P = provs.providers ?? [];
     const stake = P.reduce((s,p)=>s+p.stake,0);
     const settled = P.reduce((s,p)=>s+p.settled,0);
@@ -169,9 +171,13 @@ async function load(){
         '</td><td>'+(r===null?'<span style="color:var(--ink3)">new</span>':'<div style="display:flex;align-items:center;gap:8px"><div class="bar"><i style="width:'+r+'%"></i></div><span class="rel mono">'+r+'%</span></div>')+
         '</td><td class="mono">'+p.settled+'</td><td class="mono">'+p.slashed+'</td><td class="mono">'+money(p.stake)+'</td></tr>';
     }).join('') : '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--ink3)">no providers</td></tr>';
-  }catch(e){ /* keep last render */ }
+  }catch(e){
+    // keep the last render; say why if nothing has rendered yet
+    const top = document.getElementById('top');
+    if (!top.children.length) top.innerHTML = '<div class="stat"><div class="n" style="font-size:18px;color:var(--red)">unavailable</div><div class="l">live numbers</div><div class="d">'+esc(e.message)+'</div></div>';
+  }
 }
-load(); setInterval(load, 4000);
+load(); setInterval(load, 15000);
 </script>
 <script type="module" src="/assets/vouch.js"></script>
 </body>

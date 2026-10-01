@@ -104,18 +104,20 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
-<script>
-// Canonical serialization — must match src/attest.js exactly.
+<script type="module">
+import { api, ensureKey, getKey, waitTask } from '/assets/vouch.js';
+
+// Canonical serialization. Must match src/attest.js exactly.
 function canonical(v){
   if (Array.isArray(v)) return '[' + v.map(canonical).join(',') + ']';
   if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map((k)=>JSON.stringify(k)+':'+canonical(v[k])).join(',') + '}';
@@ -123,63 +125,129 @@ function canonical(v){
 }
 const b64ToBytes = (b64) => Uint8Array.from(atob(b64), (c)=>c.charCodeAt(0));
 function pemToDer(pem){
-  const body = pem.replace(/-----[^-]+-----/g,'').replace(/\s+/g,'');
+  const body = String(pem).replace(/-----[^-]+-----/g,'').replace(/\s+/g,'');
   return b64ToBytes(body);
 }
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = (id) => document.getElementById(id);
+
+// Accept a bare attestation `{ payload, signature }` or the API wrapper
+// `{ attestation, public_key }` from GET /v1/tasks/:id/attestation.
+function unwrap(v){
+  if (v && typeof v === 'object' && v.attestation && typeof v.attestation === 'object') return v.attestation;
+  return v;
+}
+function isAttestation(att){
+  return !!(att && typeof att === 'object' && att.payload && typeof att.payload === 'object' && typeof att.signature === 'string');
+}
+
+// The live public key. Every step checks r.ok and surfaces the server's message.
+async function liveKey(){
+  const r = await fetch('/v1/attestation/key');
+  let j = null; try { j = await r.json(); } catch { j = null; }
+  if (!r.ok) throw new Error(j?.error?.message || ('Could not fetch /v1/attestation/key (' + r.status + ')'));
+  if (!j || !j.public_key) throw new Error('/v1/attestation/key returned no public_key.');
+  return j;
+}
 
 async function verifyAtt(att, pubPem){
-  if (!att || !att.payload || !att.signature) throw new Error('Not an attestation — expected { payload, signature }.');
+  if (!isAttestation(att)) throw new Error('Not an attestation. Expected { payload, signature } or { attestation: { payload, signature } }.');
   const key = await crypto.subtle.importKey('spki', pemToDer(pubPem), { name:'Ed25519' }, false, ['verify']);
   const msg = new TextEncoder().encode(canonical(att.payload));
   return crypto.subtle.verify({ name:'Ed25519' }, key, b64ToBytes(att.signature), msg);
 }
 
+const UNSUPPORTED = /Ed25519|Unrecognized algorithm|not supported|NotSupportedError/i;
+const friendly = (e) => UNSUPPORTED.test(String(e && (e.name + ' ' + e.message)))
+  ? 'Your browser does not support Ed25519 verification in WebCrypto. Try a recent Chrome, Edge, Safari or Firefox.'
+  : (e && e.message) || String(e);
+
 function show(ok, att, note){
-  const r = document.getElementById('result'); r.classList.add('show');
-  const badge = document.getElementById('badge'); badge.className = 'badge ' + (ok?'ok':'no'); badge.textContent = ok?'✓':'✕';
-  const verdict = document.getElementById('verdict'); verdict.className = 'verdict ' + (ok?'ok':'no');
+  const r = $('result'); r.classList.add('show');
+  const badge = $('badge'); badge.className = 'badge ' + (ok?'ok':'no'); badge.textContent = ok?'✓':'✕';
+  const verdict = $('verdict'); verdict.className = 'verdict ' + (ok?'ok':'no');
   verdict.textContent = ok ? 'Signature valid' : 'Signature invalid';
-  document.getElementById('vsub').textContent = note || (ok ? 'This receipt was genuinely signed by Vouch and has not been altered.' : 'This receipt does not verify against the public key.');
-  const p = (att && att.payload) || {};
+  $('vsub').textContent = note || (ok ? 'This receipt was genuinely signed by Vouch and has not been altered.' : 'This receipt does not verify against the public key.');
+  const a = isAttestation(att) ? att : {};
+  const p = a.payload || {};
   const rows = [
     ['kind', p.kind], ['task_id', p.task_id], ['capability', p.capability],
     ['provider', p.provider], ['price', p.price != null ? '$'+p.price : null],
     ['verified_by', Array.isArray(p.verified_by) ? p.verified_by.map((x)=>'<span class="tag">'+esc(x)+'</span>').join('') : p.verified_by],
     ['output_sha256', p.output_sha256], ['attested_at', p.attested_at ? new Date(p.attested_at).toISOString() : null],
-    ['alg / key', (att.alg||'')+' · '+(att.key_id||'')],
+    ['alg / key', (a.alg || p.alg) ? (a.alg||'')+' · '+(a.key_id||p.key_id||'') : null],
   ].filter(([,v]) => v != null && v !== '');
-  document.getElementById('fields').innerHTML = rows.map(([k,v]) =>
+  $('fields').innerHTML = rows.map(([k,v]) =>
     '<div class="field"><div class="k">'+esc(k)+'</div><div class="v">'+(k==='verified_by'?v:esc(v))+'</div></div>').join('');
 }
 
-document.getElementById('verify').onclick = async () => {
-  let att;
-  try { att = JSON.parse(document.getElementById('att').value); }
-  catch { return show(false, {}, 'That is not valid JSON.'); }
+// Verify one receipt against the live key. Reports a rotated signing key by
+// comparing the receipt's key_id with the key_id the API serves right now.
+async function check(raw){
+  const att = unwrap(raw);
+  if (raw === null || raw === undefined) return show(false, {}, 'Nothing to verify. Paste a receipt first.');
+  if (!isAttestation(att)) return show(false, {}, 'Not an attestation. Expected { payload, signature } or { attestation: { payload, signature } }.');
+  let pub;
+  try { pub = await liveKey(); } catch (e) { return show(false, att, e.message); }
+  const attKeyId = att.key_id || att.payload.key_id || null;
+  const rotated = !!(attKeyId && pub.key_id && attKeyId !== pub.key_id);
   try {
-    const pub = await fetch('/v1/attestation/key').then((r)=>r.json());
     const ok = await verifyAtt(att, pub.public_key);
+    if (ok && rotated) return show(true, att, 'Signature valid, but this receipt was signed by a rotated key (' + attKeyId + '). The live key is ' + pub.key_id + '.');
+    if (!ok && rotated) return show(false, att, 'This receipt was signed by a rotated key (' + attKeyId + '). The live key is ' + pub.key_id + ', so it cannot verify here.');
     show(ok, att);
   } catch (e) {
-    show(false, att, e.message.includes('Ed25519') ? 'Your browser does not support Ed25519 verification — try a recent Chrome/Edge.' : e.message);
+    show(false, att, friendly(e));
   }
+}
+
+$('verify').onclick = async () => {
+  const text = $('att').value;
+  if (!text.trim()) return show(false, {}, 'Nothing to verify. Paste a receipt first.');
+  let raw;
+  try { raw = JSON.parse(text); }
+  catch { return show(false, {}, 'That is not valid JSON.'); }
+  await check(raw);
 };
 
-document.getElementById('sample').onclick = async () => {
-  // Mint a key, post a tiny task, and pull its real attestation.
+// Load a sample: the shared sandbox key posts a tiny task and pulls its real receipt.
+$('sample').onclick = async () => {
+  const ta = $('att');
+  const btn = $('sample'); btn.disabled = true;
+  ta.value = '// posting a sample task with your sandbox key …';
   try {
-    const key = (await (await fetch('/v1/keys',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).json()).key;
-    const t = await (await fetch('/v1/tasks',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body: JSON.stringify({ capability:'math.eval', input:{expression:'6 * 7'}, acceptance:{checks:[{assert:'equals',path:'result',value:42}]}, budget:0.01, deadline_ms:5000 })})).json();
-    for (let i=0;i<40;i++){ const s = await (await fetch('/v1/tasks/'+t.id,{headers:{'Authorization':'Bearer '+key}})).json();
-      if (s.status==='settled'){ const a = await (await fetch('/v1/tasks/'+t.id+'/attestation',{headers:{'Authorization':'Bearer '+key}})).json();
-        document.getElementById('att').value = JSON.stringify(a.attestation, null, 2); return; }
-      if (s.status==='refunded') break; await new Promise((r)=>setTimeout(r,150)); }
-    document.getElementById('att').value = '// could not fetch a live sample (grading may have refunded) — try again';
-  } catch (e) { document.getElementById('att').value = '// sample failed: '+e.message; }
+    await ensureKey();
+    const task = await api('/v1/tasks', { method:'POST', body:{
+      capability:'math.eval', input:{ expression:'6 * 7' },
+      acceptance:{ checks:[{ assert:'equals', path:'result', value:42 }] },
+      budget:0.01, deadline_ms:5000,
+    } });
+    const done = await waitTask(task.id, { onUpdate: (t) => { ta.value = '// task ' + t.id + ' · ' + t.status + ' …'; } });
+    if (done.status !== 'settled') { ta.value = '// task ' + task.id + ' ended ' + done.status + (done.failed ? ' (' + (done.failed.detail || done.failed.validator) + ')' : '') + '. Try again.'; return; }
+    const a = await api('/v1/tasks/' + task.id + '/attestation');
+    ta.value = JSON.stringify(a.attestation, null, 2);
+    history.replaceState(null, '', '/verify?task=' + task.id);
+  } catch (e) { ta.value = '// sample failed: ' + e.message; }
+  finally { btn.disabled = false; }
 };
+
+// ?task=<id>: pull that task's receipt with the stored key and verify it.
+async function fromQuery(){
+  const id = new URLSearchParams(location.search).get('task');
+  if (!id) return;
+  const ta = $('att');
+  if (!getKey()) { ta.value = '// no sandbox key is stored in this browser, so task ' + id + ' cannot be fetched. Open the console first, or paste the receipt here.'; return show(false, {}, 'No stored key. Open the console once so this browser has a key, then reload.'); }
+  ta.value = '// fetching receipt for ' + id + ' …';
+  try {
+    const a = await api('/v1/tasks/' + encodeURIComponent(id) + '/attestation');
+    ta.value = JSON.stringify(a, null, 2);
+    await check(a);
+  } catch (e) {
+    ta.value = '// could not fetch the receipt for ' + id + ': ' + e.message;
+    show(false, {}, e.message + (e.status === 404 ? ' (the task may belong to a different key)' : ''));
+  }
+}
+fromQuery();
 </script>
-<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>
