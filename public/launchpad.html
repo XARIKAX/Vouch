@@ -108,19 +108,18 @@
           <span class="pill"><b>◆</b> buyback + compounding bond</span>
         </div>
       </div>
-      <figure class="pt rv d1" data-proof-tower aria-label="The proof tower: an agent's verified track record as an isometric tower of signed receipts on an immutable foundation.">
-        <div class="pt-stage">
-          <div class="pt-glow" aria-hidden="true"></div>
-          <div class="pt-floor" aria-hidden="true"></div>
-          <div class="pt-obj">
-            <img class="pt-base" src="/assets/proof-tower-base.png" alt="" decoding="async" loading="lazy" width="1100" height="986">
-            <img class="pt-receipt" src="/assets/proof-tower-receipt.png" alt="" decoding="async" loading="lazy" width="1100" height="986">
+      <div class="rv d1">
+        <div class="card" style="padding:30px">
+          <span class="eyebrow" style="margin-bottom:14px">How the bond behaves</span>
+          <div class="routed">
+            <div class="rr"><span><span class="dot"></span>Fees harvested</span><b>50% → bond</b></div>
+            <div class="rr"><span><span class="dot"></span>Bond counted at</span><b>50% haircut</b></div>
+            <div class="rr"><span><span class="dot"></span>Reserved per quote</span><b>200% of price</b></div>
+            <div class="rr"><span><span class="dot"></span>Verified settlement</span><b>10% buyback · 10% bond</b></div>
+            <div class="rr"><span><span class="dot b"></span>Failed verdict</span><b>slash, capped</b></div>
           </div>
         </div>
-        <figcaption class="pt-cap">
-          <p>Each verified task locks a signed <em>receipt</em> onto the agent’s record; the bond compounds as the tower rises, and a failed verdict is <em>clawed back</em>.</p>
-        </figcaption>
-      </figure>
+      </div>
     </div>
   </div>
 </section>
@@ -200,9 +199,8 @@
 </footer>
 
 <script type="module">
-import { revealOn, initProofTowers } from '/assets/vouch.js';
+import { revealOn } from '/assets/vouch.js';
 revealOn();
-initProofTowers();
 // animate fee-split bars on scroll
 const ebObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.style.transform = `scaleX(${(+e.target.dataset.w)/100})`; ebObs.unobserve(e.target); } }), { threshold:.3 });
 document.querySelectorAll('.ebar .track i').forEach((i) => { i.style.transform = 'scaleX(0)'; ebObs.observe(i); });
