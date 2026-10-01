@@ -5,105 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Services</title>
 <meta name="description" content="The Vouch service catalog: every capability backed by slashable capital and gated by verification. Guaranteed outcomes, not a list of endpoints.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23c9e83a%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%239ec000%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%230c0d0b%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/vouch.css">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --paper:#f5f5f0;--paper2:#ffffff;--paper3:#efefe8;
-  --ink:#0c0d0b;--ink2:#54564e;--ink3:#8c8e84;
-  --line:rgba(12,13,11,.11);--line2:rgba(12,13,11,.17);--dash:rgba(12,13,11,.16);
-  --acc:#bfe000;--acc-deep:#93b200;--acc-bright:#d2ee1c;--acc-ink:#11140a;
-  --acc-soft:rgba(159,190,0,.14);--red:#d23c42;
-  --serif:'Fraunces','Spectral',Georgia,serif;--sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;
-  --maxw:1200px;--radius:16px;
-}
-.dark{--paper:#0b0c0a;--paper2:#141613;--ink:#f4f5ef;--ink2:#a2a49a;--ink3:#71736a;
-  --line:rgba(244,245,239,.10);--line2:rgba(244,245,239,.16);--dash:rgba(244,245,239,.15);
-  --acc:#d2ee1c;--acc-deep:#c2e400;--acc-soft:rgba(210,238,28,.12);background:#0b0c0a;color:var(--ink)}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-::selection{background:var(--acc);color:var(--acc-ink)}
-a{color:inherit;text-decoration:none}
-.mono{font-family:var(--mono)}
-.wrap{max-width:var(--maxw);margin:0 auto;padding:0 46px;position:relative}
-.wrap::before,.wrap::after{content:"";position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--dash);pointer-events:none;z-index:0}
-.wrap::before{left:0}.wrap::after{right:0}
-.wrap>*{position:relative;z-index:1}
-@media(max-width:720px){.wrap{padding:0 22px}.wrap::before,.wrap::after{display:none}}
-h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-.012em}
-.mk{background:linear-gradient(transparent 60%,var(--acc) 60%);padding:0 .04em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
-em{font-style:italic}
-.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:2.4px;text-transform:uppercase;color:var(--ink2);display:inline-flex;align-items:center;gap:12px}
-.eyebrow::before{content:"";width:22px;height:1px;background:var(--acc-deep)}
-.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 9px var(--acc-deep);animation:pulse 2.2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.32}}
-
-.btn{display:inline-flex;align-items:center;gap:9px;padding:13px 22px;border-radius:11px;font-family:var(--sans);font-size:14.5px;font-weight:550;
-  border:1px solid var(--line2);color:var(--ink);background:transparent;cursor:pointer;transition:.2s cubic-bezier(.2,.7,.3,1);white-space:nowrap}
-.btn:hover{border-color:var(--ink);transform:translateY(-1px)}
-.btn.solid{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.btn.solid:hover{background:#000;box-shadow:0 12px 30px rgba(12,13,11,.24)}
-.dark .btn.solid{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
-.dark .btn.solid:hover{filter:brightness(1.06);box-shadow:0 12px 34px rgba(210,238,28,.28)}
-.dark .btn{color:var(--ink);border-color:var(--line2)}.dark .btn:hover{border-color:var(--ink)}
-.btn .ar{transition:transform .2s}.btn:hover .ar{transform:translateX(3px)}
-
-/* nav */
-nav.top{position:sticky;top:0;z-index:50;height:70px;display:flex;align-items:center;
-  background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);border-bottom:1px solid var(--line)}
-nav.top .wrap{display:flex;align-items:center;gap:26px;width:100%}
-.logo{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:500;font-size:23px;letter-spacing:-.01em}
-.mark{width:27px;height:27px;flex:none}.mark svg{width:100%;height:100%}
-.pagechip{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc-deep);border:1px solid color-mix(in srgb,var(--acc-deep) 40%,transparent);border-radius:6px;padding:3px 9px;background:var(--acc-soft)}
-.nav-links{display:flex;gap:2px;margin-left:auto;align-items:center}
-.nav-links a{color:var(--ink2);font-size:14px;padding:8px 13px;border-radius:8px;transition:.16s}
-.nav-links a:hover{color:var(--ink);background:var(--paper3)}
-.nav-links a.btn{margin-left:8px}
+/* services — page-specific layout over the shared forest/cream system in vouch.css */
 
 /* hero */
-.hero{padding:76px 0 26px;position:relative;overflow:hidden}
+.hero{padding:72px 0 26px;position:relative;overflow:hidden}
 .hero::after{content:"";position:absolute;inset:auto -10% -60% 45%;height:52rem;background:radial-gradient(34rem 26rem at 60% 40%,var(--acc-soft),transparent 66%);z-index:0;pointer-events:none}
-.hero h1{font-size:clamp(38px,5vw,66px);line-height:1.02;letter-spacing:-.02em;margin:24px 0 18px;max-width:16ch}
+.hero h1{font-size:clamp(38px,5vw,66px);line-height:1.02;letter-spacing:-.02em;margin:22px 0 18px;max-width:17ch}
+.hero h1 em{color:var(--forest)}
 .lede{color:var(--ink2);font-size:18px;max-width:48rem;line-height:1.58}
 .lede strong{color:var(--ink);font-weight:600}
-.lede em{font-style:italic}
 
+/* stat row */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px dashed var(--dash);border-bottom:1px dashed var(--dash);margin:42px 0 0}
 .stat{padding:30px 26px;border-left:1px dashed var(--dash)}
 .stat:first-child{border-left:none}
-.stat .n{font-family:var(--serif);font-size:38px;font-weight:400;letter-spacing:-.02em;line-height:1;display:flex;align-items:baseline;gap:9px}
-.stat .n::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--acc);align-self:center;flex:none}
+.stat .n{font-family:var(--serif);font-size:38px;font-weight:400;letter-spacing:-.02em;line-height:1;display:flex;align-items:baseline;gap:9px;color:var(--forest)}
+.stat .n::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--forest);align-self:center;flex:none}
 .stat .l{font-size:12.5px;color:var(--ink3);margin-top:9px}
 
 /* controls */
-.controls{position:sticky;top:70px;z-index:30;padding:20px 0 14px;margin-top:20px;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.controls{position:sticky;top:72px;z-index:30;padding:20px 0 14px;margin-top:20px;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .searchrow{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .search{flex:1;min-width:260px;display:flex;align-items:center;gap:10px;height:48px;padding:0 16px;border:1px solid var(--line2);border-radius:12px;background:var(--paper2);color:var(--ink2);transition:.18s}
-.search:focus-within{border-color:var(--acc-deep);box-shadow:0 0 0 3px var(--acc-soft)}
+.search:focus-within{border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
 .search input{flex:1;border:none;outline:none;background:transparent;color:var(--ink);font-family:var(--mono);font-size:13.5px}
 .search input::placeholder{color:var(--ink3)}
 .search svg{width:16px;height:16px;color:var(--ink3);flex:none}
-.guarantee-note{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--acc-ink);border-radius:10px;padding:0 15px;height:48px;background:var(--acc);white-space:nowrap;font-weight:500}
+.guarantee-note{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--cream);border-radius:10px;padding:0 15px;height:48px;background:var(--forest);white-space:nowrap;font-weight:500}
 .tabs{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .tab{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:10px;border:1px solid var(--line);background:var(--paper2);color:var(--ink2);font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:.15s}
 .tab:hover{color:var(--ink);border-color:var(--line2)}
-.tab.on{color:var(--acc-ink);background:var(--acc);border-color:transparent;font-weight:600}
+.tab.on{color:var(--cream);background:var(--forest);border-color:transparent;font-weight:600}
 .tab .c{font-weight:600;opacity:.65}.tab.on .c{opacity:.8}
 
 main{padding:14px 0 40px}
 h3.cat{font-family:var(--mono);font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:2.4px;color:var(--ink3);margin:34px 0 16px;display:flex;align-items:center;gap:14px}
 h3.cat::after{content:"";flex:1;height:1px;background:var(--line)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
-.svc{border:1px solid var(--line);border-radius:var(--radius);background:var(--paper2);padding:22px 22px 16px;display:flex;flex-direction:column;transition:.28s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden}
+.svc{border:1px solid var(--line);border-radius:18px;background:var(--paper2);padding:22px 22px 16px;display:flex;flex-direction:column;transition:.28s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden}
 .svc::before{content:"";position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--acc-soft),transparent 70%);top:-80px;right:-60px;pointer-events:none;opacity:0;transition:.3s}
-.svc:hover{border-color:var(--ink3);transform:translateY(-4px);box-shadow:0 24px 54px rgba(12,13,11,.11)}
+.svc:hover{border-color:var(--ink3);transform:translateY(-4px);box-shadow:0 24px 54px rgba(22,24,15,.1)}
 .svc:hover::before{opacity:1}
 .svc .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .svc .id{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--ink)}
-.guaranteed{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--acc-ink);background:var(--acc);border-radius:6px;padding:3px 8px;white-space:nowrap;flex:none;font-weight:600}
+.guaranteed{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--cream);background:var(--forest);border-radius:6px;padding:3px 8px;white-space:nowrap;flex:none;font-weight:600}
 .guaranteed svg{width:10px;height:10px}
 .svc .desc{color:var(--ink2);font-size:13.5px;margin:6px 0 14px}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
@@ -112,73 +63,76 @@ h3.cat::after{content:"";flex:1;height:1px;background:var(--line)}
 .metric .ml{font-size:10.5px;color:var(--ink3);margin-top:1px}
 .badges{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .b{font-size:11px;font-family:var(--mono);border:1px solid var(--line2);border-radius:7px;padding:3px 8px;color:var(--ink2)}
-.b strong{color:var(--acc-deep);font-weight:600}
+.b strong{color:var(--forest);font-weight:600}
 .b.proto{color:var(--ink);border-color:var(--line2);background:var(--paper3)}
 table{width:100%;border-collapse:collapse;font-size:12px;margin-top:auto}
 th,td{text-align:left;padding:7px 6px;border-top:1px solid var(--line)}
 th{font-size:9.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--ink3);font-weight:600;border-top:none}
 td{color:var(--ink2);font-family:var(--mono)}
 td:first-child{color:var(--ink)}
-.track{color:var(--acc-deep);font-weight:500}
+.track{color:var(--forest);font-weight:500}
 .svc.empty-lane{border-style:dashed;background:transparent}
 .svc.empty-lane .lane{margin-top:auto;font-size:12.5px;color:var(--ink3);border-top:1px solid var(--line);padding-top:12px}
 .svc.empty-lane .lane b{color:var(--ink);font-weight:600}
 .noresults{color:var(--ink3);text-align:center;padding:60px 0;font-size:14px}
 
-/* reveal */
-.rv{opacity:0;transform:translateY(18px);transition:opacity .6s cubic-bezier(.2,.7,.3,1),transform .6s cubic-bezier(.2,.7,.3,1)}
-.rv.in{opacity:1;transform:none}
-
-/* how (dark) */
+/* how — dark panel */
 .how{margin-top:66px}
-.how .inner{border-radius:24px;padding:56px 46px;position:relative;overflow:hidden;background:var(--ink);color:var(--paper)}
-.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(34rem 16rem at 50% -30%,rgba(210,238,28,.22),transparent 66%);pointer-events:none}
-.how h3{font-size:clamp(26px,3vw,38px);letter-spacing:-.02em;margin-bottom:14px;color:var(--paper)}
-.how p{color:rgba(244,245,239,.74);font-size:15.5px;max-width:74ch;margin-bottom:26px}
-.how p .mono{color:var(--acc)}
+.how .inner{border-radius:24px;padding:56px 46px;position:relative;overflow:hidden;background:var(--night);color:var(--cream)}
+.how .inner::before{content:"";position:absolute;inset:0;background:radial-gradient(34rem 16rem at 50% -30%,rgba(63,145,89,.22),transparent 66%);pointer-events:none}
+.how h3{font-size:clamp(26px,3vw,38px);letter-spacing:-.02em;margin-bottom:14px;color:var(--cream)}
+.how p{color:rgba(242,239,228,.74);font-size:15.5px;max-width:74ch;margin-bottom:26px}
+.how p .mono{color:var(--forest-bright)}
 .how .cta{display:inline-flex;gap:12px;flex-wrap:wrap}
-.how .cta .btn{color:var(--paper);border-color:rgba(244,245,239,.2)}
-.how .cta .btn:hover{border-color:var(--paper)}
-.how .cta .btn.solid{background:var(--acc);color:var(--acc-ink);border:none}
+.how .cta .btn{color:var(--cream);border-color:rgba(242,239,228,.2)}
+.how .cta .btn:hover{border-color:var(--cream)}
+.how .cta .btn.solid{background:var(--forest);color:var(--cream);border:none}
+.how .cta .btn.solid:hover{background:var(--forest-deep)}
 
-#err{color:var(--red);font-size:13.5px;margin:18px 0;display:none;border:1px solid rgba(210,60,66,.3);border-radius:12px;padding:12px 16px;background:rgba(210,60,66,.06)}
+#err{color:var(--red);font-size:13.5px;margin:18px 0;display:none;border:1px solid rgba(178,59,46,.3);border-radius:12px;padding:12px 16px;background:rgba(178,59,46,.06)}
 
-footer{margin-top:70px;padding:44px 0;background:var(--ink);color:rgba(244,245,239,.6)}
-footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:13px}
-footer .wrap::before,footer .wrap::after{border-color:rgba(244,245,239,.14)}
-footer a{color:rgba(244,245,239,.78)}
-footer a:hover{color:var(--acc)}
 @media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.stat:nth-child(3){border-left:none}.stat{border-top:1px dashed var(--dash)}.stat:nth-child(-n+2){border-top:none}}
-@media(max-width:680px){.nav-links a:not(.btn){display:none}.hero{padding-top:56px}.stats{grid-template-columns:1fr}.stat{border-left:none;border-top:1px dashed var(--dash)}.stat:first-child{border-top:none}.how .inner{padding:36px 24px}.controls{position:static}}
+@media(max-width:680px){.hero{padding-top:52px}.stats{grid-template-columns:1fr}.stat{border-left:none;border-top:1px dashed var(--dash)}.stat:first-child{border-top:none}.how .inner{padding:36px 24px}.controls{position:static}}
 </style>
 </head>
 <body>
 
 <nav class="top">
-  <div class="wrap">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#c9e83a"/><stop offset="1" stop-color="#9ec000"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#0c0d0b" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
-    <span class="pagechip">Services</span>
+  <div class="wrap rail">
+    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#3f9159"/><stop offset="1" stop-color="#20492f"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <div class="nav-links">
+      <a class="active" href="/services">Services</a>
+      <a href="/agents">Agents</a>
+      <a href="/launchpad">Launchpad</a>
       <a href="/providers">Providers</a>
       <a href="/docs">Docs</a>
-      <a href="/dashboard">Dashboard</a>
-      <a class="btn solid" href="/docs#quickstart">Get started</a>
+      <a class="btn forest" href="/dashboard">Open console</a>
     </div>
   </div>
 </nav>
 
+<div class="ticker">
+  <div class="wrap rail">
+    <span class="dot"></span><b>Live</b>
+    <span class="sp">·</span>verification before payment
+    <span class="sp tk-hide">·</span><span class="tk-hide">USDG on Robinhood Chain</span>
+    <span class="sp tk-hide">·</span><span class="tk-hide">no key needed to browse</span>
+    <span class="end">$0 lost to bad work →</span>
+  </div>
+</div>
+
 <header class="hero">
-  <div class="wrap">
+  <div class="wrap rail">
     <span class="eyebrow"><span class="dot"></span>Live catalog — no key needed to browse</span>
-    <h1>Not a list of endpoints.<br>A catalog of <span class="mk">guarantees.</span></h1>
-    <p class="lede">Anyone can list a thousand services that <em>might</em> work. Every capability here is <strong>backed by slashable capital</strong> and <strong>gated by verification</strong> — the output is checked before you pay, and failure refunds you and slashes the provider. Fewer promises, all of them enforced.</p>
+    <h1>Not a list of endpoints.<br>A catalog of <em>guarantees.</em></h1>
+    <p class="lede">Any directory can list a thousand services that <em>might</em> work. Every capability here is <strong>backed by slashable capital</strong> and <strong>gated by verification</strong>: the output is checked before you pay, and a failed check refunds you and slashes the provider. Fewer promises, each one enforced.</p>
     <div class="stats" id="stats"></div>
     <div id="err"></div>
   </div>
 </header>
 
 <div class="controls">
-  <div class="wrap">
+  <div class="wrap rail">
     <div class="searchrow">
       <label class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -190,7 +144,7 @@ footer a:hover{color:var(--acc)}
   </div>
 </div>
 
-<main class="wrap">
+<main class="wrap rail">
   <div id="catalog"></div>
 
   <div class="how rv">
@@ -206,9 +160,39 @@ footer a:hover{color:var(--acc)}
 </main>
 
 <footer>
-  <div class="wrap">
-    <span>© 2026 Vouch — the outcome layer for AI agents</span>
-    <span>Live from <a href="/v1/offers">/v1/offers</a> · <a href="/v1/providers">/v1/providers</a></span>
+  <div class="wrap rail">
+    <div class="fgrid">
+      <div>
+        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#3f9159"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
+      </div>
+      <div class="fcol">
+        <h4>Product</h4>
+        <a href="/services">Service catalog</a>
+        <a href="/agents">Agentic accounts</a>
+        <a href="/launchpad">Agent Launchpad</a>
+        <a href="/trade">Agentic trading</a>
+        <a href="/providers">Provider console</a>
+      </div>
+      <div class="fcol">
+        <h4>Protocol</h4>
+        <a href="/docs#outcomes">Tasks &amp; outcomes</a>
+        <a href="/docs#verification">Verification</a>
+        <a href="/docs#launchpad">Launchpad</a>
+        <a href="/docs#onchain">On-chain settlement</a>
+      </div>
+      <div class="fcol">
+        <h4>Network</h4>
+        <a href="/verify">Verify a receipt</a>
+        <a href="/metrics">Network metrics</a>
+        <a href="/v1/offers">/v1/offers</a>
+        <a href="https://github.com/XARIKAX/Vouch">GitHub</a>
+      </div>
+    </div>
+    <div class="fbot">
+      <span>© 2026 Vouch — the outcome layer for AI agents</span>
+      <span>Verification before payment · USDG on Robinhood Chain</span>
+    </div>
   </div>
 </footer>
 
