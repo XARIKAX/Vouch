@@ -92,3 +92,79 @@ test('end-to-end: a launched agent settles verified work and routes its revenue'
     assert.ok(g.totals.bond_topped_up > 0, 'net bond share tops the bond up');
   } finally { good.close(); }
 });
+
+test('a bad outcome slashes the agent token bond (not flat USDG) and funds insurance', async () => {
+  const bad = await fakeProvider({ error: 'boom' }); // provider abandons → slash at 1.5x
+  try {
+    const engine = createEngine(FAST);
+    engine.state.providers = {};
+    const a = engine.launchAgent({
+      owner: '0xowner', name: 'calc', endpoint_url: bad.url,
+      offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } },
+      twap_usdg: 1, pool_liquidity_usdg: 5000,
+    });
+    engine.harvestFees(a.id, 100); // bond 50 tokens
+    const before = engine.getAgent(a.id);
+    const insBefore = engine.state.insurance.funded;
+
+    const buyer = engine.createKey('buyer');
+    engine.deposit(buyer, 1);
+    const { task } = engine.createTask(buyer, {
+      capability: 'math.eval', input: { expression: '6 * 7' },
+      acceptance: { checks: [{ assert: 'equals', path: 'result', value: 42 }] },
+      budget: 0.03, deadline_ms: 5000, retry: false,
+    });
+    const done = await waitTerminal(engine, task.id);
+    assert.equal(done.status, 'refunded');
+
+    const after = engine.getAgent(a.id);
+    const burnedTokens = before.bond.token_qty - after.bond.token_qty;
+    assert.ok(burnedTokens > 0, 'bond was slashed in platform token, not flat stake');
+    assert.ok(after.totals.slashed_usdg > 0, 'slash recorded in USDG');
+    // TWAP is $1, so USDG slashed == tokens burned, and it is within the caps.
+    assert.ok(near(burnedTokens, after.totals.slashed_usdg), 'token burn priced at TWAP');
+    assert.ok(after.totals.slashed_usdg <= before.bond.raw_value_usdg * 0.2, 'within the rolling cap');
+    assert.ok(engine.state.insurance.funded > insBefore, 'the slash capitalizes insurance');
+    assert.ok(after.bond.capacity_usdg < before.bond.capacity_usdg, 'capacity reprices down');
+  } finally { bad.close(); }
+});
+
+test('reputation is counterparty-weighted: self-dealing earns zero, a real buyer earns full', async () => {
+  const good = await fakeProvider({ result: 42 });
+  try {
+    const engine = createEngine(FAST);
+    engine.state.providers = {};
+    const a = engine.launchAgent({
+      owner: '0xowner', name: 'calc', endpoint_url: good.url,
+      offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } },
+      twap_usdg: 1, pool_liquidity_usdg: 5000,
+    });
+    engine.harvestFees(a.id, 1000); // ample bond
+    const providerTrack = () => engine.state.providers[engine.getAgent(a.id).provider_id].track;
+    const settleOnce = async (buyer) => {
+      engine.deposit(buyer, 1);
+      const { task } = engine.createTask(buyer, {
+        capability: 'math.eval', input: { expression: '6 * 7' },
+        acceptance: { checks: [{ assert: 'equals', path: 'result', value: 42 }] },
+        budget: 0.03, deadline_ms: 5000,
+      });
+      return waitTerminal(engine, task.id);
+    };
+
+    const t0 = providerTrack();
+    // Self-dealing: same owner wallet on both sides → zero reputation.
+    const self = engine.createKey('self', { owner: '0xowner' });
+    const d1 = await settleOnce(self);
+    assert.equal(d1.status, 'settled');
+    assert.equal(providerTrack(), t0, 'self-dealing earns no track');
+    assert.equal(engine.getAgent(a.id).totals.distinct_counterparties, 0);
+
+    // A genuine third-party buyer with deterministic checks → full weight.
+    const whale = engine.createKey('whale', { owner: '0xwhale' });
+    const d2 = await settleOnce(whale);
+    assert.equal(d2.status, 'settled');
+    assert.ok(providerTrack() > t0, 'a real counterparty earns reputation');
+    assert.equal(engine.getAgent(a.id).totals.distinct_counterparties, 1);
+    assert.equal(engine.getAgent(a.id).totals.settled_count, 2, 'both settles counted');
+  } finally { good.close(); }
+});

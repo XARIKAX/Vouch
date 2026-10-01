@@ -112,7 +112,7 @@ export function createApi(engine) {
     ['POST', /^\/v1\/keys$/, async (req, res) => {
       adminGate(req);
       const body = await readBody(req);
-      const key = engine.createKey(body.name ?? 'default');
+      const key = engine.createKey(body.name ?? 'default', { owner: body.owner });
       send(res, 201, {
         id: key.id, key: key.token, tier: key.tier,
         note: 'Store this key — it is shown once. Faucet credit applied.',
