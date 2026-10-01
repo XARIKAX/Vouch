@@ -20,7 +20,7 @@
 .hero .owner:empty{display:none}
 .hero .lead{max-width:52ch;margin:22px 0 26px}
 .hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.banner{display:inline-flex;align-items:center;gap:10px;margin-top:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);border:1px solid var(--line2);background:var(--paper2);padding:10px 14px}
+.banner{display:inline-block;line-height:1.7;margin-top:18px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);border:1px solid var(--line2);background:var(--paper2);padding:10px 14px}
 .banner[hidden]{display:none}
 .banner b{color:var(--accent-deep);font-weight:600}
 
@@ -59,13 +59,14 @@
 .note{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:14px;line-height:1.6}
 .note:empty{display:none}
 @media(max-width:900px){.grid{grid-template-columns:1fr;gap:44px}.ctl{position:static}}
+@media(max-width:600px){.term-f{flex-wrap:wrap;gap:6px 14px}}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#8f7cff"/><stop offset="1" stop-color="#4529c4"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>

@@ -88,7 +88,8 @@
 .sitem p{font-size:13.5px;color:rgba(242,239,228,.68);line-height:1.6}
 
 /* interop */
-.interop{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:center}
+.interop{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:44px;align-items:center}
+.interop>*{min-width:0}
 .interop h2{margin:18px 0 16px;font-size:clamp(30px,4.2vw,54px)}
 .interop p.mono{margin-bottom:14px}
 .interop p.mono strong{color:var(--ink);font-weight:600}
@@ -97,12 +98,12 @@
 
 /* final cta */
 .cta-final .inner{text-align:center}
-.cta-final h2{font-size:clamp(34px,6vw,84px);text-transform:uppercase;letter-spacing:-.04em;line-height:.92;margin:18px auto 22px}
+.cta-final h2{font-size:clamp(34px,5.6vw,78px);text-transform:uppercase;letter-spacing:-.04em;line-height:.92;margin:18px auto 22px}
 .cta-final h2 span{display:block}
 .cta-final p{max-width:46ch;margin:0 auto 30px}
 .cta-final .cta-row{justify-content:center}
 
-@media(max-width:920px){.sgrid{grid-template-columns:1fr;gap:22px}.cw-grid{grid-template-columns:1fr}.cw-cfg{border-right:none;border-bottom:1px solid var(--line2)}.interop{grid-template-columns:1fr;gap:26px}}
+@media(max-width:920px){.sgrid{grid-template-columns:1fr;gap:22px}.cw-grid{grid-template-columns:1fr}.cw-cfg{border-right:none;border-bottom:1px solid var(--line2)}.interop{grid-template-columns:minmax(0,1fr);gap:26px}}
 @media(max-width:480px){.acct-metrics{grid-template-columns:1fr}.am{border-right:none;border-bottom:1px solid var(--line2)}.am:last-child{border-bottom:none}}
 </style>
 </head>
@@ -282,7 +283,7 @@
   <div class="wrap rail">
     <div class="inner rv">
       <span class="eyebrow" style="justify-content:center;display:inline-flex">No signup · faucet-funded</span>
-      <h2><span>Give your agent a wallet</span><span class="outline">it can't waste.</span></h2>
+      <h2><span>Give your agent</span><span>a wallet</span><span class="outline">it can't waste.</span></h2>
       <p class="mono">Create an agentic account with a budget, a cap, and a kill switch — and let it buy only verified outcomes. No signup.</p>
       <div class="cta-row">
         <a class="btn accent lg" href="#console">Create an account <span class="ar">→</span></a>
