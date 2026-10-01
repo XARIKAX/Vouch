@@ -8,124 +8,108 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
-/* verify — page-specific. Palette, nav, ticker, buttons, footer come from vouch.css. */
-main{padding:60px 0 80px}
-main .wrap{max-width:860px}
-h1{font-size:clamp(34px,4.6vw,52px);margin-bottom:16px}
-.mk{background:linear-gradient(transparent 62%,color-mix(in srgb,var(--forest) 24%,transparent) 62%);padding:0 .04em}
-.lede{color:var(--ink2);font-size:17.5px;max-width:56ch;margin:0 0 34px}
-.lede strong{color:var(--ink);font-weight:600}
-textarea{width:100%;min-height:180px;border:1px solid var(--line2);border-radius:14px;background:var(--paper2);color:var(--ink);padding:16px;font-family:var(--mono);font-size:12.5px;line-height:1.6;resize:vertical}
-textarea:focus{outline:none;border-color:var(--forest);box-shadow:0 0 0 3px var(--acc-soft)}
-textarea::placeholder{color:var(--ink3)}
-.row{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;align-items:center}
-.result{margin-top:28px;border-radius:16px;border:1px solid var(--line);background:var(--paper2);overflow:hidden;display:none;box-shadow:0 20px 50px rgba(22,24,15,.07)}
+/* verify — page-specific. Palette, nav, buttons, forms, terminal panel, footer come from vouch.css. */
+.hero{padding:64px 0 96px}
+.vgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:54px;align-items:start}
+.hero h1{font-size:clamp(38px,5vw,70px);margin:22px 0 24px}
+.hero h1 span{display:block}
+.hero .lead{max-width:46ch}
+.hint{margin-top:26px;padding-top:18px;border-top:1px solid var(--line2);font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--ink3);max-width:48ch}
+.hint a{color:var(--accent-deep);border-bottom:1px solid currentColor}
+.hint code{color:var(--ink2);background:var(--paper3);padding:2px 6px}
+/* the paste panel: a hairline strip header sitting flush on the textarea */
+.paste .strip{border-bottom:none}
+.paste .strip .end{color:var(--ink3);letter-spacing:.06em;text-transform:none}
+.paste textarea{display:block;width:100%;min-height:300px;padding:16px;font-size:12.5px;line-height:1.6;resize:vertical}
+.paste textarea::placeholder{color:var(--ink3)}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;align-items:center}
+/* the receipt: a dark terminal panel, lines ruled like a printed ticket */
+.result{display:none;margin-top:64px}
 .result.show{display:block}
-.rhead{display:flex;align-items:center;gap:14px;padding:22px 24px;border-bottom:1px solid var(--line)}
-.badge{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:22px;flex:none}
-.badge.ok{background:var(--acc-soft);color:var(--forest);border:1px solid color-mix(in srgb,var(--forest) 40%,transparent)}
-.badge.no{background:rgba(178,59,46,.1);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 40%,transparent)}
-.rhead .verdict{font-family:var(--serif);font-size:22px;font-weight:460;letter-spacing:-.01em}
-.rhead .verdict.ok{color:var(--forest)}.rhead .verdict.no{color:var(--red)}
-.rhead .sub{font-size:13px;color:var(--ink3);margin-top:2px}
-.fields{padding:8px 24px 20px}
-.field{display:flex;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.rhead{display:flex;align-items:center;gap:18px;padding:22px 20px;border-bottom:1px solid rgba(242,239,228,.12)}
+.badge{width:48px;height:48px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;font-weight:700;color:var(--cream);flex:none}
+.badge.ok{background:var(--accent)}
+.badge.no{background:var(--red)}
+.verdict{font-family:var(--serif);font-weight:900;font-size:clamp(22px,2.6vw,30px);line-height:1;letter-spacing:-.03em;text-transform:uppercase;color:var(--cream)}
+.sub{font-family:var(--mono);font-size:11.5px;line-height:1.6;color:rgba(242,239,228,.6);margin-top:7px}
+.fields{padding:6px 20px 14px}
+.field{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:11px 0;border-bottom:1px dashed rgba(242,239,228,.16);font-family:var(--mono)}
 .field:last-child{border-bottom:none}
-.field .k{color:var(--ink3);width:150px;flex:none;font-family:var(--mono);font-size:12px}
-.field .v{color:var(--ink);font-family:var(--mono);font-size:12.5px;word-break:break-all}
-.field .v .tag{display:inline-block;color:var(--cream);background:var(--forest);border-radius:5px;padding:1px 7px;margin:0 4px 4px 0;font-size:11px}
-.hint{margin-top:22px;font-size:13px;color:var(--ink3);line-height:1.6}
-.hint a{color:var(--forest);text-decoration:underline;text-underline-offset:2px}
-.hint code{font-family:var(--mono);color:var(--ink2);background:var(--paper3);padding:2px 6px;border-radius:5px}
+.field .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.5);padding-top:3px}
+.field .v{font-size:12.5px;line-height:1.6;color:var(--cream);word-break:break-all}
+.field .v .tag{display:inline-block;border:1px solid var(--accent-bright);color:var(--accent-bright);padding:1px 7px;margin:0 6px 4px 0;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+@media(max-width:940px){.hero{padding:44px 0 80px}.vgrid{grid-template-columns:1fr;gap:34px}}
+@media(max-width:600px){.paste .strip{flex-wrap:wrap}.paste .strip .end{margin-left:0;border-top:1px solid var(--line2);width:100%}.field{grid-template-columns:1fr;gap:4px}.tf-mid{display:none}}
 </style>
 </head>
 <body>
 
 <nav class="top">
   <div class="wrap rail">
-    <a class="logo" href="/"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><defs><linearGradient id="vg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse"><stop stop-color="#ff8a4a"/><stop offset="1" stop-color="#c84d10"/></linearGradient></defs><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="url(#vg)"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#f2efe4" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</a>
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
       <a href="/launchpad">Launchpad</a>
       <a href="/providers">Providers</a>
       <a href="/docs">Docs</a>
-      <a class="btn forest" href="/dashboard">Open console</a>
+      <a class="btn solid" href="/dashboard">Open console</a>
     </div>
   </div>
 </nav>
 
-<div class="ticker">
-  <div class="wrap rail">
-    <span class="dot"></span><b>Live</b>
-    <span class="sp">·</span>verification before payment
-    <span class="sp tk-hide">·</span><span class="tk-hide">USDG on Robinhood Chain</span>
-    <span class="sp tk-hide">·</span><span class="tk-hide" id="tk-prov">open protocol</span>
-    <span class="end">$0 lost to bad work →</span>
-  </div>
-</div>
-
 <main>
+<section class="hero">
   <div class="wrap rail">
-    <div class="eyebrow">Proof-of-verified-work</div>
-    <h1>Verify an attestation <span class="mk"><em>yourself.</em></span></h1>
-    <p class="lede">Every settled task ships an ed25519-signed receipt. Paste one below — the signature is checked <strong>in your browser</strong> against Vouch's public key. Don't trust us; prove it.</p>
-
-    <textarea id="att" placeholder='Paste an attestation JSON, e.g. the "attestation" object from GET /v1/tasks/{id}/attestation …'></textarea>
-    <div class="row">
-      <button class="btn forest" id="verify">Verify signature</button>
-      <button class="btn ghost" id="sample">Load a sample</button>
+    <div class="vgrid">
+      <div class="hero-copy">
+        <span class="eyebrow">Proof-of-verified-work</span>
+        <h1 class="display"><span>Verify an</span><span>attestation</span><span class="outline">yourself.</span></h1>
+        <p class="lead mono">Every settled task ships an ed25519-signed receipt. Paste one below — the signature is checked <strong>in your browser</strong> against Vouch's public key. Don't trust us; prove it.</p>
+        <p class="hint">The public key lives at <a href="/v1/attestation/key">/v1/attestation/key</a>. The signed message is the canonical JSON of the <code>payload</code> — the same offline check any third party can run. Pull a real one from <code>GET /v1/tasks/{id}/attestation</code>.</p>
+      </div>
+      <div class="paste">
+        <div class="strip">
+          <span><span class="sq"></span>Attestation</span>
+          <span>JSON</span>
+          <span class="end">{ payload, signature }</span>
+        </div>
+        <textarea id="att" placeholder='Paste an attestation JSON, e.g. the "attestation" object from GET /v1/tasks/{id}/attestation …'></textarea>
+        <div class="row">
+          <button class="btn solid lg" id="verify">Verify signature <span class="ar">→</span></button>
+          <button class="btn lg" id="sample">Load a sample</button>
+        </div>
+      </div>
     </div>
 
-    <div class="result" id="result">
+    <div class="result term offset brackets" id="result">
+      <div class="term-h"><span><span class="sq"></span>Signed receipt · ed25519</span><span>Checked in your browser</span></div>
       <div class="rhead">
         <div class="badge" id="badge"></div>
         <div><div class="verdict" id="verdict"></div><div class="sub" id="vsub"></div></div>
       </div>
       <div class="fields" id="fields"></div>
+      <div class="term-f"><span><b>Message</b> canonical(payload)</span><span class="tf-mid">→ verify →</span><span><b>Key</b> /v1/attestation/key</span></div>
     </div>
-
-    <p class="hint">The public key lives at <a href="/v1/attestation/key">/v1/attestation/key</a>. The signed message is the canonical JSON of the <code>payload</code> — the same offline check any third party can run. Pull a real one from <code>GET /v1/tasks/{id}/attestation</code>.</p>
   </div>
+</section>
 </main>
 
 <footer>
   <div class="wrap rail">
     <div class="fgrid">
       <div>
-        <div class="flogo"><span class="mark"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2.4l11.2 3.7v8.1c0 7.6-5.5 12.8-11.2 15C10.3 27 4.8 21.8 4.8 14.2V6.1z" fill="#ff8a4a"/><path d="M10.6 16.4l3.9 3.9L21.7 12" stroke="#13150e" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Vouch</div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
         <p class="fnote">The outcome layer for AI agents. Verification before payment, settled in USDG on Robinhood Chain.</p>
       </div>
-      <div class="fcol">
-        <h4>Product</h4>
-        <a href="/services">Service catalog</a>
-        <a href="/agents">Agentic accounts</a>
-        <a href="/launchpad">Agent Launchpad</a>
-        <a href="/trade">Agentic trading</a>
-        <a href="/providers">Provider console</a>
-      </div>
-      <div class="fcol">
-        <h4>Protocol</h4>
-        <a href="/docs#outcomes">Tasks &amp; outcomes</a>
-        <a href="/docs#verification">Verification</a>
-        <a href="/docs#launchpad">Launchpad</a>
-        <a href="/docs#onchain">On-chain settlement</a>
-      </div>
-      <div class="fcol">
-        <h4>Network</h4>
-        <a href="/verify">Verify a receipt</a>
-        <a href="/metrics">Network metrics</a>
-        <a href="/v1/offers">/v1/offers</a>
-        <a href="https://github.com/XARIKAX/Vouch">GitHub</a>
-      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot">
-      <span>© 2026 Vouch — the outcome layer for AI agents</span>
-      <span>Verification before payment · USDG on Robinhood Chain</span>
-    </div>
+    <div class="fbot"><span>© 2026 Vouch — the outcome layer for AI agents</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
   </div>
 </footer>
 
