@@ -76,6 +76,8 @@ export async function hydrate(handlers = {}) {
 // self-init (idempotent)
 if (typeof window !== 'undefined' && !window.__vouchInit) {
   window.__vouchInit = true;
-  const go = () => { revealOn(); initTicker(); initProgressRail(); numberSections(); };
+  // Only the scroll reveal runs by default; the ticker, rail and section
+  // numbering remain exported for pages that opt in.
+  const go = () => { revealOn(); };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', go) : go();
 }
