@@ -682,7 +682,7 @@ console.log(task.id, task.quote.price);</code></pre></div></div>
 }</code></pre></div>
   <p>The cheapest quote wins the first attempt. If it ships junk, the <span class="inline">retry</span> flag reroutes to the next provider within the locked budget and the task still settles. Without <span class="inline">retry</span> the same task refunds as <span class="inline">verification_failed</span> and the provider is slashed. Response headers carry <span class="inline">X-Escrow-Ceiling-Remaining</span> and the rate-limit window.</p>
 
-  <div class="codewrap term"><div class="codehead term-h">Response 200 (cache hit)</div><pre><code>{
+  <div class="codewrap term"><div class="codehead term-h">Response 201 (cache hit)</div><pre><code>{
   "id": "tsk_9a20…",
   "status": "settled",
   "cached": true,
@@ -748,7 +748,7 @@ data: {"ts":1783…,"status":"settled","output":{"text":"…"},"settlement":{"pr
   "id": "tsk_8c1f…",
   "status": "settled",
   "output": { "text": "…" },
-  "attempts": [{ "provider": "prv_shade", "reason": "verification_failed", "detail": "checks.length_between: length 27 < min 120" }],
+  "attempts": [{ "provider": "prv_shade", "reason": "verification_failed", "detail": "checks.length_between: length 29 < min 120" }],
   "settlement": {
     "provider": "prv_norn",
     "price": 0.0104,
@@ -1114,7 +1114,7 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
 
   <h2>Enabling it</h2>
   <p>Set <span class="inline">cache: true</span>. If a match exists (same capability, input and acceptance), the task settles synchronously from cache. No auction, no agent round-trip.</p>
-  <div class="codewrap term"><div class="codehead term-h">POST /v1/tasks → 200</div><pre><code>{
+  <div class="codewrap term"><div class="codehead term-h">POST /v1/tasks → 201</div><pre><code>{
   "id": "tsk_9a20…",
   "status": "settled",
   "cached": true,
