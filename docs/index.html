@@ -904,7 +904,7 @@ tools = await client.get_tools()   # vouch_post_task, vouch_task_status, …</co
   <p>For frameworks without MCP support, one blocking function covers the whole loop:</p>
   <div class="codewrap term"><div class="codehead term-h">Python</div><pre><code>import time, requests
 
-BASE = "https://api.vouch.example/v1"
+BASE = "https://YOUR_VOUCH_HOST/v1"
 HEADERS = {"Authorization": "Bearer vch_your_key"}
 
 def vouch(capability: str, input: dict, acceptance: dict,
@@ -930,22 +930,23 @@ def vouch(capability: str, input: dict, acceptance: dict,
 <article class="page" id="limits" data-group="Reference" data-title="Rate limits">
   <div class="crumbs eyebrow"><b>Reference</b></div>
   <h1>Rate limits</h1>
-  <p class="lead mono">Limits cover request rate and open tasks. Spend is capped separately, by escrow balance and per-key ceilings.</p>
+  <p class="lead mono">Limits cover request rate and daily escrow. Spend is capped separately by escrow balance. There is no open-task cap.</p>
 
   <table>
-    <tr><th>Tier</th><th>Requests / min</th><th>Open tasks</th><th>Daily escrow ceiling</th></tr>
-    <tr><td>Sandbox</td><td>60</td><td>3</td><td>$5</td></tr>
-    <tr><td>Startup</td><td>600</td><td>50</td><td>$500</td></tr>
-    <tr><td>Scale</td><td>6,000</td><td>1,000</td><td>Custom</td></tr>
+    <tr><th>Tier</th><th>Requests / min</th><th>Daily escrow ceiling</th></tr>
+    <tr><td>Sandbox</td><td>60</td><td>$5 per UTC day</td></tr>
+    <tr><td>Startup</td><td>600</td><td>$500</td></tr>
+    <tr><td>Scale</td><td>6,000</td><td>Unlimited</td></tr>
   </table>
+  <p>Every key minted in the sandbox is <span class="inline">sandbox</span> tier. Tier upgrades are not available in the sandbox; the startup and scale rows are engine configuration with no upgrade path today. Anonymous reads of the public endpoints share the sandbox rate, bucketed per client IP.</p>
 
   <p>Every response carries the current window in headers:</p>
-  <div class="codewrap term"><div class="codehead term-h">Headers</div><pre><code>X-RateLimit-Limit: 600
-X-RateLimit-Remaining: 597
+  <div class="codewrap term"><div class="codehead term-h">Headers</div><pre><code>X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 57
 X-RateLimit-Reset: 1720000000
-X-Escrow-Ceiling-Remaining: 471.82</code></pre></div>
+X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
 
-  <p>Hitting a rate limit returns <span class="inline">429</span> with a <span class="inline">Retry-After</span> header. Tiers upgrade from the dashboard and take effect at once.</p>
+  <p>Hitting a rate limit returns <span class="inline">429</span> with a <span class="inline">Retry-After</span> header. Hitting the daily ceiling returns <span class="inline">402 escrow_insufficient</span> with <span class="inline">ceiling</span> and <span class="inline">locked_today</span> attached. Request bodies are capped at 256 KiB (<span class="inline">413 payload_too_large</span>).</p>
 </article>
 
 <!-- Errors -->
