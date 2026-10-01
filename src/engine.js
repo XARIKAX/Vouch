@@ -175,7 +175,7 @@ export function createEngine(cfg = {}) {
   // no provider round-trip. Safe precisely because the cached output already
   // passed verification against the same acceptance criteria.
   const cacheKey = (capability, input, acceptance) =>
-    sha256(capability + ' ' + canonicalStr(input) + ' ' + canonicalStr(acceptance));
+    sha256(capability + '\u0000' + canonicalStr(input) + '\u0000' + canonicalStr(acceptance));
   function canonicalStr(v) {
     if (Array.isArray(v)) return '[' + v.map(canonicalStr).join(',') + ']';
     if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalStr(v[k])).join(',') + '}';
