@@ -8,46 +8,41 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%20fill%3D%22none%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22vg%22%20x1%3D%224%22%20y1%3D%222%22%20x2%3D%2228%22%20y2%3D%2230%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%233f9159%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%2320492f%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M16%202.4l11.2%203.7v8.1c0%207.6-5.5%2012.8-11.2%2015C10.3%2027%204.8%2021.8%204.8%2014.2V6.1z%22%20fill%3D%22url%28%23vg%29%22/%3E%3Cpath%20d%3D%22M10.6%2016.4l3.9%203.9L21.7%2012%22%20stroke%3D%22%23f2efe4%22%20stroke-width%3D%222.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/assets/vouch.css">
 <style>
 /* verify — page-specific. Palette, nav, buttons, forms, terminal panel, footer come from vouch.css. */
 .hero{padding:64px 0 96px}
-.vgrid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:54px;align-items:start}
-.vgrid>*{min-width:0}
-.hero h1{margin:22px 0 24px}
+.vgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:54px;align-items:start}
+.hero h1{font-size:clamp(38px,5vw,70px);margin:22px 0 24px}
 .hero h1 span{display:block}
 .hero .lead{max-width:46ch}
-.hint{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);font-family:var(--sans);font-size:13px;line-height:1.7;color:var(--ink3);max-width:48ch}
+.hint{margin-top:26px;padding-top:18px;border-top:1px solid var(--line2);font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--ink3);max-width:48ch}
 .hint a{color:var(--accent-deep);border-bottom:1px solid currentColor}
-.hint code{font-family:var(--mono);font-size:12px;color:var(--ink2);background:var(--paper3);padding:2px 7px;border-radius:6px}
-/* the paste panel: one rounded card — strip header on top, textarea below, soft depth */
-.pcard{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--paper2);box-shadow:var(--shadow);transition:border-color .2s,box-shadow .2s}
-.pcard:focus-within{border-color:var(--accent);box-shadow:var(--shadow),0 0 0 3px var(--acc-soft)}
-.paste .strip{border:none;border-bottom:1px solid var(--line);border-radius:0;background:transparent;box-shadow:none}
-.paste .strip .end{color:var(--ink3);letter-spacing:.06em;text-transform:none;font-family:var(--mono);font-weight:500}
-.paste textarea{display:block;width:100%;min-height:300px;padding:18px 20px;font-size:12.5px;line-height:1.6;resize:vertical;border:none;border-radius:0;background:transparent}
-.paste textarea:focus{box-shadow:none;outline:none}
+.hint code{color:var(--ink2);background:var(--paper3);padding:2px 6px}
+/* the paste panel: a hairline strip header sitting flush on the textarea */
+.paste .strip{border-bottom:none}
+.paste .strip .end{color:var(--ink3);letter-spacing:.06em;text-transform:none}
+.paste textarea{display:block;width:100%;min-height:300px;padding:16px;font-size:12.5px;line-height:1.6;resize:vertical}
 .paste textarea::placeholder{color:var(--ink3)}
-.row{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px;align-items:center}
-/* the receipt: mirrors the homepage .receipt — indigo glass, a dashed signature rule, a gradient seal */
-.result{display:none;margin-top:64px;box-shadow:var(--shadow-dark);max-width:760px}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;align-items:center}
+/* the receipt: a dark terminal panel, lines ruled like a printed ticket */
+.result{display:none;margin-top:64px}
 .result.show{display:block}
-.rhead{display:flex;align-items:center;gap:22px;padding:26px 24px;border-bottom:1px dashed rgba(242,239,228,.22)}
-.badge{width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-family:var(--sans);font-size:26px;font-weight:700;line-height:1;color:var(--cream);flex:none}
-.badge.ok{background:var(--grad);box-shadow:0 16px 36px -12px rgba(91,61,240,.85)}
-.badge.no{background:var(--red);box-shadow:0 16px 36px -12px rgba(217,68,43,.75)}
-.verdict{font-family:var(--serif);font-weight:800;font-size:clamp(24px,2.6vw,32px);line-height:1;letter-spacing:-.04em;color:var(--cream)}
-.sub{font-family:var(--sans);font-size:13.5px;line-height:1.55;color:rgba(242,239,228,.6);margin-top:8px}
-.fields{padding:8px 24px 10px}
-.field{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:13px 0;border-bottom:1px solid rgba(242,239,228,.08)}
+.rhead{display:flex;align-items:center;gap:18px;padding:22px 20px;border-bottom:1px solid rgba(242,239,228,.12)}
+.badge{width:48px;height:48px;display:grid;place-items:center;font-family:var(--mono);font-size:22px;font-weight:700;color:var(--cream);flex:none}
+.badge.ok{background:var(--accent)}
+.badge.no{background:var(--red)}
+.verdict{font-family:var(--serif);font-weight:900;font-size:clamp(22px,2.6vw,30px);line-height:1;letter-spacing:-.03em;text-transform:uppercase;color:var(--cream)}
+.sub{font-family:var(--mono);font-size:11.5px;line-height:1.6;color:rgba(242,239,228,.6);margin-top:7px}
+.fields{padding:6px 20px 14px}
+.field{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;padding:11px 0;border-bottom:1px dashed rgba(242,239,228,.16);font-family:var(--mono)}
 .field:last-child{border-bottom:none}
-.field .k{font-family:var(--sans);font-weight:600;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(242,239,228,.5);padding-top:3px}
-.field .v{font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--cream);word-break:break-all}
-.field .v .tag{display:inline-block;border:1px solid rgba(143,124,255,.55);background:rgba(91,61,240,.18);color:var(--accent-bright);border-radius:999px;padding:2px 10px;margin:0 6px 4px 0;font-family:var(--sans);font-weight:600;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.field .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.5);padding-top:3px}
+.field .v{font-size:12.5px;line-height:1.6;color:var(--cream);word-break:break-all}
+.field .v .tag{display:inline-block;border:1px solid var(--accent-bright);color:var(--accent-bright);padding:1px 7px;margin:0 6px 4px 0;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
 @media(max-width:940px){.hero{padding:44px 0 80px}.vgrid{grid-template-columns:1fr;gap:34px}}
-@media(max-width:760px){.paste .strip{border-radius:0}}
-@media(max-width:600px){.paste .strip{flex-wrap:wrap}.paste .strip .end{margin-left:0;width:100%}.field{grid-template-columns:1fr;gap:4px}.tf-mid{display:none}}
+@media(max-width:600px){.paste .strip{flex-wrap:wrap}.paste .strip .end{margin-left:0;border-top:1px solid var(--line2);width:100%}.field{grid-template-columns:1fr;gap:4px}.tf-mid{display:none}}
 </style>
 </head>
 <body>
@@ -77,14 +72,12 @@
         <p class="hint">The public key lives at <a href="/v1/attestation/key">/v1/attestation/key</a>. The signed message is the canonical JSON of the <code>payload</code> — the same offline check any third party can run. Pull a real one from <code>GET /v1/tasks/{id}/attestation</code>.</p>
       </div>
       <div class="paste">
-        <div class="pcard">
         <div class="strip">
           <span><span class="sq"></span>Attestation</span>
           <span>JSON</span>
           <span class="end">{ payload, signature }</span>
         </div>
         <textarea id="att" placeholder='Paste an attestation JSON, e.g. the "attestation" object from GET /v1/tasks/{id}/attestation …'></textarea>
-        </div>
         <div class="row">
           <button class="btn solid lg" id="verify">Verify signature <span class="ar">→</span></button>
           <button class="btn lg" id="sample">Load a sample</button>
