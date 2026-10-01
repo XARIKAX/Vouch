@@ -29,10 +29,10 @@
 .term-f #msg.err{color:var(--red)}
 @media(max-width:940px){.hero{padding-top:44px}.hero-grid{grid-template-columns:1fr;gap:34px}}
 
-/* ledger: five cells, hairline grid */
-.ledger .strip{border-bottom:none}
-.statband.five{grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line2)}
-.statband.five .st{border:none;background:var(--paper2)}
+/* ledger: a pill strip over a rounded five-cell band (hairline joins, clipped by the panel) */
+.ledger .strip{margin-bottom:14px}
+.statband.five{grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.statband.five .st,.statband.five .st:nth-child(n){border:none;background:var(--paper2)}
 .statband.five .st .v{font-size:clamp(26px,2.6vw,38px)}
 @media(max-width:900px){.statband.five{grid-template-columns:repeat(2,1fr)}.statband.five .st:last-child{grid-column:1/-1}}
 
@@ -41,15 +41,15 @@
 .sec-head.tight .eyebrow{margin-bottom:0}
 .term input,.term select,.term textarea{width:100%;background:rgba(242,239,228,.05);border-color:rgba(242,239,228,.22);color:var(--cream)}
 .term input::placeholder,.term textarea::placeholder{color:rgba(242,239,228,.38)}
-.term input:focus,.term select:focus,.term textarea:focus{border-color:var(--cream);box-shadow:3px 3px 0 var(--accent)}
+.term input:focus,.term select:focus,.term textarea:focus{border-color:var(--accent-bright);box-shadow:0 0 0 3px rgba(143,124,255,.28)}
 .term select{cursor:pointer}
 .term select option{background:var(--night);color:var(--cream)}
 .term textarea{min-height:62px;resize:vertical}
 .term label{color:rgba(242,239,228,.55)}
 .term .btn{color:var(--cream);border-color:rgba(242,239,228,.35)}
-.term .btn:hover{box-shadow:3px 3px 0 var(--accent)}
+.term .btn:hover{box-shadow:0 12px 30px -12px rgba(91,61,240,.7)}
 .term .btn.accent{border-color:var(--accent)}
-.term .btn.accent:hover{box-shadow:3px 3px 0 var(--cream)}
+.term .btn.accent:hover{box-shadow:0 14px 34px -12px rgba(143,124,255,.8)}
 .composer-body{padding:18px 14px 20px}
 .crow{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end}
 .crow.last{justify-content:space-between;align-items:center;margin-bottom:0;padding-top:14px;border-top:1px solid rgba(242,239,228,.12)}
