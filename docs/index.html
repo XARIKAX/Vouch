@@ -22,12 +22,12 @@ strong,b{color:var(--ink);font-weight:600}
 /* ---------- nav: docs controls (menu, search, theme) inside the shared nav.top ---------- */
 nav.top .wrap{gap:18px}
 #menu-btn{display:none}
-.icon-btn{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line2);border-radius:0;background:var(--paper2);color:var(--ink);font-size:16px;line-height:1;transition:border-color .15s}
+.icon-btn{display:grid;place-items:center;width:36px;height:36px;border:1px solid var(--line2);border-radius:999px;background:var(--paper2);color:var(--ink);font-size:16px;line-height:1;transition:border-color .15s,box-shadow .15s}
 .icon-btn:hover{border-color:var(--ink)}
 #theme-btn{display:none}   /* single-surface system; the control stays in the DOM for the script */
-.searchbox{flex:1;max-width:340px;display:flex;align-items:center;gap:10px;height:36px;padding:0 12px;border:1px solid var(--line2);border-radius:0;background:var(--paper2);color:var(--ink3);font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;transition:border-color .15s,color .15s}
-.searchbox:hover{border-color:var(--ink);color:var(--ink)}
-.searchbox kbd{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--ink3);border:1px solid var(--line2);padding:1px 5px;background:var(--paper3)}
+.searchbox{flex:1;max-width:340px;display:flex;align-items:center;gap:10px;height:38px;padding:0 10px 0 14px;border:1px solid var(--line2);border-radius:999px;background:var(--paper2);color:var(--ink3);font-family:var(--sans);font-weight:500;font-size:13px;letter-spacing:-.005em;text-transform:none;transition:border-color .15s,color .15s,box-shadow .15s}
+.searchbox:hover{border-color:var(--ink);color:var(--ink);box-shadow:0 10px 24px -14px rgba(17,18,16,.35)}
+.searchbox kbd{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink3);border:1px solid var(--line2);border-radius:999px;padding:2px 8px;background:var(--paper3)}
 
 /* ---------- shell ---------- */
 .shell{display:grid;grid-template-columns:236px minmax(0,1fr) 200px;gap:0;max-width:1360px;margin:0 auto;padding:0 32px}
@@ -37,16 +37,16 @@ nav.top .wrap{gap:18px}
 .nav-group{margin-bottom:24px}
 .nav-group h4{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);line-height:1.4;margin:0 0 8px 10px;display:flex;align-items:center;gap:8px}
 .nav-group h4::before{content:"";width:14px;height:2px;background:var(--accent);flex:none}
-.nav-link{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);padding:7px 10px;border-left:2px solid transparent;transition:background .14s,color .14s}
+.nav-link{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);padding:7px 10px;border-left:2px solid transparent;border-radius:0 var(--rs) var(--rs) 0;transition:background .14s,color .14s}
 .nav-link:hover{background:var(--paper3);color:var(--ink)}
 .nav-link.active{background:var(--acc-soft);color:var(--accent-deep);border-left-color:var(--accent)}
-.nav-link .m{margin-left:auto;font-size:9px;letter-spacing:.08em;color:var(--ink3);border:1px solid var(--line2);padding:0 4px;line-height:1.5}
+.nav-link .m{margin-left:auto;font-size:9px;letter-spacing:.08em;color:var(--ink3);border:1px solid var(--line2);border-radius:999px;padding:0 6px;line-height:1.6}
 
 /* content */
 main{padding:40px 48px 110px;min-width:0}
 .crumbs{margin-bottom:22px}
 .crumbs b{color:var(--ink2);font-weight:500}
-article h1{font-size:clamp(30px,4.4vw,54px);line-height:.92;letter-spacing:-.04em;text-transform:uppercase;font-weight:900;margin-bottom:22px}
+article h1{font-size:clamp(40px,5vw,68px);line-height:.95;letter-spacing:-.045em;font-weight:800;margin-bottom:22px}
 article h1 span{display:block}
 article .lead{max-width:70ch;margin-bottom:28px}
 article h2{font-size:clamp(22px,2.6vw,30px);letter-spacing:-.03em;margin:48px 0 14px;padding-top:22px;border-top:1px solid var(--line2);scroll-margin-top:84px}
@@ -57,7 +57,7 @@ article ul,article ol{color:var(--ink2);margin:0 0 14px 20px;max-width:72ch;font
 li{margin-bottom:6px}
 article p a,article li a,article td a,.note a{color:var(--accent-deep);border-bottom:1px solid var(--accent-bright);transition:border-color .14s}
 article p a:hover,article li a:hover,article td a:hover,.note a:hover{border-bottom-color:var(--accent-deep)}
-.inline{background:var(--paper3);border:1px solid var(--line);padding:1px 6px;font-family:var(--mono);font-size:.85em;color:var(--accent-deep);white-space:nowrap;font-weight:500}
+.inline{background:var(--paper3);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-family:var(--mono);font-size:.85em;color:var(--accent-deep);white-space:nowrap;font-weight:500}
 td.inline{background:none;border:none;border-bottom:1px solid var(--line);padding:10px 12px 10px 0;font-size:12.5px}
 
 /* code panels: .term (vouch.css) + a .term-h header; the copy button is injected by the script */

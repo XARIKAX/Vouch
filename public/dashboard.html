@@ -56,16 +56,15 @@
 .field{display:flex;flex-direction:column;gap:7px;flex:1 1 150px;min-width:0}
 .field.w-cap{flex:0 1 220px}.field.w-num{flex:0 1 150px}
 .toggles{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.tg{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.22);padding:10px 12px;cursor:pointer;user-select:none;transition:.15s}
+.tg{display:inline-flex;align-items:center;gap:9px;font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.22);border-radius:999px;padding:9px 14px;cursor:pointer;user-select:none;transition:.15s}
 .tg:hover{color:var(--cream);border-color:rgba(242,239,228,.5)}
-.tg.on{color:var(--cream);border-color:var(--accent-bright)}
-.tg .dot{width:10px;height:10px;border:1px solid currentColor;display:block;flex:none}
-.tg.on .dot{background:var(--accent);border-color:var(--accent)}
-.seg{display:inline-flex;border:1px solid rgba(242,239,228,.22)}
-.seg button{border:none;border-radius:0;background:transparent;color:rgba(242,239,228,.7);padding:10px 13px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:.15s}
+.tg.on{color:var(--cream);border-color:var(--accent-bright);background:rgba(143,124,255,.12)}
+.tg .dot{width:9px;height:9px;border-radius:50%;border:1px solid currentColor;display:block;flex:none}
+.tg.on .dot{background:var(--accent-bright);border-color:var(--accent-bright);box-shadow:0 0 0 3px rgba(143,124,255,.22)}
+.seg{display:inline-flex;gap:2px;padding:3px;border:1px solid rgba(242,239,228,.22);border-radius:999px;background:rgba(242,239,228,.04)}
+.seg button{border:none;border-radius:999px;background:transparent;color:rgba(242,239,228,.7);padding:7px 13px;font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:.15s}
 .seg button:hover{color:var(--cream)}
-.seg button.on{background:var(--accent);color:var(--cream)}
-.seg button:not(:last-child){border-right:1px solid rgba(242,239,228,.22)}
+.seg button.on{background:var(--accent);color:var(--cream);box-shadow:0 6px 16px -8px rgba(91,61,240,.9)}
 @media(max-width:600px){.field.w-cap,.field.w-num{flex:1 1 100%}.crow.last .btn{width:100%}}
 
 /* tables inside terminals: hairline, mono */
@@ -78,8 +77,8 @@
 .term tbody tr{transition:background .15s}
 .term tbody tr:hover{background:rgba(242,239,228,.035)}
 .term .empty{color:rgba(242,239,228,.45);padding:26px 16px;text-align:center}
-.term .pill{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;background:transparent;color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.25)}
-.term .pill::before{content:"";width:14px;height:2px;background:currentColor}
+.term .pill{display:inline-flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(242,239,228,.04);color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.25)}
+.term .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .term .pill.settled{color:var(--green);border-color:var(--green)}
 .term .pill.refunded{color:var(--red);border-color:var(--red)}
 .term .pill.dispatched,.term .pill.verifying,.term .pill.submitted,.term .pill.disputed{color:var(--accent-bright);border-color:var(--accent-bright)}
