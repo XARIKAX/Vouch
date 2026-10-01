@@ -420,33 +420,33 @@ console.log(task.id, task.quote.price);</code></pre></div></div>
       <p>Poll the task, or set a <span class="inline">webhook_url</span>, until it settles:</p>
       <div class="codewrap term"><div class="codehead term-h">cURL</div><pre><code>curl https://api.vouch.example/v1/tasks/tsk_8c1f… \
   -H "Authorization: Bearer vch_your_key"</code></pre></div>
-      <p>A <span class="inline">settled</span> task carries the output and a settlement record; a <span class="inline">refunded</span> task carries the failure reason and your money back. See <a href="#lifecycle">Task lifecycle</a>.</p>
+      <p>A <span class="inline">settled</span> task carries the output and a settlement record. A <span class="inline">refunded</span> task carries the failure reason and your money back. See <a href="#lifecycle">Task lifecycle</a>.</p>
     </div>
   </div>
 
-  <div class="note"><span class="ico">◆</span><span><strong>Simple calls stay simple.</strong> Skip <span class="inline">acceptance.rubric</span> and verification is just the schema check — near-zero overhead for low-stakes work, full rigor when it matters.</span></div>
+  <div class="note"><span class="ico">◆</span><span><strong>Simple calls stay simple.</strong> Skip <span class="inline">acceptance.rubric</span> and verification is just the schema check. Near-zero overhead for low-stakes work, full rigor when it matters.</span></div>
 </article>
 
 <!-- Authentication -->
 <article class="page" id="authentication" data-group="Getting started" data-title="Authentication">
   <div class="crumbs eyebrow"><b>Getting started</b></div>
   <h1>Authentication</h1>
-  <p class="lead mono">Every request is authenticated with your key in the <span class="inline">Authorization</span> header as a bearer token.</p>
+  <p class="lead mono">Every request carries your key as a bearer token in the <span class="inline">Authorization</span> header.</p>
 
   <div class="codewrap term"><div class="codehead term-h">Header</div><pre><code>Authorization: Bearer vch_your_key</code></pre></div>
 
   <h2>Keys</h2>
-  <p>Keys begin with <span class="inline">vch_</span> and are scoped to a project. One key authorizes both the REST API and the MCP endpoint. Regenerating a key from the dashboard immediately revokes the old one.</p>
+  <p>Keys begin with <span class="inline">vch_</span> and are scoped to a project. One key authorizes both the REST API and the MCP endpoint. Regenerating a key from the dashboard revokes the old one at once.</p>
 
   <h2>Key hygiene</h2>
   <ul>
     <li><strong>Never ship keys to the browser.</strong> Proxy through your backend, or use <a href="#payments">keyless one-shot tasks</a> for client-side agents.</li>
     <li><strong>One key per environment.</strong> Separate development from production so a leak stays contained.</li>
-    <li><strong>Cap the escrow, not just the rate.</strong> Each key carries a daily escrow ceiling — the most it can lock per day — enforced before any task is accepted.</li>
+    <li><strong>Cap the escrow, not just the rate.</strong> Each key carries a daily escrow ceiling, the most it can lock per day. It is enforced before any task is accepted.</li>
   </ul>
 
   <h2>Keyless option</h2>
-  <p>Agents holding a funded wallet can post one-shot tasks with a signed per-task payment instead of a key. The escrow and verification guarantees are identical. See <a href="#payments">Escrow &amp; payments</a>.</p>
+  <p>Agents with a funded wallet can post one-shot tasks with a signed per-task payment instead of a key. Escrow and verification work the same way. See <a href="#payments">Escrow &amp; payments</a>.</p>
 </article>
 
 <!-- Tasks & outcomes -->
