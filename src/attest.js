@@ -20,17 +20,33 @@ export function canonical(v) {
   return JSON.stringify(v ?? null);
 }
 
+// Environment editors often flatten a pasted PEM onto one line or turn its
+// line breaks into literal "\\n". Rebuild the canonical form from the base64
+// body so either paste works.
+export function normalizePem(raw) {
+  if (!raw) return raw;
+  let t = String(raw).trim().replace(/\\n/g, '\n').replace(/^["']|["']$/g, '');
+  const m = t.match(/-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/);
+  if (!m) return t;
+  const body = m[2].replace(/\s+/g, '');
+  return `-----BEGIN ${m[1]}-----\n${body.match(/.{1,64}/g).join('\n')}\n-----END ${m[1]}-----\n`;
+}
+
 export function createAttestor(cfg = {}) {
   let privateKey;
   let publicKey;
-  const pem = cfg.attestKey || process.env.VOUCH_ATTEST_KEY;
-  try {
-    if (pem) {
+  let source = 'generated';
+  const pem = normalizePem(cfg.attestKey || process.env.VOUCH_ATTEST_KEY);
+  if (pem) {
+    try {
       privateKey = crypto.createPrivateKey(pem);
       publicKey = crypto.createPublicKey(privateKey);
+      source = 'configured';
+    } catch (e) {
+      privateKey = undefined; // fall through to a generated key on a bad PEM
+      source = 'invalid';
+      console.error(`vouch: VOUCH_ATTEST_KEY is not a valid PKCS8 ed25519 PEM (${e.message}); using a generated key instead`);
     }
-  } catch {
-    privateKey = undefined; // fall through to a generated key on a bad PEM
   }
   if (!privateKey) {
     const kp = crypto.generateKeyPairSync('ed25519');
@@ -47,7 +63,7 @@ export function createAttestor(cfg = {}) {
     return { payload: body, alg: 'ed25519', key_id: keyId, signature };
   }
 
-  return { attest, publicKeyPem, privateKeyPem, keyId };
+  return { attest, publicKeyPem, privateKeyPem, keyId, source };
 }
 
 // Anyone holding the public key can verify an attestation offline.

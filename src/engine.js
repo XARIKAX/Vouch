@@ -68,7 +68,9 @@ export function createEngine(cfg = {}) {
   // restarts and serverless invocations. Every public key ever used is kept
   // so an old receipt can be checked against the key that signed it.
   const attestor = createAttestor({ ...cfg, attestKey: cfg.attestKey || state.attest.private_key_pem || null });
-  if (!cfg.attestKey) state.attest.private_key_pem = attestor.privateKeyPem;
+  // 'configured' (env key), 'invalid' (env key rejected, generated used), or 'generated' / 'state'.
+  cfg.attestSource = cfg.attestKey ? attestor.source : (state.attest.private_key_pem ? 'state' : 'generated');
+  if (!cfg.attestKey || attestor.source === 'invalid') state.attest.private_key_pem = attestor.privateKeyPem;
   state.attest.public_keys ??= {};
   state.attest.public_keys[attestor.keyId] = attestor.publicKeyPem;
 
