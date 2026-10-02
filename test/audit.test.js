@@ -331,16 +331,15 @@ test('an upheld dispute against a launched agent reverses owner/buyback/bond/bur
 
 // ---- sub-key edge cases ------------------------------------------------------------
 test('sub-keys: a revoked account\'s later refund credits the parent; a revoked key cannot act inside a workflow', async () => {
-  const junk = await fakeProvider({ text: '### ERROR ###' }, 80);
   try {
     const engine = createEngine(FAST);
-    engine.state.providers = {};
-    engine.registerProvider({ name: 'junk', endpoint_url: junk.url, stake: 60, offers: { 'text.generate': { price_ceiling: 0.02, sla_deadline_ms: 8000 }, 'math.eval': { price_ceiling: 0.01, sla_deadline_ms: 5000 } } });
     const parent = engine.createKey('p');
     engine.deposit(parent, 3);
     const sub = engine.createSubKey(parent, { fund: 1 });
     const subKey = engine.authenticate(sub.key);
-    const { task } = engine.createTask(subKey, { capability: 'text.generate', input: { prompt: 'x' }, acceptance: { checks: [{ assert: 'length_between', min: 120 }] }, budget: 0.03, deadline_ms: 8000 });
+    // A 6 s deadline selects the seeded unreliable node: this task will refund.
+    const { task } = engine.createTask(subKey, { capability: 'text.generate', input: { prompt: 'x' }, acceptance: { checks: [{ assert: 'length_between', min: 120 }] }, budget: 0.03, deadline_ms: 6000 });
+    assert.equal(task.quote.provider, 'prv_shade');
     const parentAfterRevoke = engine.revokeSubKey(parent, sub.id);
     const pBal = engine.balance(parent).balance;
     const done = await waitTerminal(engine, task.id);
@@ -362,7 +361,7 @@ test('sub-keys: a revoked account\'s later refund credits the parent; a revoked 
     const w = engine.state.workflows[wf.id];
     assert.equal(w.status, 'failed');
     assert.equal(w.failure.code, 'account_revoked');
-  } finally { junk.close(); }
+  } finally { /* seed providers only */ }
 });
 
 test('retry: { max_attempts: 1 } means a single attempt', async () => {

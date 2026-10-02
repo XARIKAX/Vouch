@@ -128,9 +128,15 @@ export function createApi(engine, { buckets } = {}) {
     const code = err instanceof ApiError ? err.code
       : status === 503 ? 'broker_unconfigured' : status === 502 ? 'broker_unreachable'
       : status < 500 ? 'broker_error' : 'internal_error';
-    const extra = err instanceof ApiError ? err.extra : {};
-    const message = status >= 500 && !(err instanceof ApiError) ? 'Internal error.' : err.message;
-    if (status >= 500 && !(err instanceof ApiError)) console.error('vouch: request failed:', err);
+    let extra = err instanceof ApiError ? err.extra : {};
+    let message = err.message;
+    if (status >= 500 && !(err instanceof ApiError)) {
+      // Unexpected failure: log the stack under an id the client can quote; never send it.
+      const errorId = crypto.randomUUID();
+      console.error(`vouch: request failed [${errorId}]:`, err);
+      message = 'Internal error.';
+      extra = { error_id: errorId };
+    }
     const headers = {};
     if (code === 'rate_limited' && extra.retry_after) headers['Retry-After'] = String(extra.retry_after);
     if (status === 413) {

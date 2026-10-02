@@ -1,4 +1,5 @@
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -21,9 +22,9 @@ const ASSET_TYPES = {
   '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json',
 };
 
-const jsonError = (res, status, code, message) => {
+const jsonError = (res, status, code, message, extra = {}) => {
   if (!res.headersSent) res.writeHead(status, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-  try { res.end(JSON.stringify({ error: { code, message } })); } catch { /* socket gone */ }
+  try { res.end(JSON.stringify({ error: { code, message, ...extra } })); } catch { /* socket gone */ }
 };
 
 export function createApp(cfgOverrides = {}) {
@@ -80,8 +81,10 @@ export function createApp(cfgOverrides = {}) {
     try {
       await route(req, res);
     } catch (err) {
-      console.error('vouch: request handler failed:', err);
-      jsonError(res, 500, 'internal_error', 'Internal error.');
+      // The stack goes to the log under an id the client can quote; never to the client.
+      const errorId = crypto.randomUUID();
+      console.error(`vouch: request handler failed [${errorId}]:`, err);
+      jsonError(res, 500, 'internal_error', 'Internal error.', { error_id: errorId });
     }
   };
 
