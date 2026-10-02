@@ -93,6 +93,71 @@
 .term .linkbtn:hover{color:var(--cream)}
 .stack{display:grid;gap:28px}
 .stack>*,.hero-visual,.hero-copy{min-width:0}
+
+/* live run: watch one task move through the pipeline in real time */
+.live .term-h b{color:var(--cream);font-weight:500}
+.live .clock{font-variant-numeric:tabular-nums;color:var(--cream)}
+.live .clock.on{color:var(--accent-bright)}
+.lv-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 0}
+.lv-tabs:empty{display:none}
+.lv-tabs button{border:1px solid rgba(242,239,228,.22);background:transparent;color:rgba(242,239,228,.6);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;cursor:pointer}
+.lv-tabs button.on{color:var(--cream);border-color:var(--accent-bright)}
+.lv-tabs button.run::before{content:"";display:inline-block;width:6px;height:6px;background:var(--accent-bright);margin-right:7px;animation:pulse 1.4s infinite}
+.lv-stages{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:rgba(242,239,228,.12);border-top:1px solid rgba(242,239,228,.12);border-bottom:1px solid rgba(242,239,228,.12);margin-top:12px}
+.lv-stages .sg{background:var(--night);padding:14px 14px 12px;position:relative;min-width:0}
+.lv-stages .sg .n{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:rgba(242,239,228,.4)}
+.lv-stages .sg .l{font-family:var(--serif);font-weight:800;font-size:15px;letter-spacing:-.01em;text-transform:uppercase;color:rgba(242,239,228,.35);margin-top:6px;line-height:1.1}
+.lv-stages .sg .b{position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent;transform-origin:left;transform:scaleX(0);transition:transform .6s cubic-bezier(.6,0,.2,1)}
+.lv-stages .sg.done .l{color:var(--cream)}.lv-stages .sg.done .b{background:var(--accent);transform:scaleX(1)}
+.lv-stages .sg.now .l{color:var(--accent-bright)}.lv-stages .sg.now .b{background:var(--accent-bright);transform:scaleX(1);animation:scan 1.2s ease-in-out infinite}
+.lv-stages .sg.ok .l{color:var(--green)}.lv-stages .sg.ok .b{background:var(--green);transform:scaleX(1)}
+.lv-stages .sg.no .l{color:var(--red)}.lv-stages .sg.no .b{background:var(--red);transform:scaleX(1)}
+@keyframes scan{0%{transform:scaleX(.15)}50%{transform:scaleX(1)}100%{transform:scaleX(.15);transform-origin:right}}
+.lv-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:0}
+.lv-out{border-right:1px solid rgba(242,239,228,.12);display:flex;flex-direction:column;min-height:360px}
+.lv-h{display:flex;justify-content:space-between;gap:12px;padding:10px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(242,239,228,.5);border-bottom:1px solid rgba(242,239,228,.1)}
+.lv-h b{color:var(--cream);font-weight:500}
+.lv-screen{padding:22px 24px 26px;flex:1;position:relative;overflow:hidden}
+.lv-screen .prose{font-family:var(--sans);font-size:16px;line-height:1.7;color:var(--cream);white-space:pre-wrap;overflow-wrap:anywhere;max-width:62ch}
+.lv-screen .prose.typing::after{content:"▍";color:var(--accent-bright);animation:pulse .8s infinite}
+.lv-screen .figure{font-family:var(--serif);font-weight:900;font-size:clamp(56px,7vw,112px);letter-spacing:-.04em;line-height:.95;color:var(--accent-bright);text-transform:uppercase}
+.lv-screen .under{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.5);margin-top:14px}
+.lv-screen .labels{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.lv-screen .labels span{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(242,239,228,.25);padding:6px 11px;color:rgba(242,239,228,.5);transition:.3s}
+.lv-screen .labels span.pick{border-color:var(--green);color:var(--green);background:rgba(52,201,127,.08)}
+.lv-screen pre{font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--cream);white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.lv-screen img{max-height:320px;border:1px solid rgba(242,239,228,.16);animation:fadein .8s}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.lv-wait{font-family:var(--mono);font-size:12px;color:rgba(242,239,228,.55);line-height:1.8}
+.lv-wait .cur{display:inline-block;width:9px;height:14px;background:var(--accent-bright);vertical-align:-2px;animation:pulse .9s infinite}
+.lv-wait .bar{height:1px;background:linear-gradient(90deg,transparent,var(--accent-bright),transparent);margin:14px 0 0;animation:sweep 1.6s linear infinite;width:40%}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+.lv-trace{padding:10px 16px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.7;color:rgba(242,239,228,.75);min-height:120px;max-height:220px;overflow:auto}
+.lv-trace .ln{display:grid;grid-template-columns:58px minmax(0,1fr);gap:10px;animation:fadein .35s}
+.lv-trace .ln .t{color:rgba(242,239,228,.4);font-variant-numeric:tabular-nums}
+.lv-trace .ln.ok{color:var(--green)}.lv-trace .ln.no{color:var(--red)}.lv-trace .ln.hi{color:var(--cream)}
+.lv-trace .ln.live .t::after{content:""}
+.lv-checks{padding:8px 16px 10px;display:grid;gap:6px}
+.lv-checks .ck{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;align-items:center;font-family:var(--mono);font-size:11.5px;color:rgba(242,239,228,.55);padding:6px 0;border-bottom:1px dashed rgba(242,239,228,.12)}
+.lv-checks .ck:last-child{border-bottom:none}
+.lv-checks .ck i{width:12px;height:12px;border:1px solid rgba(242,239,228,.35);display:block}
+.lv-checks .ck.run{color:var(--accent-bright)}.lv-checks .ck.run i{border-color:var(--accent-bright);animation:pulse 1s infinite}
+.lv-checks .ck.ok{color:var(--cream)}.lv-checks .ck.ok i{background:var(--green);border-color:var(--green)}
+.lv-checks .ck.no{color:var(--red)}.lv-checks .ck.no i{background:var(--red);border-color:var(--red)}
+.lv-checks .ck.skip{opacity:.4}
+.lv-checks .ck .r{color:rgba(242,239,228,.5);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.lv-money{padding:12px 16px 16px}
+.lv-bar{height:14px;border:1px solid rgba(242,239,228,.25);position:relative;overflow:hidden;background:rgba(242,239,228,.04)}
+.lv-bar .paid{position:absolute;left:0;top:0;bottom:0;background:var(--accent);width:0;transition:width 1s cubic-bezier(.6,0,.2,1)}
+.lv-bar .back{position:absolute;right:0;top:0;bottom:0;background:rgba(242,239,228,.35);width:0;transition:width 1s cubic-bezier(.6,0,.2,1) .2s}
+.lv-bar.ref .paid{background:var(--red)}
+.lv-money .lg{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px;font-family:var(--mono);font-size:11px;color:rgba(242,239,228,.6)}
+.lv-money .lg b{color:var(--cream);font-weight:500}
+.lv-money .lg .acc{color:var(--accent-bright)}.lv-money .lg .ok{color:var(--green)}.lv-money .lg .no{color:var(--red)}
+.lv-money .big{font-family:var(--serif);font-weight:900;font-size:30px;letter-spacing:-.03em;line-height:1;color:var(--cream);margin:14px 0 4px}
+.lv-money .big.ok{color:var(--green)}.lv-money .big.no{color:var(--red)}
+@media(max-width:980px){.lv-stages{grid-template-columns:repeat(3,1fr)}.lv-grid{grid-template-columns:1fr}.lv-out{border-right:none;border-bottom:1px solid rgba(242,239,228,.12);min-height:0}}
+@media(max-width:560px){.lv-stages{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -181,6 +246,32 @@
         </div>
       </div>
       <div class="term-f"><div id="c-msg"></div></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0" id="live-sec" hidden>
+  <div class="wrap rail">
+    <div class="sec-head tight"><span class="eyebrow">Live run</span></div>
+    <div class="term offset brackets live" id="live">
+      <div class="term-h"><span><span class="sq"></span>Live run · <b id="lv-id"></b></span><span class="clock" id="lv-clock">00:00.0</span></div>
+      <div class="lv-tabs" id="lv-tabs"></div>
+      <div class="lv-stages" id="lv-stages"></div>
+      <div class="lv-grid">
+        <div class="lv-out">
+          <div class="lv-h"><span>Agent output</span><span id="lv-agent"></span></div>
+          <div class="lv-screen" id="lv-screen"></div>
+        </div>
+        <div class="lv-side">
+          <div class="lv-h"><span>Trace</span><span id="lv-cap"></span></div>
+          <div class="lv-trace" id="lv-trace"></div>
+          <div class="lv-h"><span>Verification</span><span id="lv-vsum"></span></div>
+          <div class="lv-checks" id="lv-checks"></div>
+          <div class="lv-h"><span>Settlement</span><span id="lv-ssum"></span></div>
+          <div class="lv-money" id="lv-money"></div>
+        </div>
+      </div>
+      <div class="term-f"><span id="lv-foot">Nothing is paid until verification passes</span><a class="linkbtn" id="lv-open" href="#">open full receipt ↗</a></div>
     </div>
   </div>
 </section>
@@ -377,6 +468,7 @@ function patchRow(t) {
   const i = tasks.findIndex((x) => x.id === t.id);
   if (i >= 0) tasks[i] = t; else tasks.unshift(t);
   renderTasks();
+  live.update(t);
 }
 async function refreshTasks() {
   if (!getKey()) return;
@@ -385,10 +477,213 @@ async function refreshTasks() {
     tasks = (await api('/v1/tasks?limit=30')).tasks || [];
   } catch (e) { note(reason(e), 'err'); return; }
   renderTasks();
+  live.sync(tasks);
   if (tasks.some((t) => !TERMINAL.has(t.status))) {
     pollTimer = setTimeout(() => { refreshTasks(); refreshLedger().catch(() => {}); }, 2000);
   }
 }
+
+/* ---------- live run: one task, watched through the pipeline ----------
+   Fed by the same polling the list uses (GET /v1/tasks/:id every 400 ms
+   while a task is open; the serverless worker publishes every transition).
+   Everything shown is derived from the task record: no invented stages. */
+const live = (() => {
+  const STAGES = [['01', 'Posted'], ['02', 'Quoted'], ['03', 'Dispatched'], ['04', 'Delivered'], ['05', 'Verifying'], ['06', 'Settled']];
+  const PRIMARY = { 'text.generate': 'text', 'text.summarize': 'summary', 'image.generate': 'url', 'audio.speak': 'url', 'embed.text': 'vector', 'math.eval': 'result', 'code.generate': 'code', 'translate.text': 'translation', 'extract.structured': 'data', 'classify.text': 'label', 'research.web': 'text' };
+  const MODE = { model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' };
+  const known = new Map();      // id -> latest task record seen
+  let current = null;           // id on screen
+  let typed = new Map();        // id -> characters revealed so far
+  let raf = null, typer = null;
+  const secs = (ms) => (Math.max(0, ms) / 1000).toFixed(1) + 's';
+  const clock = (ms) => { const s = Math.max(0, ms) / 1000; return String(Math.floor(s / 60)).padStart(2, '0') + ':' + (s % 60).toFixed(1).padStart(4, '0'); };
+  const stageIndex = (t) => {
+    if (t.status === 'settled' || t.status === 'refunded') return 5;
+    if (t.status === 'verifying') return 4;
+    if (t.status === 'submitted') return 3;
+    if (t.status === 'dispatched' || t.status === 'retrying') return 2;
+    if (t.quote) return 1;
+    return 0;
+  };
+  const endTs = (t) => t.settlement?.settled_at ?? t.events?.at(-1)?.ts ?? Date.now();
+
+  function show(t) {
+    known.set(t.id, t);
+    current = t.id;
+    $('live-sec').hidden = false;
+    render(t);
+    if (!TERMINAL.has(t.status)) tick(); else stopClock(t);
+  }
+  function update(t) {
+    known.set(t.id, t);
+    if (t.id === current) { render(t); if (TERMINAL.has(t.status)) stopClock(t); }
+    else renderTabs();
+  }
+  // The list refresh may carry fresher records for tasks posted elsewhere; show the newest open one if nothing is on screen.
+  function sync(list) {
+    for (const t of list) if (known.has(t.id) || !TERMINAL.has(t.status)) known.set(t.id, t);
+    const cur = current && known.get(current);
+    if (!cur || TERMINAL.has(cur.status)) {
+      const open = list.find((t) => !TERMINAL.has(t.status));
+      if (open && open.id !== current) return show(open);
+    }
+    if (cur) render(cur); else renderTabs();
+  }
+  function tick() {
+    cancelAnimationFrame(raf);
+    const loop = () => {
+      const t = known.get(current); if (!t) return;
+      if (TERMINAL.has(t.status)) return stopClock(t);
+      const c = $('lv-clock'); c.className = 'clock on'; c.textContent = clock(Date.now() - (t.createdAt || Date.now()));
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+  }
+  function stopClock(t) { cancelAnimationFrame(raf); const c = $('lv-clock'); c.className = 'clock'; c.textContent = clock(endTs(t) - (t.createdAt || endTs(t))); }
+
+  function renderTabs() {
+    const list = [...known.values()].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 6);
+    $('lv-tabs').innerHTML = list.length > 1 ? list.map((t) => `<button data-id="${esc(t.id)}" class="${t.id === current ? 'on' : ''} ${TERMINAL.has(t.status) ? '' : 'run'}">${esc(t.id.slice(4, 12))} · ${esc(t.capability.split('.')[0])}</button>`).join('') : '';
+  }
+  $('lv-tabs').onclick = (e) => { const b = e.target.closest('button'); if (b && known.has(b.dataset.id)) show(known.get(b.dataset.id)); };
+  $('tasks').addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    const tr = e.target.closest('tr[data-id]'); if (!tr) return;
+    const t = tasks.find((x) => x.id === tr.dataset.id); if (t) { show(t); $('live-sec').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
+
+  function render(t) {
+    $('lv-id').textContent = t.id;
+    $('lv-cap').textContent = t.capability;
+    $('lv-agent').innerHTML = t.quote ? `<b>${esc(t.settlement?.provider ?? t.quote.provider)}</b>${t.execution?.mode ? ' · ' + esc(MODE[t.execution.mode] || t.execution.mode) : ''}` : 'sealed auction…';
+    $('lv-open').href = `/task?id=${encodeURIComponent(t.id)}`;
+    renderTabs();
+    // stages
+    const idx = stageIndex(t);
+    const term = TERMINAL.has(t.status);
+    $('lv-stages').innerHTML = STAGES.map(([n, l], i) => {
+      let cls = i < idx ? 'done' : i === idx ? (term ? (t.status === 'settled' ? 'ok' : 'no') : 'now') : '';
+      const label = i === 5 ? (t.status === 'refunded' ? 'Refunded' : 'Settled') : l;
+      return `<div class="sg ${cls}"><div class="n">${n}</div><div class="l">${label}</div><div class="b"></div></div>`;
+    }).join('');
+    renderScreen(t); renderTrace(t); renderChecks(t); renderMoney(t);
+    $('lv-foot').textContent = t.status === 'settled' ? `Settled · ${t.settlement.provider} paid ${money(t.settlement.price)} on verified work`
+      : t.status === 'refunded' ? `Refunded in full · ${t.refund?.reason ?? ''}` : 'Nothing is paid until verification passes';
+  }
+
+  function renderScreen(t) {
+    const el = $('lv-screen');
+    const out = t.output;
+    if (out == null) {
+      clearInterval(typer); typer = null;
+      const q = t.quote;
+      el.innerHTML = `<div class="lv-wait">${q ? `${esc(q.provider)} is working<span class="cur"></span><br>committed ${money(q.price)} · must deliver within ${esc(secs(q.deadline_ms))}` : 'collecting sealed quotes<span class="cur"></span>'}${t.status === 'refunded' ? `<br><br>${esc(t.refund?.reason || '')}: ${esc(t.refund?.detail || '')}` : '<div class="bar"></div>'}</div>`;
+      return;
+    }
+    const key = PRIMARY[t.capability];
+    const v = key ? out[key] : undefined;
+    if (t.capability === 'math.eval' && v != null) {
+      if (el.dataset.for !== t.id + ':fig') { el.dataset.for = t.id + ':fig'; el.innerHTML = `<div class="figure" id="lv-fig">0</div><div class="under">${esc(t.input?.expression ?? '')}</div>`; countUp($('lv-fig'), Number(v)); }
+      return;
+    }
+    if (t.capability === 'classify.text' && typeof v === 'string') {
+      el.innerHTML = `<div class="figure" style="font-size:clamp(34px,4.5vw,64px)">${esc(v)}</div><div class="labels">${(t.input?.labels || []).map((l) => `<span class="${l === v ? 'pick' : ''}">${esc(l)}</span>`).join('')}</div>`;
+      return;
+    }
+    if (t.capability === 'image.generate' && typeof v === 'string') { if (el.dataset.for !== t.id + ':img') { el.dataset.for = t.id + ':img'; el.innerHTML = `<img src="${esc(v)}" alt="generated image"><div class="under">${esc(v)}</div>`; } return; }
+    if (typeof v === 'string') return typewrite(el, t.id, v);
+    el.innerHTML = `<pre>${esc(JSON.stringify(v !== undefined ? v : out, null, 2))}</pre>`;
+  }
+  // Text is revealed as if being written: fast, but you can see it arrive.
+  function typewrite(el, id, text) {
+    const key = id + ':txt';
+    if (el.dataset.for !== key) { el.dataset.for = key; typed.set(id, 0); el.innerHTML = `<div class="prose typing" id="lv-prose"></div>`; }
+    const p = $('lv-prose'); if (!p) return;
+    const step = () => {
+      const n = Math.min(text.length, (typed.get(id) || 0) + 4);
+      typed.set(id, n); p.textContent = text.slice(0, n);
+      if (n >= text.length) { p.classList.remove('typing'); clearInterval(typer); typer = null; }
+    };
+    if (!typer) { typer = setInterval(step, 16); step(); }
+  }
+  function countUp(el, target) {
+    const t0 = performance.now(), dur = 900;
+    const f = (now) => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = Number.isInteger(target) ? Math.round(target * e) : (target * e).toFixed(4); if (k < 1) requestAnimationFrame(f); else el.textContent = String(target); };
+    requestAnimationFrame(f);
+  }
+
+  function renderTrace(t) {
+    const t0 = t.createdAt || t.events?.[0]?.ts || Date.now();
+    const lines = [{ ts: t0, cls: 'hi', s: `posted · ${money(t.budget)} budget escrowed` }];
+    if (t.quote) lines.push({ ts: t.events?.find((e) => e.status === 'dispatched')?.ts ?? t0, cls: '', s: `${t.quote.provider} won the sealed auction · ${money(t.quote.price)} within ${secs(t.quote.deadline_ms)}` });
+    for (const e of t.events || []) {
+      if (e.status === 'dispatched') lines.push({ ts: e.ts, cls: '', s: e.consensus ? `dispatched to ${e.consensus.join(', ')} in parallel` : 'dispatched · escrow locked' });
+      if (e.status === 'submitted') { const w = typeof t.output?.[PRIMARY[t.capability]] === 'string' ? t.output[PRIMARY[t.capability]].trim().split(/\s+/).length + ' words · ' : ''; lines.push({ ts: e.ts, cls: 'hi', s: `delivered · ${w}${t.execution ? (MODE[t.execution.mode] || t.execution.mode) + (t.execution.ms ? ' in ' + secs(t.execution.ms) : '') : ''}` }); }
+      if (e.status === 'verifying') lines.push({ ts: e.ts, cls: '', s: `verifying · ${(e.validators || []).join(', ')}` });
+      if (e.status === 'retrying') lines.push({ ts: e.ts, cls: 'no', s: `attempt ${e.attempt} failed (${e.reason}) · rerouted to ${e.next_provider}` });
+      if (e.status === 'settled') lines.push({ ts: e.ts, cls: 'ok', s: `settled · ${t.settlement?.provider} paid ${money(t.settlement?.price)} · verified by ${(t.settlement?.verified_by || []).join(', ')}` });
+      if (e.status === 'refunded') lines.push({ ts: e.ts, cls: 'no', s: `refunded · ${t.refund?.reason}: ${t.refund?.detail}` });
+      if (e.status === 'disputed') lines.push({ ts: e.ts, cls: '', s: `dispute ${e.dispute?.id || ''} opened` });
+    }
+    if (!TERMINAL.has(t.status)) lines.push({ ts: null, cls: 'live', s: t.status === 'verifying' ? 'graders at work<span class="cur"></span>' : t.quote ? `${t.quote.provider} working<span class="cur"></span>` : 'quoting<span class="cur"></span>' });
+    const el = $('lv-trace');
+    el.innerHTML = lines.map((l) => `<div class="ln ${l.cls}"><span class="t">${l.ts == null ? '…' : '+' + secs(l.ts - t0)}</span><span>${l.cls === 'live' ? l.s : esc(l.s)}</span></div>`).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function renderChecks(t) {
+    const acc = t.acceptance || {};
+    const expected = ['schema', ...(acc.checks?.length ? ['checks'] : []), ...(acc.rubric ? ['rubric'] : []), ...(acc.webhook ? ['webhook'] : [])];
+    const listed = t.events?.find((e) => e.status === 'verifying')?.validators || expected;
+    const passed = new Set((t.settlement?.verified_by || []).map((v) => v.split(':')[0]));
+    const failedAt = t.status === 'refunded' && t.refund?.reason === 'verification_failed' ? (t.refund.detail || '').split(':')[0].split('.')[0] : null;
+    const running = t.status === 'verifying';
+    let seenFail = false;
+    const detail = (name) => {
+      if (name === 'checks') return (acc.checks || []).map((c) => c.assert).join(', ');
+      if (name === 'rubric') { const r = (t.settlement?.verified_by || []).find((v) => v.startsWith('rubric:')); return r ? r.replace('rubric:', '') + ' graders' : '3-grader panel'; }
+      if (name === 'schema') return t.capability;
+      return '';
+    };
+    $('lv-checks').innerHTML = listed.map((name) => {
+      let cls = '';
+      if (t.status === 'settled' && passed.has(name)) cls = 'ok';
+      else if (failedAt === name) { cls = 'no'; seenFail = true; }
+      else if (failedAt && !seenFail) cls = 'ok';
+      else if (failedAt && seenFail) cls = 'skip';
+      else if (running) cls = 'run';
+      else if (t.status === 'refunded') cls = 'skip';
+      return `<div class="ck ${cls}"><i></i><span>${esc(name)}</span><span class="r">${esc(detail(name))}</span></div>`;
+    }).join('');
+    $('lv-vsum').textContent = t.status === 'settled' ? `${passed.size}/${listed.length} passed` : t.status === 'refunded' ? (failedAt ? `failed ${failedAt}` : 'not run') : running ? 'running' : 'pending';
+  }
+
+  function renderMoney(t) {
+    const locked = t.escrow?.locked ?? t.quote?.price ?? t.budget ?? 0;
+    const s = t.settlement;
+    const el = $('lv-money');
+    if (t.status === 'settled') {
+      const paidPct = locked > 0 ? Math.min(100, (s.price / locked) * 100) : 100;
+      el.innerHTML = `<div class="lv-bar"><div class="paid" id="lv-paid"></div><div class="back" id="lv-back"></div></div>` +
+        `<div class="lg"><span>paid to <b>${esc(s.provider)}</b> <span class="acc">${money(s.price)}</span></span><span>returned to you <b>${money(Math.max(0, locked - s.price))}</b></span></div>` +
+        `<div class="big ok">${money(s.price)}</div><div class="lg"><span>released from escrow on proof · ${s.escrow_tx ? 'tx ' + esc(s.escrow_tx.slice(0, 14)) + '…' : ''}</span></div>`;
+      requestAnimationFrame(() => { $('lv-paid').style.width = paidPct + '%'; $('lv-back').style.width = (100 - paidPct) + '%'; });
+      $('lv-ssum').textContent = 'released';
+    } else if (t.status === 'refunded') {
+      el.innerHTML = `<div class="lv-bar ref"><div class="paid" id="lv-paid"></div></div>` +
+        `<div class="lg"><span>agent paid <b>$0</b></span><span>returned to you <span class="ok">${money(locked)}</span></span></div>` +
+        `<div class="big no">$0</div><div class="lg"><span>${t.slash?.amount ? `${esc(t.slash.provider)} slashed ${money(t.slash.amount)}` : 'no payout'}${t.compensation?.amount ? ` · insurance paid you ${money(t.compensation.amount)}` : ''}</span></div>`;
+      requestAnimationFrame(() => { $('lv-paid').style.width = '100%'; });
+      $('lv-ssum').textContent = 'refunded';
+    } else {
+      el.innerHTML = `<div class="lv-bar"><div class="paid" id="lv-paid" style="width:100%;background:rgba(143,124,255,.35)"></div></div>` +
+        `<div class="lg"><span>escrowed <b>${money(locked)}</b></span><span>${t.quote ? `quote ${money(t.quote.price)}` : 'quoting'}</span></div>` +
+        `<div class="big">${money(locked)}</div><div class="lg"><span>locked · released only on verified work</span></div>`;
+      $('lv-ssum').textContent = 'in escrow';
+    }
+  }
+  return { show, update, sync };
+})();
 
 /* ---------- offers: GET /v1/offers ---------- */
 async function refreshOffers() {
@@ -448,6 +743,7 @@ async function post(body, out, btn) {
   if (t.settlement?.cached) out(`${t.id} served from the verified cache for ${money(t.settlement.price)}.`, 'ok');
   else out(`Posted ${t.id}. ${t.quote?.provider ?? 'provider'} committed ${money(t.quote?.price)}${flags.length ? ' · ' + flags.join(' · ') : ''}. Verifying…`, 'ok');
   patchRow(t);
+  live.show(t);
   refreshLedger().catch(() => {});
   if (!pollTimer) refreshTasks();
 

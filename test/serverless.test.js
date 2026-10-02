@@ -256,6 +256,67 @@ test('vercel handler: a task is persisted before execution and again after settl
   }
 });
 
+// While the background work runs, intermediate transitions reach Redis so a
+// console polling from another instance sees the task move (dispatched →
+// delivered → verifying → settled), not just the two ends.
+test('vercel handler: intermediate transitions are flushed while the work runs', async () => {
+  process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.test';
+  process.env.UPSTASH_REDIS_REST_TOKEN = 't';
+  process.env.VOUCH_FAST = '1';
+  process.env.VOUCH_LIVE_FLUSH_MS = '5';
+  // A slow fake model (execution and the grader panel) so delivery and
+  // verification are separated by real time, as they are in production.
+  process.env.ANTHROPIC_API_KEY = 'sk-test'; process.env.VOUCH_EXEC_MODEL = 'exec-x'; process.env.VOUCH_GRADER_MODEL = 'grade-y';
+  process.env.VOUCH_ANTHROPIC_BASE_URL = 'https://fake.model.test';
+  const { kv, writes, restore } = fakeRedis();
+  const withRedis = globalThis.fetch;
+  globalThis.fetch = async (url, opts = {}) => {
+    if (!String(url).startsWith('https://fake.model.test')) return withRedis(url, opts);
+    await new Promise((r) => setTimeout(r, 25));
+    const body = JSON.parse(String(opts.body));
+    const text = body.max_tokens === 16 ? 'PASS' : 'A substantive, on-topic answer that clears the length floor for this live-view test.';
+    return new Response(JSON.stringify({ content: [{ type: 'text', text }], stop_reason: 'end_turn' }), { status: 200 });
+  };
+  const CTX = Symbol.for('@vercel/request-context');
+  const background = [];
+  globalThis[CTX] = { get: () => ({ waitUntil: (p) => background.push(p) }) };
+  try {
+    const { default: handler } = await import('../api/index.js');
+    const invoke = async (method, path, body, headers = {}) => {
+      const req = new EventEmitter(); Object.assign(req, { method, url: path, headers });
+      if (body !== undefined) req.body = body;
+      const res = { headers: {}, status: 0, chunks: [], writeHead(s, h) { this.status = s; Object.assign(this.headers, h); }, write(c) { this.chunks.push(c); }, end(c) { if (c) this.chunks.push(c); }, on() {} };
+      await handler(req, res); return res;
+    };
+    const token = JSON.parse((await invoke('POST', '/v1/keys', { name: 'live' })).chunks.join('')).key;
+    await Promise.all(background.splice(0));
+    const before = writes();
+    const posted = await invoke('POST', '/v1/tasks', {
+      capability: 'text.generate', input: { prompt: 'live view' },
+      acceptance: { checks: [{ assert: 'length_between', min: 10 }], rubric: 'substantive' }, budget: 0.03, deadline_ms: 8000, min_track: 70,
+    }, { authorization: `Bearer ${token}` });
+    assert.equal(posted.status, 201);
+    const id = JSON.parse(posted.chunks.join('')).id;
+    // sample the store while the work is in flight
+    const seen = new Set();
+    const sampler = setInterval(() => { const s = JSON.parse(kv.get('vouch:state') || '{}'); if (s.tasks?.[id]) seen.add(s.tasks[id].status); }, 2);
+    await Promise.all(background.splice(0));
+    clearInterval(sampler);
+    const final = JSON.parse(kv.get('vouch:state')).tasks[id];
+    seen.add(final.status);
+    assert.ok(writes() - before > 2, `more than two writes (${writes() - before}): intermediate states were published`);
+    assert.ok(seen.has('dispatched') && seen.has('verifying') && seen.has('settled'), `saw ${[...seen].join(', ')}`);
+    assert.ok(final.output, 'the output is on the task record');
+    assert.ok(final.events.some((e) => e.status === 'submitted'), 'the delivery transition is recorded');
+    assert.equal(final.execution.mode, 'model');
+  } finally {
+    delete globalThis[CTX];
+    globalThis.fetch = withRedis;
+    restore();
+    for (const k of ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN', 'VOUCH_FAST', 'VOUCH_LIVE_FLUSH_MS', 'ANTHROPIC_API_KEY', 'VOUCH_EXEC_MODEL', 'VOUCH_GRADER_MODEL', 'VOUCH_ANTHROPIC_BASE_URL']) delete process.env[k];
+  }
+});
+
 // On Vercel the function may be frozen as soon as the response ends. The
 // handler therefore (1) holds res.end until the request's own changes are in
 // Redis and (2) hands the execution + grading to the platform's request

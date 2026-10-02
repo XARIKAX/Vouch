@@ -514,6 +514,7 @@ export function createEngine(cfg = {}) {
     const entry = { ts: Date.now(), ...event };
     task.events.push(entry);
     for (const fn of subscribers.get(task.id) ?? []) fn(entry);
+    persist(); // every transition is a snapshot change: a serverless live flush can publish it
   }
 
   function subscribe(taskId, fn) {
@@ -680,6 +681,7 @@ export function createEngine(cfg = {}) {
       } else {
         clearTimer(task); // delivered on time
         task.status = 'submitted';
+        task.output = output; // visible from delivery on, so a live view can show the work before the verdict
         emit(task, { status: 'submitted' });
 
         task.status = 'verifying';

@@ -445,6 +445,7 @@ function renderWork(t) {
     else if (typeof v === 'string') html = `<div class="prose">${esc(v)}</div>`;
     else html = `<pre>${esc(JSON.stringify(v !== undefined ? v : out, null, 2))}</pre>`;
   }
+  if (out != null && t.status === 'refunded' && r?.reason === 'verification_failed') html += `<div class="warn">This output failed verification: ${esc(r.detail)}. Failed work is never paid for.</div>`;
   if (x?.model_error) html += `<div class="warn">The model did not answer (${esc(x.model_error)}). The sandbox simulator produced this output instead.</div>`;
   $('work').innerHTML = html;
   const words = typeof out?.[PRIMARY[t.capability]] === 'string' ? out[PRIMARY[t.capability]].trim().split(/\s+/).length : null;

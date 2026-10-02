@@ -31,6 +31,7 @@
 import crypto from 'node:crypto';
 
 const RECOVERY_GRACE_MS = 10 * 60 * 1000;
+const liveFlushMs = () => Number(process.env.VOUCH_LIVE_FLUSH_MS) || 600;
 const limiterBuckets = new Map();
 let modules = null;
 let localApp = null;      // module-scope app when no remote store is configured
@@ -113,9 +114,15 @@ export default async function vercelHandler(req, res) {
     await handler(req, res);
     await (ended ?? flush());
 
-    // Then the background work and the flush that carries its outcome.
+    // Then the background work and the flush that carries its outcome. While
+    // the work runs, intermediate transitions (dispatched, delivered,
+    // verifying) are flushed every VOUCH_LIVE_FLUSH_MS (default 600) so a
+    // console polling from another instance watches the task move in near
+    // real time. flush() is a no-op when nothing changed.
+    const live = setInterval(flush, liveFlushMs());
+    live.unref?.();
     await runInBackground(
-      engine.drain().then(flush).finally(() => remote.close?.())
+      engine.drain().then(flush).finally(() => { clearInterval(live); remote.close?.(); })
     );
   } catch (err) {
     modules = null; // retry module load on the next invocation
