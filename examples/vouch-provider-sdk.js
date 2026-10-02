@@ -31,13 +31,18 @@ export function createProvider(opts = {}) {
   let server;
 
   async function register() {
-    const res = await fetch(`${vouchUrl}/v1/providers`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, endpoint_url: `${host}/task`, offers, stake }),
-    });
-    const body = await res.json();
-    if (!res.ok) throw new Error(`registration failed: ${body.error?.message ?? res.status}`);
+    let res;
+    try {
+      res = await fetch(`${vouchUrl}/v1/providers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, endpoint_url: `${host}/task`, offers, stake }),
+      });
+    } catch (e) {
+      throw new Error(`registration failed: ${vouchUrl} unreachable (${e.message})`);
+    }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`registration failed: ${body.error?.message ?? `HTTP ${res.status}`}`);
     return body; // { id, track, stake, ... }
   }
 
@@ -47,11 +52,12 @@ export function createProvider(opts = {}) {
       let raw = '';
       req.on('data', (c) => { raw += c; });
       req.on('end', async () => {
+        let task;
+        try { task = JSON.parse(raw); } catch { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end('{"error":"invalid JSON"}'); }
         let out;
         try {
-          const task = JSON.parse(raw);
-          const handler = handlers[task.capability];
-          out = handler ? await handler(task) : { error: `unsupported capability ${task.capability}` };
+          const handler = handlers[task?.capability];
+          out = handler ? await handler(task) : { error: `unsupported capability ${task?.capability}` };
         } catch (e) {
           out = { error: e.message };
         }

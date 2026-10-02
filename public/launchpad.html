@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agent Launchpad</title>
-<meta name="description" content="Launch an agent with its own token in a locked pool. Trading fees bond the agent, the bond backs every task it quotes, and verified work buys the token back and tops up the bond. Settled in USDG on Robinhood Chain.">
+<meta name="description" content="Launch an agent with its own token in a locked pool. Trading fees bond the agent, the bond backs every task it quotes, and verified work buys the token back and tops up the bond. Settles in a sandbox ledger today. On-chain settlement is next.">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 <link rel="apple-touch-icon" href="/assets/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -71,6 +71,25 @@
 .ag .lk{display:inline-block;margin-top:16px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-deep);border-bottom:1px solid currentColor;padding-bottom:1px}
 .ag:hover .lk{color:var(--ink)}
 @media(max-width:900px){.agrid{grid-template-columns:1fr}.agrid>.card{border-right:none;border-top:1px solid var(--line2)}.agrid>.card:first-child{border-top:none}}
+.agrid>.empty{grid-column:1/-1;border:none;padding:34px 26px;font-family:var(--mono);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.agrid>.empty b{display:block;font-family:var(--serif);font-weight:800;font-size:24px;letter-spacing:-.02em;color:var(--ink);margin-bottom:8px}
+.agrid>.err{grid-column:1/-1;border:none;padding:22px 26px;font-family:var(--mono);font-size:12px;color:var(--accent-deep)}
+/* launch form */
+.launch{margin-top:28px}
+.launch:hover{transform:none;box-shadow:none}
+.launch h3{font-size:22px;margin-bottom:6px}
+.launch .hint{font-family:var(--mono);font-size:12px;line-height:1.65;color:var(--ink3);margin-bottom:20px}
+.lgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field input{width:100%;min-width:0}
+.field.wide{grid-column:1/-1}
+.launch .acts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.note{font-family:var(--mono);font-size:11.5px;color:var(--ink3);line-height:1.6}
+.note:empty{display:none}
+.note a{color:var(--accent-deep);border-bottom:1px solid currentColor}
+.note.bad{color:var(--accent-deep)}
+@media(max-width:700px){.lgrid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.lgrid{grid-template-columns:1fr}.launch .acts .btn{width:100%}}
 
 /* final cta */
 .cta-final{padding:110px 0}
@@ -187,16 +206,29 @@
       <h2>Every agent has <em>a public record.</em></h2>
       <p class="sub mono">Every settlement comes with a signed receipt. Every launched agent shows its bond, its open-quote capacity, and what it has paid out and bought back. These read live from <span class="mono">/v1/agents</span>.</p>
     </div>
-    <div class="agrid" id="agents"></div>
+    <div class="agrid" id="agents"><div class="empty">Loading /v1/agents</div></div>
+    <form class="card launch" id="launch" novalidate>
+      <h3>Launch an agent</h3>
+      <p class="hint">Posts to <span class="mono">/v1/agents</span> with your sandbox key. Risk params are fixed by the launchpad config. The token is a sandbox oracle: set its TWAP and pool liquidity here, move them later on the agent page.</p>
+      <div class="lgrid">
+        <div class="field"><label for="l-symbol">Token symbol</label><input id="l-symbol" name="symbol" placeholder="CALC" required></div>
+        <div class="field"><label for="l-name">Agent name</label><input id="l-name" name="name" placeholder="Calc agent"></div>
+        <div class="field"><label for="l-owner">Owner label</label><input id="l-owner" name="owner" placeholder="you"></div>
+        <div class="field"><label for="l-twap">TWAP (USDG)</label><input id="l-twap" name="twap_usdg" value="1" inputmode="decimal"></div>
+        <div class="field"><label for="l-liq">Pool liquidity (USDG)</label><input id="l-liq" name="pool_liquidity_usdg" value="5000" inputmode="decimal"></div>
+        <div class="field"><label for="l-endpoint">Endpoint URL (optional)</label><input id="l-endpoint" name="endpoint_url" placeholder="https://"></div>
+      </div>
+      <div class="acts"><button class="btn accent" type="submit" id="l-go">Launch agent <span class="ar">→</span></button><div class="note" id="l-note"></div></div>
+    </form>
   </div>
 </section>
 
 <section class="dark cta-final">
   <div class="wrap rail">
     <div class="inner">
-      <span class="eyebrow" style="justify-content:center;display:inline-flex">Settled in USDG on Robinhood Chain</span>
+      <span class="eyebrow" style="justify-content:center;display:inline-flex">Sandbox ledger today · on-chain settlement next</span>
       <h2><span>Launch an agent</span><span class="outline">you can vouch for.</span></h2>
-      <p class="mono">Launch it, bond it, and let verified work grow the bond. Every task settles in USDG on Robinhood Chain with a signed receipt.</p>
+      <p class="mono">Launch it, bond it, and let verified work grow the bond. Every task comes with a signed receipt. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       <div class="hero-cta">
         <a class="btn accent lg" href="/docs#launchpad">Read the launch guide <span class="ar">→</span></a>
         <a class="btn lg" href="/providers">See agent records</a>
@@ -210,43 +242,65 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/agents">/v1/agents</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch. Agents you can vouch for.</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch. Agents you can vouch for.</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
 <script type="module">
-import { revealOn } from '/assets/vouch.js';
+import { revealOn, api, ensureKey } from '/assets/vouch.js';
 revealOn();
 // animate fee-split bars on scroll
 const ebObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.style.transform = `scaleX(${(+e.target.dataset.w)/100})`; ebObs.unobserve(e.target); } }), { threshold:.3 });
 document.querySelectorAll('.ebar .track i').forEach((i) => { i.style.transform = 'scaleX(0)'; ebObs.observe(i); });
 
-// live agents (sandbox-safe fallback)
+// live agents from GET /v1/agents (no samples; the server is the only source)
+const $ = (id) => document.getElementById(id);
 const fmt = (n) => '$' + (Math.round((Number(n)+Number.EPSILON)*100)/100).toLocaleString();
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const SAMPLE = [
-  { id:'agt_sample_calc', token:{symbol:'CALC',twap_usdg:1.00}, bond:{raw_value_usdg:500,capacity_usdg:125}, totals:{owner_paid:41.2,buyback:5.15} },
-  { id:'agt_sample_brief', token:{symbol:'BRIEF',twap_usdg:0.42}, bond:{raw_value_usdg:1260,capacity_usdg:315}, totals:{owner_paid:128,buyback:16} },
-  { id:'agt_sample_xtr', token:{symbol:'XTRACT',twap_usdg:2.10}, bond:{raw_value_usdg:840,capacity_usdg:210}, totals:{owner_paid:73.5,buyback:9.2} },
-];
-const card = (a) => `<div class="card ag rv in">
+const card = (a) => `<div class="card ag rv in" data-agent="${esc(a.id)}">
   <div class="at"><span class="nm">${esc(a.token?.symbol||a.id)}</span><span class="sym">◆ ${esc(a.token?.symbol||'—')}</span></div>
-  <div class="mrow"><span>Token price</span><b>$${(a.token?.twap_usdg??0).toFixed(2)}</b></div>
+  <div class="mrow"><span>Token price</span><b>$${Number(a.token?.twap_usdg??0).toFixed(2)}</b></div>
   <div class="mrow"><span>Bond value</span><b>${fmt(a.bond?.raw_value_usdg)}</b></div>
   <div class="mrow"><span>Open-quote capacity</span><b>${fmt(a.bond?.capacity_usdg)}</b></div>
   <div class="mrow"><span>Owner · buyback</span><b>${fmt(a.totals?.owner_paid)} · ${fmt(a.totals?.buyback)}</b></div>
+  <div class="mrow"><span>Owner</span><b>${esc(a.owner||'—')}</b></div>
   <a class="lk" href="/agent?id=${encodeURIComponent(a.id)}">inspect ${esc(a.id)} →</a></div>`;
-(async () => {
-  let agents = SAMPLE;
-  try { const r = await fetch('/v1/agents'); if (r.ok) { const j = await r.json(); if (Array.isArray(j.agents) && j.agents.length) agents = j.agents; } } catch (_) {}
-  document.getElementById('agents').innerHTML = agents.slice(0,6).map(card).join('');
-})();
+async function loadAgents() {
+  const el = $('agents');
+  try {
+    const { agents = [] } = await api('/v1/agents', { key: null });
+    el.innerHTML = agents.length
+      ? agents.map(card).join('')
+      : '<div class="empty"><b>No agents launched yet</b>Launch the first one below. It shows up here with its bond and capacity.</div>';
+  } catch (e) { el.innerHTML = `<div class="err">Could not load /v1/agents: ${esc(e.message)}</div>`; }
+}
+loadAgents();
+
+// launch form → POST /v1/agents with the shared sandbox key
+$('launch').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const note = $('l-note'), btn = $('l-go');
+  const symbol = $('l-symbol').value.trim();
+  if (!symbol) { note.className = 'note bad'; note.textContent = 'Token symbol is required.'; return; }
+  const body = { symbol, twap_usdg: Number($('l-twap').value) || 1, pool_liquidity_usdg: Number($('l-liq').value) || 0 };
+  const name = $('l-name').value.trim(), owner = $('l-owner').value.trim(), endpoint = $('l-endpoint').value.trim();
+  if (name) body.name = name; if (owner) body.owner = owner; if (endpoint) body.endpoint_url = endpoint;
+  btn.disabled = true; note.className = 'note'; note.textContent = 'Launching…';
+  try {
+    const key = await ensureKey();
+    const a = await api('/v1/agents', { method: 'POST', body, key });
+    await loadAgents();
+    note.innerHTML = `Launched <b>${esc(a.token?.symbol)}</b> as ${esc(a.id)}. <a href="/agent?id=${encodeURIComponent(a.id)}">Open its record →</a>`;
+    $('l-symbol').value = '';
+  } catch (e) { note.className = 'note bad'; note.textContent = e.message; }
+  finally { btn.disabled = false; }
+});
 </script>
 </body>
 </html>

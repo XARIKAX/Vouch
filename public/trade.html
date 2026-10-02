@@ -166,7 +166,7 @@
           <div class="soon">Alpaca paper trading with your own keys. Coming next.</div>
         </div>
         <button class="btn solid" id="t-create">Open the desk</button>
-        <div class="note-base">The <b>verification</b> settles in USDG on Robinhood Chain · trades are paper only.</div>
+        <div class="note-base">The <b>verification</b> runs on the sandbox ledger today · on-chain settlement next · trades are paper only.</div>
       </div>
 
       <div class="tlive term offset brackets rv d1">
@@ -229,7 +229,7 @@
     </div>
     <div class="hsteps">
       <div class="hstep rv"><div class="num">01</div><h4>Agent forms a thesis</h4><p>For a ticker it watches: a direction, a confidence, a rationale and a risk note.</p></div>
-      <div class="hstep rv d1"><div class="num">02</div><h4>Vouch verifies it</h4><p>The thesis must pass acceptance checks: structure, confidence bounds, a real rationale. Junk fails, and the agent is slashed.</p></div>
+      <div class="hstep rv d1"><div class="num">02</div><h4>Vouch verifies it</h4><p>The thesis must pass acceptance checks: structure, confidence bounds, a real rationale. Junk fails and places nothing.</p></div>
       <div class="hstep rv d2"><div class="num">03</div><h4>Only then it trades</h4><p>A passed thesis allows one paper trade within the per-trade cap. No pass, no order.</p></div>
       <div class="hstep rv d3"><div class="num">04</div><h4>You stay in control</h4><p>Budget, per-trade cap, live P&L, and a kill switch. Freeze halts the desk at once.</p></div>
     </div>
@@ -241,29 +241,30 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
-<script>
+<script type="module">
+import { api, ensureKey } from '/assets/vouch.js';
+
 const $ = (id) => document.getElementById(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const usd = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const usd0 = (n) => '$' + Math.round(n).toLocaleString('en-US');
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1 });
 document.querySelectorAll('.rv').forEach((el) => io.observe(el));
 
-// --- simulated market (the seam Option 3 / Alpaca plugs into) -------------
-// A real broker adapter would replace MARKET.price()/BROKER.order() with API
-// calls; the agent loop and verification gate below stay identical.
+// --- simulated market (the seam the Alpaca adapter plugs into) ------------
+// The broker adapter replaces MARKET.price() and the order call with API
+// calls; the agent loop and the verification gate below stay identical.
 const UNIVERSE = [
   { sym: 'NVDA', px: 178 }, { sym: 'MSFT', px: 428 }, { sym: 'AMD', px: 168 },
   { sym: 'GOOGL', px: 176 }, { sym: 'TSLA', px: 251 }, { sym: 'COIN', px: 232 },
@@ -276,24 +277,52 @@ const MARKET = {
 };
 
 // --- the thesis the agent must get verified before trading ----------------
+// The simulated agent is deliberately imperfect: some theses drop the risk
+// note, some have a one-line rationale, some overshoot the confidence bound.
+// Those must fail the real checks at /v1/verify, so the gate is visible.
 function formThesis(sym) {
   const dir = Math.random() < 0.62 ? 'buy' : (Math.random() < 0.6 ? 'sell' : 'hold');
   const confidence = Math.round((0.45 + Math.random() * 0.5) * 100) / 100;
-  const rationale = 'Momentum and volume support a ' + dir + ' on ' + sym + ' over the near term; risk sized to the stop below support.';
-  return { ticker: sym, direction: dir, confidence, rationale, risk: 'position capped; invalidate on a close through support' };
-}
-// Vouch-style acceptance checks — the same model /v1/verify runs, in-browser.
-function verifyThesis(t) {
-  if (!t.ticker || !['buy', 'sell', 'hold'].includes(t.direction)) return false;
-  if (!(t.confidence > 0 && t.confidence <= 1)) return false;
-  if (!t.rationale || t.rationale.length < 40) return false;
-  if (!t.risk) return false;
-  // ~12% of theses are junk and fail verification (provider gets slashed)
-  return Math.random() > 0.12;
+  const t = {
+    ticker: sym, direction: dir, confidence,
+    rationale: 'Momentum and volume support a ' + dir + ' on ' + sym + ' over the near term; risk sized to the stop below support.',
+    risk: 'position capped; invalidate on a close through support',
+  };
+  const flaw = Math.random();
+  if (flaw < 0.08) delete t.risk;                                   // fails json_parseable (has: risk)
+  else if (flaw < 0.16) { t.rationale = 'looks ' + dir + 'ish'; t.risk = 'none'; } // fails length_between (min 120)
+  else if (flaw < 0.21) t.confidence = Math.round((1.05 + Math.random() * 0.4) * 100) / 100; // fails the confidence regex
+  return t;
 }
 
-let D = null, running = false;
-let SRC = 'sim', brokerGuard = false, brokerToken = null;
+// The acceptance the desk asks Vouch to enforce. Same shape the backend runs
+// on /v1/broker/order, so a thesis that fails here would also fail there.
+const THESIS_CHECKS = [
+  { assert: 'json_parseable', has: ['ticker', 'direction', 'confidence', 'rationale', 'risk'] },
+  { assert: 'regex', pattern: '"direction":"(buy|sell|hold)"' },
+  { assert: 'regex', pattern: '"confidence":(0(\\.\\d+)?|1(\\.0+)?)[,}]' },
+  { assert: 'length_between', min: 120 },
+];
+const THESIS_RUBRIC = 'A trade thesis for one ticker: a single direction (buy, sell or hold), a confidence between 0 and 1, a specific rationale that names the setup, and a stated risk with an invalidation level.';
+
+// POST /v1/verify with the thesis as the deliverable. Returns the server's
+// verdict { pass, verified_by, failed }. Throws when the call itself fails.
+async function verifyThesis(t) {
+  const key = await ensureKey();
+  return api('/v1/verify', {
+    method: 'POST', key,
+    body: {
+      capability: 'text.generate',
+      input: { prompt: 'Form a trade thesis for ' + t.ticker + ' with a direction, a confidence, a rationale and a risk note. Answer as JSON.' },
+      output: { text: JSON.stringify(t) },
+      acceptance: { checks: THESIS_CHECKS, rubric: THESIS_RUBRIC },
+    },
+  });
+}
+const fmtFail = (f) => (f && f.validator ? f.validator : 'verification') + (f && f.detail ? ' · ' + f.detail : '');
+
+let D = null, running = false, runGen = 0;
+let SRC = 'sim', brokerGuard = false, brokerToken = null, brokerDeclined = false;
 
 // universe chips
 $('t-uni').innerHTML = UNIVERSE.map((t, i) => '<span class="u' + (i < 5 ? ' on' : '') + '" data-s="' + t.sym + '">' + t.sym + '</span>').join('');
@@ -313,25 +342,42 @@ fetch('/v1/broker/status').then((r) => r.json()).then((s) => {
     if (a) a.disabled = false;
     brokerGuard = !!s.order_guard;
     const note = document.querySelector('.soon');
-    if (note) note.textContent = 'Alpaca paper connected — real market data & real paper orders.';
+    if (note) note.textContent = 'Alpaca paper connected: real market data and real paper orders.';
     document.querySelector('.paper-tag').textContent = '● Alpaca paper · real market data · no real money';
   }
 }).catch(() => {});
 
 // --- real broker calls (used when SRC === 'alpaca') ----------------------
-const jget = (u) => fetch(u).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ? d.error.message : r.status); return d; });
-const apiQuote = (s) => jget('/v1/broker/quote?symbol=' + encodeURIComponent(s));
-const apiAccount = () => jget('/v1/broker/account');
-const apiPositions = async () => (await jget('/v1/broker/positions')).positions || [];
-async function apiOrder(s, qty, side) {
-  if (brokerGuard && !brokerToken) brokerToken = prompt('Enter your BROKER_ORDER_TOKEN to place paper orders:') || '';
-  const r = await fetch('/v1/broker/order', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(brokerToken ? { 'x-broker-token': brokerToken } : {}) }, body: JSON.stringify({ symbol: s, qty, side }) });
-  const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error ? d.error.message : r.status); return d;
+const apiQuote = (s) => api('/v1/broker/quote?symbol=' + encodeURIComponent(s));
+const apiAccount = () => api('/v1/broker/account');
+const apiPositions = async () => (await api('/v1/broker/positions')).positions || [];
+// Every order carries the verified thesis; the server re-runs the checks and
+// answers 422 thesis_rejected if it does not pass.
+async function apiOrder(s, qty, side, thesis) {
+  if (brokerGuard && !brokerToken) {
+    if (brokerDeclined) { const e = new Error('no broker token entered; order not placed'); e.code = 'token_declined'; throw e; }
+    const entered = prompt('Enter your BROKER_ORDER_TOKEN to place paper orders:');
+    if (entered === null || entered === '') { brokerDeclined = true; const e = new Error('no broker token entered; order not placed'); e.code = 'token_declined'; throw e; }
+    brokerToken = entered;
+  }
+  try {
+    return await api('/v1/broker/order', {
+      method: 'POST',
+      headers: brokerToken ? { 'X-Broker-Token': brokerToken } : {},
+      body: { symbol: s, qty, side, thesis },
+    });
+  } catch (e) {
+    if (e.status === 403) brokerToken = null; // rejected token: ask once more on the next order
+    throw e;
+  }
 }
-async function syncBroker() {
-  const a = await apiAccount(); D.cash = a.cash;
-  const ps = await apiPositions(); D.pos = {};
-  ps.forEach((p) => { D.pos[p.symbol] = { sym: p.symbol, qty: p.qty, avg: p.avg }; MARKET.px[p.symbol] = p.price; });
+async function syncBroker(desk) {
+  const a = await apiAccount();
+  if (D !== desk) return;
+  const ps = await apiPositions();
+  if (D !== desk) return;
+  desk.cash = a.cash; desk.pos = {};
+  ps.forEach((p) => { desk.pos[p.symbol] = { sym: p.symbol, qty: p.qty, avg: p.avg }; MARKET.px[p.symbol] = p.price; });
 }
 
 function equity() {
@@ -340,6 +386,7 @@ function equity() {
   return { inv, total: D.cash + inv };
 }
 function drawCurve() {
+  if (!D) return;
   const h = D.hist; if (h.length < 2) { $('curve-line').setAttribute('points', ''); $('curve-fill').setAttribute('points', ''); return; }
   const min = Math.min(...h), max = Math.max(...h), pad = (max - min) * 0.15 || 1;
   const lo = min - pad, hi = max + pad, W = 600, H = 88;
@@ -351,7 +398,7 @@ function render() {
   if (!D) { $('pf').hidden = true; $('pf-empty').hidden = false; return; }
   $('pf-empty').hidden = true; $('pf').hidden = false;
   const { inv, total } = equity();
-  const pnl = total - D.start, pct = pnl / D.start * 100;
+  const pnl = total - D.start, pct = D.start ? pnl / D.start * 100 : 0;
   $('pf-eq').textContent = usd(total);
   const pe = $('pf-pnl'); pe.className = 'pf-pnl ' + (pnl >= 0 ? 'up' : 'down');
   pe.textContent = (pnl >= 0 ? '+' : '−') + usd(Math.abs(pnl)) + ' (' + (pnl >= 0 ? '+' : '−') + Math.abs(pct).toFixed(2) + '%)';
@@ -368,8 +415,11 @@ function render() {
       '</td><td class="' + (up ? 'up' : 'down') + '">' + (up ? '+' : '−') + usd(Math.abs(pl)) + '</td></tr>';
   }).join('') : '<tr><td colspan="5" class="no-pos">no positions yet</td></tr>';
 }
-function ev(cls, k, lb, cap, amt) {
+// Feed entry. `lb` and `amt` are escaped by the callers that pass user or
+// server text; `cap` is always our own label.
+function ev(cls, k, lb, cap, amt, title) {
   const d = document.createElement('div'); d.className = 'ev ' + cls;
+  if (title) d.title = title;
   d.innerHTML = '<span class="k">' + k + '</span><span class="lb">' + lb + '</span>' + (cap ? '<span class="cap">' + cap + '</span>' : '') + (amt ? '<span class="amt">' + amt + '</span>' : '');
   $('feed').prepend(d); while ($('feed').children.length > 30) $('feed').lastChild.remove();
 }
@@ -378,100 +428,131 @@ $('t-create').onclick = async () => {
   const uni = [...$('t-uni').querySelectorAll('.u.on')].map((e) => e.dataset.s);
   const universe = UNIVERSE.filter((t) => uni.includes(t.sym));
   if (!universe.length) return;
+  running = false; runGen++; // any loop still awaiting exits without touching the new desk
   MARKET.seed(universe);
   const start = Math.max(1000, Number($('t-cash').value) || 10000);
-  D = { name: $('t-name').value.trim() || 'Trading Desk', start, cash: start, cap: Math.max(50, Number($('t-cap').value) || 1500),
+  const desk = { name: $('t-name').value.trim() || 'Trading Desk', start, cash: start, cap: Math.max(50, Number($('t-cap').value) || 1500),
     universe: universe.map((t) => t.sym), pos: {}, trades: 0, frozen: false, hist: [start], src: SRC };
+  D = desk;
   $('feed').innerHTML = '';
+  render();
+  // One real sandbox key per browser; /v1/verify needs it before the first thesis.
+  try { await ensureKey(); } catch (e) { if (D === desk) ev('reject', '✕', 'sandbox key unavailable · ' + esc(e.message), 'verify', ''); }
+  if (D !== desk) return;
   if (SRC === 'alpaca') {
     try {
       const a = await apiAccount();
-      D.start = a.equity; D.cash = a.cash; D.hist = [a.equity];
-      await syncBroker();
-      ev('thesis', '✓', 'desk opened · Alpaca paper account', esc(D.name), usd(a.equity));
+      if (D !== desk) return;
+      desk.start = a.equity; desk.cash = a.cash; desk.hist = [a.equity];
+      await syncBroker(desk);
+      if (D !== desk) return;
+      ev('thesis', '✓', 'desk opened · Alpaca paper account', esc(desk.name), usd(a.equity));
     } catch (e) {
-      D.src = 'sim'; SRC = 'sim';
+      if (D !== desk) return;
+      desk.src = 'sim'; SRC = 'sim';
       document.querySelectorAll('#t-src button').forEach((x) => x.classList.remove('on'));
       document.querySelector('#t-src button[data-s="sim"]').classList.add('on');
-      ev('reject', '✕', 'Alpaca connect failed — using simulated', '', esc(e.message));
-      ev('thesis', '✓', 'desk opened · connected via MCP', esc(D.name), usd(start));
+      ev('reject', '✕', 'Alpaca connect failed · using simulated', '', esc(e.message));
+      ev('thesis', '✓', 'desk opened · simulated prices', esc(desk.name), usd(start));
     }
   } else {
-    ev('thesis', '✓', 'desk opened · connected via MCP', esc(D.name), usd(start));
+    ev('thesis', '✓', 'desk opened · simulated prices', esc(desk.name), usd(start));
   }
   drawCurve(); render();
 };
-$('t-reset').onclick = () => { running = false; D = null; render(); };
-$('t-freeze').onclick = () => { if (!D) return; D.frozen = true; running = false; ev('reject', '✕', 'desk frozen — trading halted', 'kill switch', ''); render(); };
+// Reset stops any running loop: `running` flips, the generation moves on, and
+// the loop's next `alive()` check fails before it touches state.
+$('t-reset').onclick = () => { running = false; runGen++; D = null; $('feed').innerHTML = ''; render(); };
+$('t-freeze').onclick = () => { if (!D) return; D.frozen = true; running = false; ev('reject', '✕', 'desk frozen · trading halted', 'kill switch', ''); render(); };
 
 $('t-run').onclick = async () => {
   if (!D || D.frozen || running) return;
+  const desk = D, gen = ++runGen;
+  brokerDeclined = false; // a fresh run may ask for the token once more
   running = true; render();
-  while (running && D && !D.frozen) {
-    // --- real Alpaca (paper) path: real quotes, real paper orders ---------
-    if (D.src === 'alpaca') {
-      const sym = D.universe[Math.floor(Math.random() * D.universe.length)];
-      let q; try { q = await apiQuote(sym); } catch (e) { ev('reject', '✕', 'quote failed ' + sym, '', esc(e.message)); await sleep(1600); continue; }
-      if (q && q.price) MARKET.px[sym] = q.price;
-      const t = formThesis(sym);
-      await sleep(1500 + Math.random() * 500);
-      if (!running || !D || D.frozen) break;
-      if (!verifyThesis(t)) { ev('reject', '↺', 'thesis rejected · ' + sym + ' ' + t.direction, 'provider slashed', '$0'); }
-      else {
-        ev('thesis', '✓', 'thesis verified · ' + sym + ' ' + t.direction + ' · conf ' + t.confidence.toFixed(2), 'schema · rubric', '');
-        await sleep(400);
-        const px = MARKET.px[sym] || (q && q.price) || 0;
-        try {
-          if (t.direction === 'buy' && px > 0) {
-            const qty = Math.floor(Math.min(D.cap, D.cash) / px);
-            if (qty >= 1) { const o = await apiOrder(sym, qty, 'buy'); await syncBroker(); D.trades += 1; ev('buy', '▲', 'bought ' + qty + ' ' + sym + ' (paper)', '@ ' + usd(px), o.status || 'submitted'); }
-            else ev('sell', '○', 'skip ' + sym + ' — under per-trade size', '', '');
-          } else if (t.direction === 'sell' && D.pos[sym] && D.pos[sym].qty > 0) {
-            const qty = D.pos[sym].qty; const o = await apiOrder(sym, qty, 'sell'); await syncBroker(); D.trades += 1;
-            ev('sell', '▼', 'sold ' + qty + ' ' + sym + ' (paper)', '@ ' + usd(px), o.status || 'submitted');
-          } else ev('sell', '○', 'hold ' + sym + ' — no action', '', '');
-        } catch (e) { ev('reject', '✕', 'order failed ' + sym, '', esc(e.message)); }
-      }
-      D.hist.push(equity().total); if (D.hist.length > 80) D.hist.shift();
-      drawCurve(); render(); await sleep(300);
-      continue;
-    }
-    // --- simulated path ---------------------------------------------------
-    MARKET.tick(D.universe);
-    const sym = D.universe[Math.floor(Math.random() * D.universe.length)];
-    const t = formThesis(sym);
-    await sleep(1500 + Math.random() * 600);
-    if (!running || !D || D.frozen) break;
+  // True only while this very run owns this very desk. Checked after every await.
+  const alive = () => running && runGen === gen && D === desk && !desk.frozen;
+  const settle = () => { desk.hist.push(equity().total); if (desk.hist.length > 80) desk.hist.shift(); drawCurve(); render(); };
 
-    const ok = verifyThesis(t);
-    if (!ok) {
-      ev('reject', '↺', 'thesis rejected · ' + sym + ' ' + t.direction, 'provider slashed', '$0');
+  while (alive()) {
+    const live = desk.src === 'alpaca';
+    const sym = desk.universe[Math.floor(Math.random() * desk.universe.length)];
+    if (live) {
+      let q;
+      try { q = await apiQuote(sym); } catch (e) { if (!alive()) break; ev('reject', '✕', 'quote failed ' + sym + ' · ' + esc(e.message), '', ''); await sleep(1600); continue; }
+      if (!alive()) break;
+      if (q && q.price) MARKET.px[sym] = q.price;
     } else {
-      ev('thesis', '✓', 'thesis verified · ' + sym + ' ' + t.direction + ' · conf ' + t.confidence.toFixed(2), 'schema · rubric', '');
-      await sleep(500);
-      const px = MARKET.price(sym);
+      MARKET.tick(desk.universe);
+    }
+    const t = formThesis(sym);
+    await sleep(1200 + Math.random() * 500);
+    if (!alive()) break;
+
+    // --- the gate: POST /v1/verify, order only on pass ---------------------
+    let verdict;
+    try { verdict = await verifyThesis(t); }
+    catch (e) {
+      if (!alive()) break;
+      ev('reject', '✕', 'verification unavailable · ' + esc(e.message), 'no order', '', e.message);
+      settle(); await sleep(1500); continue;
+    }
+    if (!alive()) break;
+    if (!verdict || !verdict.pass) {
+      const f = verdict && verdict.failed;
+      ev('reject', '↺', 'thesis rejected · ' + sym + ' ' + t.direction + ' · ' + esc(f && f.detail ? f.detail : 'did not pass'), esc(f && f.validator ? f.validator : 'verify'), 'no order', fmtFail(f));
+      settle(); await sleep(300); continue;
+    }
+    ev('thesis', '✓', 'thesis verified · ' + sym + ' ' + t.direction + ' · conf ' + Number(t.confidence).toFixed(2), esc((verdict.verified_by || []).join(' · ')), '', 'verified_by: ' + (verdict.verified_by || []).join(', '));
+    await sleep(400);
+    if (!alive()) break;
+
+    const px = live ? (MARKET.px[sym] || 0) : MARKET.price(sym);
+    if (live) {
+      try {
+        if (t.direction === 'buy' && px > 0) {
+          const qty = Math.floor(Math.min(desk.cap, desk.cash) / px);
+          if (qty >= 1) {
+            const o = await apiOrder(sym, qty, 'buy', t);
+            if (!alive()) break;
+            await syncBroker(desk);
+            if (!alive()) break;
+            desk.trades += 1; ev('buy', '▲', 'bought ' + qty + ' ' + sym + ' (paper)', '@ ' + usd(px), esc(o.status || 'submitted'));
+          } else ev('sell', '○', 'skip ' + sym + ' · under per-trade size', '', '');
+        } else if (t.direction === 'sell' && desk.pos[sym] && desk.pos[sym].qty > 0) {
+          const qty = desk.pos[sym].qty;
+          const o = await apiOrder(sym, qty, 'sell', t);
+          if (!alive()) break;
+          await syncBroker(desk);
+          if (!alive()) break;
+          desk.trades += 1; ev('sell', '▼', 'sold ' + qty + ' ' + sym + ' (paper)', '@ ' + usd(px), esc(o.status || 'submitted'));
+        } else ev('sell', '○', 'hold ' + sym + ' · no action', '', '');
+      } catch (e) {
+        if (!alive()) break;
+        ev('reject', '✕', 'order failed ' + sym + ' · ' + esc(e.message), esc(e.code || ''), '', e.message);
+        if (e.code === 'token_declined') { ev('reject', '✕', 'orders paused · run again to enter the broker token', 'kill switch', ''); running = false; break; }
+      }
+    } else {
+      // Simulated fill: the ledger is local, the gate above was real.
       if (t.direction === 'buy') {
-        const spend = Math.min(D.cap, D.cash);
-        const qty = Math.floor(spend / px);
+        const qty = Math.floor(Math.min(desk.cap, desk.cash) / px);
         if (qty >= 1) {
-          const cost = qty * px; D.cash -= cost; D.trades += 1;
-          const p = D.pos[sym] || (D.pos[sym] = { sym, qty: 0, avg: 0 });
+          const cost = qty * px; desk.cash -= cost; desk.trades += 1;
+          const p = desk.pos[sym] || (desk.pos[sym] = { sym, qty: 0, avg: 0 });
           p.avg = (p.avg * p.qty + cost) / (p.qty + qty); p.qty += qty;
           ev('buy', '▲', 'bought ' + qty + ' ' + sym, '@ ' + usd(px), '−' + usd(cost));
-        } else { ev('sell', '○', 'skip ' + sym + ' — under per-trade size', '', ''); }
-      } else if (t.direction === 'sell' && D.pos[sym] && D.pos[sym].qty > 0) {
-        const p = D.pos[sym], qty = p.qty, proceeds = qty * px; D.cash += proceeds; D.trades += 1;
+        } else ev('sell', '○', 'skip ' + sym + ' · under per-trade size', '', '');
+      } else if (t.direction === 'sell' && desk.pos[sym] && desk.pos[sym].qty > 0) {
+        const p = desk.pos[sym], qty = p.qty, proceeds = qty * px; desk.cash += proceeds; desk.trades += 1;
         ev('sell', '▼', 'sold ' + qty + ' ' + sym, '@ ' + usd(px), '+' + usd(proceeds));
         p.qty = 0; p.avg = 0;
-      } else {
-        ev('sell', '○', 'hold ' + sym + ' — no action', '', '');
-      }
+      } else ev('sell', '○', 'hold ' + sym + ' · no action', '', '');
     }
-    D.hist.push(equity().total); if (D.hist.length > 80) D.hist.shift();
-    drawCurve(); render();
+    settle();
     await sleep(300);
   }
-  running = false; render();
+  // Only the loop that still owns the desk may flip the state back.
+  if (runGen === gen && D === desk) { running = false; render(); }
 };
 
 render();

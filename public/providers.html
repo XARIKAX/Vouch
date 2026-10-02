@@ -129,7 +129,7 @@
   <div class="wrap rail">
     <div class="strip">
       <span><span class="sq"></span>Live · paid when output passes</span>
-      <span>USDG on Robinhood Chain</span>
+      <span>Sandbox ledger today · on-chain settlement next</span>
       <span id="tk-prov">open protocol</span>
       <span class="end">your stake is your reputation →</span>
     </div>
@@ -207,21 +207,26 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/providers">/v1/providers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
-<script>
+<script type="module">
+import { api, ensureKey } from '/assets/vouch.js';
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = (n) => '$' + (Math.round(n * 1e6) / 1e6);
 let proto = 'http';
+
+// The shared sandbox key: reads sent with a Bearer use the key's own rate
+// bucket instead of the shared anonymous one. If minting fails we read anonymously.
+let KEY = null;
 
 const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1 });
 document.querySelectorAll('.rv').forEach((el) => io.observe(el));
@@ -245,8 +250,8 @@ document.querySelectorAll('#p-proto button').forEach((b) => b.onclick = () => {
 
 async function loadCaps() {
   try {
-    const c = await (await fetch('/v1/capabilities')).json();
-    $('p-cap').innerHTML = c.capabilities.map((x) => '<option value="' + x.id + '">' + x.id + '</option>').join('');
+    const c = await api('/v1/capabilities', { key: KEY });
+    $('p-cap').innerHTML = c.capabilities.map((x) => '<option value="' + esc(x.id) + '">' + esc(x.id) + '</option>').join('');
   } catch { $('p-cap').innerHTML = '<option>text.generate</option>'; }
   syncPreview();
 }
@@ -259,18 +264,19 @@ $('p-register').onclick = async () => {
     offers: { [$('p-cap').value]: { price_ceiling: Number($('p-price').value) || 0.02, sla_deadline_ms: Number($('p-sla').value) || 10000 } },
   };
   if (!body.name || !/^https?:\/\//.test(body.endpoint_url)) { m.className = 'err'; m.textContent = 'Name and an http(s) endpoint URL are required.'; return; }
+  m.className = ''; m.textContent = 'Registering …';
   try {
-    const res = await fetch('/v1/providers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const p = await res.json();
-    if (!res.ok) throw new Error(p.error ? p.error.message : res.status);
-    m.className = 'ok'; m.textContent = 'Registered ' + p.id + ' — bonded $' + p.stake + ' stake. It will start quoting ' + $('p-cap').value + '.';
+    // Registration may be admin-gated on a locked deployment; the server's own reason is shown as is.
+    const p = await api('/v1/providers', { method: 'POST', body, key: KEY });
+    m.className = 'ok'; m.textContent = 'Registered ' + p.id + '. Bonded $' + p.stake + ' stake. It will start quoting ' + $('p-cap').value + '.';
     load(p.id);
-  } catch (e) { m.className = 'err'; m.textContent = e.message; }
+  } catch (e) { m.className = 'err'; m.textContent = e.message + (e.code && e.code !== 'http_error' ? ' (' + e.code + ')' : ''); }
 };
 
 async function load(flashId) {
   try {
-    const { providers } = await (await fetch('/v1/providers')).json();
+    const { providers } = await api('/v1/providers', { key: KEY });
+    const tk = $('tk-prov'); if (tk) tk.textContent = providers.length + ' provider' + (providers.length === 1 ? '' : 's') + ' quoting';
     $('rows').innerHTML = providers.length ? providers.map((p) => {
       const rel = p.reliability === null ? '<span style="color:var(--ink3)">new</span>' : '<span class="rel">' + Math.round(p.reliability * 100) + '%</span>';
       const caps = p.capabilities.slice(0, 3).join(', ') + (p.capabilities.length > 3 ? ' +' + (p.capabilities.length - 3) : '');
@@ -280,10 +286,15 @@ async function load(flashId) {
         '</td><td>' + p.settled + '</td><td' + (p.slashed ? ' style="color:var(--red)"' : '') + '>' + p.slashed + '</td><td>' + money(p.earnings) +
         '</td><td>' + money(p.stake) + '</td></tr>';
     }).join('') : '<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--ink3)">No providers yet — register the first.</td></tr>';
-  } catch { /* keep last */ }
+  } catch (e) {
+    // keep the last render; say why if nothing has rendered yet
+    if (/loading…/.test($('rows').textContent)) $('rows').innerHTML = '<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--red)">Could not load providers: ' + esc(e.message) + '</td></tr>';
+  }
 }
-loadCaps(); load(); setInterval(() => load(), 4000);
+(async () => {
+  try { KEY = await ensureKey(); } catch { KEY = null; }
+  loadCaps(); load(); setInterval(() => load(), 15000);
+})();
 </script>
-<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>

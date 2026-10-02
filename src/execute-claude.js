@@ -1,8 +1,9 @@
-// Real model execution. When ANTHROPIC_API_KEY is configured, native
-// providers do actual work through Claude instead of the deterministic
-// sandbox simulator. Returns null for anything it can't serve (unsupported
-// capability, no key, or an API error) so the caller falls back to the
-// simulator — the sandbox stays fully offline and tests stay deterministic.
+// Real model execution. When ANTHROPIC_API_KEY and a model (VOUCH_EXEC_MODEL
+// or VOUCH_GRADER_MODEL) are configured, native providers do actual work
+// through the model instead of the deterministic sandbox simulator. Returns
+// null for anything it can't serve (unsupported capability, no key, no model,
+// or an API error) so the caller falls back to the simulator — the sandbox
+// stays fully offline and tests stay deterministic.
 //
 // Mirrors the request shape in grader.js. api.anthropic.com is reachable in
 // most environments (it is on the proxy allowlist); the executor's own timeout
@@ -51,12 +52,15 @@ const SPECS = {
 
 export async function claudeExecute(task, cfg) {
   const spec = SPECS[task.capability];
-  if (!spec || !cfg.anthropicKey) return null;
+  const model = cfg.execModel || cfg.graderModel;
+  if (!spec || !cfg.anthropicKey || !model) return null;
   const prompt = spec.user(task.input);
   if (!prompt) return null;
 
+  // Never wait longer than the quote the provider committed to.
+  const budget = Math.min(cfg.execTimeoutMs ?? 60000, Number(task.quote?.deadline_ms) || 60000);
   const ctrl = new AbortController();
-  const timeout = setTimeout(() => ctrl.abort(), cfg.execTimeoutMs ?? 60000);
+  const timeout = setTimeout(() => ctrl.abort(), budget);
   try {
     const res = await fetch(`${cfg.anthropicBaseUrl}/v1/messages`, {
       method: 'POST',
@@ -67,7 +71,7 @@ export async function claudeExecute(task, cfg) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: cfg.execModel || cfg.graderModel,
+        model,
         max_tokens: spec.max_tokens,
         system: spec.system,
         messages: [{ role: 'user', content: prompt }],

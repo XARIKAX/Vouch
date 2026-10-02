@@ -69,6 +69,12 @@ export function netPayoutSplit(net, p) {
 // ---- slashing in token terms --------------------------------------------
 // Slash is sized in USDG; taken in platform token at the TWAP; the per-verdict
 // cap is reservationMultiple * price; a rolling window cap limits total damage.
+// `bondRawValueUsdg` is the slash base: the FULL bond (including any tokens
+// in an unbonding request) at TWAP, ignoring the liquidity floor. The floor
+// limits quote capacity only; it must never make a slash free.
+export function slashBase({ tokenQty = 0, twapUsdg = 0 }) {
+  return money(Math.max(0, tokenQty) * Math.max(0, twapUsdg));
+}
 export function slashPlan({ priceUsdg, multiple, twapUsdg, bondRawValueUsdg, slashedInWindowUsdg }, p) {
   const capMultiple = Math.min(Number(multiple) || 1, p.maxSlashMultiple);
   let amountUsdg = money(Math.max(0, Number(priceUsdg) || 0) * capMultiple);
@@ -82,12 +88,14 @@ export function slashPlan({ priceUsdg, multiple, twapUsdg, bondRawValueUsdg, sla
 
 // ---- track weighting (anti-gaming) --------------------------------------
 // Distinct paying counterparties matter, not raw task count. Self-dealing
-// (shared owner wallet) earns zero track. Rubric-only tasks earn reduced
-// weight; deterministic checks or a webhook earn full weight.
+// (shared owner wallet) earns zero track. Rubric-only (or schema-only) tasks
+// earn reduced weight; deterministic checks or a webhook earn full weight.
+// Schema is not a hard validator: every settled task passes it, so counting
+// it would make the reduced weight unreachable.
 export function trackWeight({ sameOwner, validators = [] }) {
   if (sameOwner) return 0;
-  const hard = validators.some((v) => v === 'checks' || v === 'webhook' || v === 'schema');
-  return hard ? 1.0 : 0.3; // rubric-only → 0.3
+  const hard = validators.some((v) => v === 'checks' || v === 'webhook');
+  return hard ? 1.0 : 0.3; // rubric-only / schema-only → 0.3
 }
 
 export const _money = money;

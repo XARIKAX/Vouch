@@ -79,3 +79,52 @@ if (typeof window !== 'undefined' && !window.__vouchInit) {
   const go = () => { revealOn(); initTicker(); initProgressRail(); numberSections(); };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', go) : go();
 }
+
+// ---------------------------------------------------------------------------
+// Shared sandbox API helper. One real key per browser, kept in localStorage
+// under `vouch_key`; every page talks to the same backend with it.
+// ---------------------------------------------------------------------------
+export const KEY_STORE = 'vouch_key';
+export function getKey() { try { return localStorage.getItem(KEY_STORE) || null; } catch { return null; } }
+export function setKey(k) { try { if (k) localStorage.setItem(KEY_STORE, k); else localStorage.removeItem(KEY_STORE); } catch {} }
+
+// api(path, { method, body, key }) → parsed JSON. Throws an Error with
+// .status, .code and .detail on any non-2xx so pages can show the real reason.
+export async function api(path, { method = 'GET', body, key = getKey(), headers = {} } = {}) {
+  const res = await fetch(path, {
+    method,
+    headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(key ? { Authorization: `Bearer ${key}` } : {}), ...headers },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  let json = null;
+  try { json = await res.json(); } catch { json = null; }
+  if (!res.ok) {
+    const e = new Error(json?.error?.message || `${res.status} ${res.statusText}`);
+    e.status = res.status; e.code = json?.error?.code || 'http_error'; e.detail = json?.error ?? null; e.body = json;
+    throw e;
+  }
+  return json;
+}
+
+// Mint a sandbox key once and remember it. Re-mints if the stored key is rejected.
+export async function ensureKey(name = 'sandbox') {
+  const have = getKey();
+  if (have) {
+    try { await api('/v1/balance', { key: have }); return have; } catch (e) { if (e.status !== 401) return have; setKey(null); }
+  }
+  const made = await api('/v1/keys', { method: 'POST', body: { name }, key: null });
+  setKey(made.key);
+  return made.key;
+}
+
+// Poll a task until it reaches a terminal state (settled / refunded) or the timeout.
+export async function waitTask(id, { key = getKey(), timeoutMs = 20000, every = 300, onUpdate } = {}) {
+  const t0 = Date.now();
+  for (;;) {
+    const t = await api(`/v1/tasks/${id}`, { key });
+    onUpdate?.(t);
+    if (t.status === 'settled' || t.status === 'refunded') return t;
+    if (Date.now() - t0 > timeoutMs) return t;
+    await new Promise((r) => setTimeout(r, every));
+  }
+}

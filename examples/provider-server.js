@@ -29,10 +29,11 @@ const server = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => { body += c; });
   req.on('end', () => {
-    const task = JSON.parse(body);
+    let task;
+    try { task = JSON.parse(body); } catch { res.writeHead(400, { 'Content-Type': 'application/json' }); return res.end('{"error":"invalid JSON"}'); }
     console.log(`  ← dispatched ${task.task_id} (${task.capability})`);
     const output = task.capability === 'text.generate'
-      ? { text: generateText(task.input.prompt) }
+      ? { text: generateText(task.input?.prompt ?? '') }
       : { error: `this provider only serves text.generate` };
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(output));
@@ -41,21 +42,27 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, async () => {
   console.log(`provider listening on :${PORT}, registering with ${VOUCH_URL}…`);
-  const res = await fetch(`${VOUCH_URL}/v1/providers`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: NAME,
-      endpoint_url: `http://localhost:${PORT}/task`,
-      offers: {
-        'text.generate': { price_ceiling: 0.009, sla_deadline_ms: 10000 },
-      },
-      stake: 25,
-    }),
-  });
-  const provider = await res.json();
+  let res;
+  try {
+    res = await fetch(`${VOUCH_URL}/v1/providers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: NAME,
+        endpoint_url: `http://localhost:${PORT}/task`,
+        offers: {
+          'text.generate': { price_ceiling: 0.009, sla_deadline_ms: 10000 },
+        },
+        stake: 25,
+      }),
+    });
+  } catch (e) {
+    console.error(`registration failed: ${VOUCH_URL} unreachable (${e.message})`);
+    process.exit(1);
+  }
+  const provider = await res.json().catch(() => ({}));
   if (!res.ok) {
-    console.error('registration failed:', provider.error);
+    console.error('registration failed:', provider.error ?? `HTTP ${res.status}`);
     process.exit(1);
   }
   console.log(`✓ registered as ${provider.id} — stake $${provider.stake}, track ${provider.track}`);

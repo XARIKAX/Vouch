@@ -244,7 +244,7 @@ test('real execution: an honest provider does actual work through Claude when ke
     }), { status: 200 });
   };
   try {
-    const engine = createEngine({ fast: true, anthropicKey: 'sk-test', graderModel: 'claude-x' });
+    const engine = createEngine({ fast: true, anthropicKey: 'sk-test', graderModel: 'test-model' });
     // isolate a single honest native provider so it (not the seeded unreliable
     // one) wins and takes the real-execution path
     engine.state.providers = { prv_real: {
@@ -263,7 +263,7 @@ test('real execution: an honest provider does actual work through Claude when ke
     const done = await waitTerminal(engine, task.id);
     assert.equal(done.status, 'settled');
     assert.match(called.url, /\/v1\/messages$/, 'called the Anthropic messages API');
-    assert.equal(called.body.model, 'claude-x', 'used the configured model');
+    assert.equal(called.body.model, 'test-model', 'used the configured model');
     assert.match(done.output.text, /genuinely generated/, 'the real model output was delivered and verified');
   } finally { globalThis.fetch = original; }
 });

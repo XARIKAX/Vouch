@@ -50,7 +50,7 @@ test('claude grader panel: PASS verdicts settle, FAIL verdicts refund', async ()
   });
 
   try {
-    const engine = createEngine({ ...FAST, anthropicKey: 'test-key', anthropicBaseUrl: url });
+    const engine = createEngine({ ...FAST, anthropicKey: 'test-key', graderModel: 'test-judge', anthropicBaseUrl: url });
     const key = engine.createKey('t');
 
     const good = engine.createTask(key, {
@@ -89,6 +89,7 @@ test('claude grader: an unreachable judge never releases escrow', async () => {
   const engine = createEngine({
     ...FAST,
     anthropicKey: 'test-key',
+    graderModel: 'test-judge',
     anthropicBaseUrl: 'http://localhost:1', // nothing listens here
     graderTimeoutMs: 300,
   });
@@ -219,11 +220,17 @@ test('state survives a restart: keys, balances, and in-flight recovery', async (
     // Key still authenticates (hash survived the round trip)
     const restored = engine2.authenticate(key.token);
     assert.equal(restored.id, key.id);
-    // In-flight task was recovered: refunded, escrow made whole
+    // In-flight task was recovered: refunded, escrow made whole, and the
+    // provider is NOT slashed for the platform's own restart.
     assert.equal(engine2.state.tasks.tsk_inflight.status, 'refunded');
-    assert.equal(engine2.state.tasks.tsk_inflight.refund.reason, 'provider_abandoned');
+    assert.equal(engine2.state.tasks.tsk_inflight.refund.reason, 'platform_restart');
+    assert.equal(engine2.state.tasks.tsk_inflight.slash, null);
+    assert.equal(engine2.state.providers.prv_calder.stake, engine1.state.providers.prv_calder.stake);
+    assert.equal(engine2.state.providers.prv_calder.stakeReserved, 0);
     assert.equal(engine2.state.accounts[key.id].locked, 0);
     assert.equal(engine2.state.accounts[key.id].balance, balanceBefore);
+    // The attestation key survived the round trip, so old receipts still verify.
+    assert.equal(engine2.attestorKey().key_id, engine1.attestorKey().key_id);
     // Settled history survived
     assert.equal(engine2.state.tasks[task.id].status, 'settled');
   } finally {

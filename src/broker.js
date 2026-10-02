@@ -14,6 +14,8 @@
 //                          x-broker-token header (stops the public placing
 //                          orders in your account)
 
+import crypto from 'node:crypto';
+
 const TRADE_BASE = process.env.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets';
 const DATA_BASE = process.env.ALPACA_DATA_URL || 'https://data.alpaca.markets';
 const KEY = process.env.ALPACA_KEY_ID || '';
@@ -34,7 +36,13 @@ export function brokerStatus() {
       : !IS_PAPER ? 'ALPACA_BASE_URL must be the paper endpoint' : null,
   };
 }
-export function orderTokenOk(tok) { return !ORDER_TOKEN || tok === ORDER_TOKEN; }
+// Constant-time compare so the order token cannot be guessed byte by byte.
+export function safeEqual(a, b) {
+  const A = Buffer.from(String(a ?? ''));
+  const B = Buffer.from(String(b ?? ''));
+  return A.length > 0 && A.length === B.length && crypto.timingSafeEqual(A, B);
+}
+export function orderTokenOk(tok) { return !ORDER_TOKEN || safeEqual(tok, ORDER_TOKEN); }
 
 const headers = () => ({
   'APCA-API-KEY-ID': KEY, 'APCA-API-SECRET-KEY': SECRET, 'Content-Type': 'application/json',
@@ -68,10 +76,11 @@ export async function quote(symbol) {
   const d = await call(DATA_BASE, `/v2/stocks/${s}/trades/latest`);
   return { symbol: s, price: d.trade ? +d.trade.p : null, at: d.trade ? d.trade.t : null };
 }
-export async function placeOrder({ symbol, qty, side }) {
+export async function placeOrder({ symbol, qty, side } = {}) {
   const s = sym(symbol);
   const q = Math.max(1, Math.floor(Number(qty) || 0));
   if (!['buy', 'sell'].includes(side)) { const e = new Error('side must be buy or sell'); e.status = 400; throw e; }
+  if (!s) { const e = new Error('symbol is required'); e.status = 400; throw e; }
   const o = await call(TRADE_BASE, '/v2/orders', {
     method: 'POST',
     body: JSON.stringify({ symbol: s, qty: q, side, type: 'market', time_in_force: 'day' }),

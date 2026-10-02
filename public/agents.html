@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agentic Accounts</title>
-<meta name="description" content="An agentic account is a funded, capped sub-key for your agent: a budget, a per-task cap, a capability allowlist and a kill switch. Connect over MCP and your agent buys verified work on its own. Settled in USDG on Robinhood Chain.">
+<meta name="description" content="An agentic account is a funded, capped sub-key for your agent: a budget, a per-task cap, a capability allowlist and a kill switch. Connect over MCP and your agent buys verified work on its own. Settles in a sandbox ledger today. On-chain settlement is next.">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 <link rel="apple-touch-icon" href="/assets/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,6 +69,7 @@
 .ev .k{width:20px;height:20px;display:grid;place-items:center;font-family:var(--mono);font-size:11px;flex:none}
 .ev.ok .k{background:var(--ink);color:var(--cream)}
 .ev.no .k{color:var(--red);border:1px solid var(--red)}
+.ev.run .k{color:var(--ink3);border:1px solid var(--line2)}
 .ev .lb{color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ev .cap{font-family:var(--mono);font-size:10.5px;color:var(--ink3);letter-spacing:.04em}
 .ev .amt{margin-left:auto;font-family:var(--mono);font-size:12px;flex:none}
@@ -77,8 +78,9 @@
 .acct-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
 .btn.danger{border-color:var(--red);color:var(--red)}
 .btn.danger:hover{box-shadow:3px 3px 0 var(--red)}
-.mcp-line{margin-top:16px;font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--ink3);border-top:1px solid var(--line);padding-top:12px}
-.mcp-line b{color:var(--ink2);font-weight:500}
+.mcp-line{margin-top:16px;font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--ink3);border-top:1px solid var(--line);padding-top:12px;overflow-wrap:anywhere;word-break:break-word;min-width:0}
+.mcp-line b{color:var(--ink2);font-weight:500;overflow-wrap:anywhere;word-break:break-all}
+.cw-cfg{min-width:0}
 
 /* safety (dark) */
 .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:40px}
@@ -104,7 +106,7 @@
 .cta-final p{max-width:46ch;margin:0 auto 30px}
 .cta-final .cta-row{justify-content:center}
 
-@media(max-width:920px){.sgrid{grid-template-columns:1fr;gap:22px}.cw-grid{grid-template-columns:1fr}.cw-cfg{border-right:none;border-bottom:1px solid var(--line2)}.interop{grid-template-columns:minmax(0,1fr);gap:26px}}
+@media(max-width:920px){.sgrid{grid-template-columns:1fr;gap:22px}.cw-grid{grid-template-columns:minmax(0,1fr)}.cw-cfg{border-right:none;border-bottom:1px solid var(--line2)}.interop{grid-template-columns:minmax(0,1fr);gap:26px}}
 @media(max-width:480px){.acct-metrics{grid-template-columns:1fr}.am{border-right:none;border-bottom:1px solid var(--line2)}.am:last-child{border-bottom:none}}
 </style>
 </head>
@@ -138,7 +140,7 @@
       <span class="chip"><b>◆</b> Budget and per-task cap</span>
       <span class="chip"><b>◆</b> Capability allowlist</span>
       <span class="chip"><b>◆</b> Kill switch</span>
-      <span class="chip"><b>◆</b> Settled in USDG on Robinhood Chain</span>
+      <span class="chip"><b>◆</b> Sandbox ledger today · on-chain settlement next</span>
     </div>
   </div>
 </section>
@@ -154,13 +156,13 @@
         <div class="num">01 — Connect</div>
         <h3>Connect over MCP</h3>
         <p>Paste one URL into your agent's MCP config. It runs alongside any other MCP server you already use.</p>
-        <div class="mini"><span class="c">// mcp config</span><br>"vouch": {<br>&nbsp;&nbsp;"url": <span class="g">"https://mcp.vouch.dev"</span><br>}</div>
+        <div class="mini"><span class="c">// mcp config</span><br>"vouch": {<br>&nbsp;&nbsp;"url": <span class="g">"<span class="mcp-url">/mcp</span>"</span><br>}</div>
       </div>
       <div class="card stepc rv d1">
         <div class="num">02 — Fund</div>
         <h3>Create an agentic account</h3>
         <p>Fund a sub-key for your agent. Set a budget, a per-task cap and a capability allowlist. The agent can never spend more than you put in.</p>
-        <div class="mini"><span class="c">// funded, capped, allowlisted</span><br>budget <span class="g">$25</span> · cap <span class="g">$0.05</span>/task<br>allow: text.* · research.* · math.*</div>
+        <div class="mini"><span class="c">// funded, capped, allowlisted</span><br>budget <span class="g">$2</span> · cap <span class="g">$0.05</span>/task<br>allow: text.* · classify.* · math.*</div>
       </div>
       <div class="card stepc rv d2">
         <div class="num">03 — Run</div>
@@ -177,25 +179,25 @@
     <div class="sec-head">
       <span class="eyebrow rv">Try it live</span>
       <h2 class="rv">Fund an account.<br><em>Watch it buy work.</em></h2>
-      <p class="sub mono rv d1">Runs entirely in your browser, a working preview of an agentic account. Set a budget, a cap and an allowlist. Run the agent. Freeze it anytime.</p>
+      <p class="sub mono rv d1">Runs against the live sandbox API with a real sub-key. Set a budget, a cap and an allowlist. Run the agent. Freeze it anytime.</p>
     </div>
 
     <div class="console-wrap offset brackets rv">
-      <div class="term-h"><span><span class="sq"></span>Agentic account · browser preview</span><span>budget · cap · allowlist · kill switch</span></div>
+      <div class="term-h"><span><span class="sq"></span>Agentic account · live sandbox</span><span>budget · cap · allowlist · kill switch</span></div>
       <div class="cw-grid">
         <div class="cw-cfg">
           <h3>New agentic account</h3>
-          <div class="hint">A funded, capped sub-key your agent spends on its own.</div>
+          <div class="hint" id="a-hint">A funded, capped sub-key your agent spends on its own. Funded from your sandbox key.</div>
           <div class="field"><label>Account name</label><input id="a-name" value="Research Agent"></div>
           <div class="row2">
-            <div class="field"><label>Budget (USDG)</label><input id="a-budget" value="25"></div>
+            <div class="field"><label>Budget ($)</label><input id="a-budget" value="2"></div>
             <div class="field"><label>Per-task cap ($)</label><input id="a-cap" value="0.05"></div>
           </div>
           <div class="field"><label>Capability allowlist</label>
             <div class="allow" id="a-allow"></div>
           </div>
-          <button class="btn solid" id="a-create" style="width:100%">Create &amp; connect account</button>
-          <div class="mcp-line">Settled in <b>USDG on Robinhood Chain</b> · a signed receipt on every task.</div>
+          <button class="btn solid" id="a-create" style="width:100%" disabled>Connecting…</button>
+          <div class="mcp-line" id="mcp-line">MCP <b class="mcp-url">/mcp</b> · Sandbox ledger today · on-chain settlement next · a signed receipt on every task.</div>
         </div>
 
         <div class="cw-live" id="live">
@@ -206,19 +208,19 @@
               <span class="acct-state on" id="acct-state"><i></i><span id="acct-state-t">connected</span></span>
             </div>
             <div class="meter">
-              <div class="mrow"><span>budget spent</span><span><b id="m-spent">$0</b> / <span id="m-budget">$25</span></span></div>
+              <div class="mrow"><span>budget spent</span><span><b id="m-spent">$0</b> / <span id="m-budget">$2</span></span></div>
               <div class="bar"><i id="m-bar" style="width:0%"></i></div>
             </div>
             <div class="acct-metrics">
               <div class="am"><div class="v" id="am-done">0</div><div class="l">tasks passed</div></div>
               <div class="am"><div class="v" id="am-cap">$0.05</div><div class="l">per-task cap</div></div>
-              <div class="am"><div class="v" id="am-slash">$0</div><div class="l">slashed to you</div></div>
+              <div class="am"><div class="v" id="am-slash">$0</div><div class="l">balance left</div></div>
             </div>
             <div class="feed-h">Activity · verified before payment</div>
             <div class="feed" id="feed"></div>
             <div class="acct-actions">
               <button class="btn solid" id="a-run">Run strategy →</button>
-              <button class="btn danger" id="a-freeze" hidden>Freeze</button>
+              <button class="btn danger" id="a-freeze">Freeze</button>
               <button class="btn" id="a-disconnect">Disconnect</button>
             </div>
           </div>
@@ -261,7 +263,7 @@
       <span class="eyebrow">Works with your stack</span>
       <h2>A standard MCP server.<br><em>Runs alongside the rest.</em></h2>
       <p class="mono">Vouch is a standard <strong>MCP server</strong>. Your agent connects to it the way it connects to any other, with one URL in the config. The same tools are available over HTTP. An agent can <strong>use its other MCP servers and buy verified work on Vouch</strong> from one setup.</p>
-      <p class="mono">Settlement is <strong>USDG on Robinhood Chain</strong>. Every settled task comes with a signed receipt you can check offline.</p>
+      <p class="mono">Settlement runs in a <strong>sandbox ledger today</strong>. On-chain settlement is next. Every settled task comes with a signed receipt you can check offline.</p>
     </div>
     <div class="term brackets rv d1">
       <div class="term-h"><span><span class="sq"></span>~/.config/agent/mcp.json</span><span>one config · many accounts</span></div>
@@ -269,13 +271,13 @@
 {
   <span class="k">"mcpServers"</span>: {
     <span class="k">"trading"</span>: { "url": <span class="g">"https://…/mcp"</span> },
-    <span class="k">"vouch"</span>:   { "url": <span class="g">"https://mcp.vouch.dev"</span> }
+    <span class="k">"vouch"</span>:   { "url": <span class="g">"<span class="mcp-url">/mcp</span>"</span> }
   }
 }
 
 <span class="c"># now the agent can trade, and buy work</span>
 <span class="c"># it pays for only once it is verified.</span></pre>
-      <div class="term-f"><span><b>MCP</b> connected</span><span>→ verify →</span><span><b>USDG</b> · Robinhood Chain</span></div>
+      <div class="term-f"><span><b>MCP</b> connected</span><span>→ verify →</span><span><b>Sandbox ledger</b> · on-chain next</span></div>
     </div>
   </div>
 </section>
@@ -299,42 +301,62 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · USDG on Robinhood Chain</span></div>
+    <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
   </div>
 </footer>
 
-<script>
+<script type="module">
+import { api, ensureKey, waitTask } from '/assets/vouch.js';
+
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => '$' + (Math.round((n + Number.EPSILON) * 1e6) / 1e6);
+const fmt = (n) => '$' + (Math.round((Number(n) || 0) * 1e6) / 1e6);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const SUB_STORE = 'vouch_sub'; // the sub-key token is shown once by the API, so the browser keeps it
 
 const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1 });
 document.querySelectorAll('.rv').forEach((el) => io.observe(el));
 
-// capability allowlist chips
+// The MCP URL is this deployment's own /mcp endpoint.
+const MCP_URL = location.origin + '/mcp';
+document.querySelectorAll('.mcp-url').forEach((el) => { el.textContent = MCP_URL; });
+
+// capability allowlist chips (exact catalog ids, sent as the sub-key's allow list)
 const CAPS = ['text.generate', 'text.summarize', 'math.eval', 'extract.structured', 'classify.text', 'translate.text'];
 $('a-allow').innerHTML = CAPS.map((c, i) => '<span class="a' + (i < 4 ? ' on' : '') + '" data-c="' + c + '">' + c + '</span>').join('');
 $('a-allow').querySelectorAll('.a').forEach((el) => el.onclick = () => el.classList.toggle('on'));
 
-// the strategy an agent runs — each maps to a real capability + acceptance
+// The strategy an agent runs: each step is a real task posted with the sub-key.
+// The server enforces the allowlist, the per-task cap and the freeze state.
+const BRIEF = 'Cloud providers reported record capital spending on AI infrastructure this quarter. Demand for accelerators outpaced supply for the third quarter in a row. Power and cooling are now the binding constraint for new data centers. Several operators signed multi-year energy contracts to secure capacity.';
 const STRATEGY = [
-  { cap: 'research', label: 'Draft a market brief on AI infra', real: 'text.generate', lo: 0.018, hi: 0.028 },
-  { cap: 'text.summarize', label: 'Summarize the latest 10-Q filing', real: 'text.summarize', lo: 0.008, hi: 0.014 },
-  { cap: 'math.eval', label: 'Size the position (risk model)', real: 'math.eval', lo: 0.004, hi: 0.008 },
-  { cap: 'extract.structured', label: 'Extract KPIs from the report', real: 'extract.structured', lo: 0.01, hi: 0.02, flaky: true },
-  { cap: 'classify.text', label: 'Classify the sentiment of the news', real: 'classify.text', lo: 0.006, hi: 0.012 },
-  { cap: 'text.generate', label: 'Write the portfolio update', real: 'text.generate', lo: 0.014, hi: 0.024 },
+  { label: 'Draft a market brief on AI infra', capability: 'text.generate', budget: 0.03, deadline_ms: 15000, min_track: 70,
+    input: { prompt: 'Draft a short market brief on AI infrastructure spending' } },
+  { label: 'Summarize the latest filing', capability: 'text.summarize', budget: 0.01, deadline_ms: 10000,
+    input: { text: BRIEF } },
+  { label: 'Size the position (risk model)', capability: 'math.eval', budget: 0.006, deadline_ms: 4000,
+    input: { expression: '(120 * 0.35) + 18' }, acceptance: { checks: [{ assert: 'equals', path: 'result', value: 60 }] } },
+  { label: 'Extract KPIs from the report', capability: 'extract.structured', budget: 0.015, deadline_ms: 10000,
+    input: { text: BRIEF, fields: 'spending, constraint, contracts' } },
+  { label: 'Classify the sentiment of the news', capability: 'classify.text', budget: 0.008, deadline_ms: 6000,
+    input: { text: 'Shares rose after the earnings beat and raised guidance.', labels: ['positive', 'negative', 'neutral'] } },
+  { label: 'Translate the portfolio update', capability: 'translate.text', budget: 0.012, deadline_ms: 9000,
+    input: { text: 'Portfolio update: positions sized, risk within limits.', target_lang: 'fr' } },
 ];
-const PROVIDERS = ['prv_calder', 'prv_norn', 'prv_shade'];
 
-let A = null, running = false;
+let PARENT = null;   // the browser's sandbox key (ensureKey)
+let A = null;        // { id, key, name, budget, cap, allow, frozen, balance, spent, done }
+let running = false;
+const labels = new Map();  // taskId -> strategy label
+const rows = new Map();    // taskId -> feed row element
+
+const loadSub = () => { try { return JSON.parse(localStorage.getItem(SUB_STORE) || 'null'); } catch { return null; } };
+const saveSub = (v) => { try { v ? localStorage.setItem(SUB_STORE, JSON.stringify(v)) : localStorage.removeItem(SUB_STORE); } catch {} };
 
 function render() {
   if (!A) { $('acct').hidden = true; $('live-empty').hidden = false; return; }
@@ -342,71 +364,173 @@ function render() {
   $('acct-name').textContent = A.name;
   $('m-spent').textContent = fmt(A.spent);
   $('m-budget').textContent = fmt(A.budget);
-  $('m-bar').style.width = Math.min(100, (A.spent / A.budget) * 100) + '%';
+  $('m-bar').style.width = Math.min(100, (A.spent / Math.max(A.budget, 1e-9)) * 100) + '%';
   $('am-done').textContent = A.done;
-  $('am-cap').textContent = fmt(A.cap);
-  $('am-slash').textContent = fmt(A.slashToYou);
+  $('am-cap').textContent = A.cap != null ? fmt(A.cap) : 'none';
+  $('am-slash').textContent = fmt(A.balance);
   const st = $('acct-state'), stt = $('acct-state-t');
   st.className = 'acct-state ' + (A.frozen ? 'frozen' : 'on');
   stt.textContent = A.frozen ? 'frozen' : (running ? 'running' : 'connected');
-  $('a-freeze').hidden = A.frozen;
-  $('a-run').disabled = A.frozen;
-  $('a-run').textContent = running ? 'Running…' : (A.frozen ? 'Frozen' : 'Run strategy →');
-}
-function event(html, ok) {
-  const feed = $('feed');
-  const d = document.createElement('div'); d.className = 'ev ' + (ok ? 'ok' : 'no'); d.innerHTML = html;
-  feed.prepend(d);
-  while (feed.children.length > 24) feed.lastChild.remove();
+  $('a-freeze').textContent = A.frozen ? 'Unfreeze' : 'Freeze';
+  $('a-freeze').disabled = running;
+  $('a-disconnect').disabled = running;
+  $('a-run').disabled = running;
+  $('a-run').textContent = running ? 'Running…' : 'Run strategy →';
+  $('mcp-line').innerHTML = 'MCP <b>' + esc(MCP_URL) + '</b> · account key <b>' + esc(A.key) + '</b> · Sandbox ledger today · on-chain settlement next.';
 }
 
-$('a-create').onclick = () => {
-  const allow = new Set([...$('a-allow').querySelectorAll('.a.on')].map((e) => e.dataset.c));
-  A = {
-    name: $('a-name').value.trim() || 'Agentic Account',
-    budget: Math.max(1, Number($('a-budget').value) || 25),
-    cap: Math.max(0.001, Number($('a-cap').value) || 0.05),
-    allow, spent: 0, done: 0, slashToYou: 0, frozen: false,
-  };
-  $('feed').innerHTML = '';
-  event('<span class="k">✓</span><span class="lb">account connected via MCP</span><span class="cap">' + esc(A.name) + '</span><span class="amt">' + fmt(A.budget) + '</span>', true);
+function row(cls, html, taskId) {
+  const feed = $('feed');
+  let d = taskId ? rows.get(taskId) : null;
+  if (!d) {
+    d = document.createElement('div');
+    feed.prepend(d);
+    if (taskId) rows.set(taskId, d);
+    while (feed.children.length > 24) { const last = feed.lastChild; for (const [k, v] of rows) if (v === last) rows.delete(k); last.remove(); }
+  }
+  d.className = 'ev ' + cls; d.innerHTML = html;
+  return d;
+}
+const blocked = (label, e) => row('no',
+  '<span class="k">✕</span><span class="lb">' + esc(label) + '</span><span class="cap">' + esc(e.code || 'error') + ' · ' + esc(e.message) + '</span><span class="amt">' + (e.status || '') + '</span>');
+
+// A task row reflects the real task record: status, provider, price, refund reason.
+function taskRow(t) {
+  const label = labels.get(t.id) || (t.capability + ' · ' + JSON.stringify(t.input ?? {}).slice(0, 40));
+  if (t.status === 'settled') {
+    const s = t.settlement || {};
+    return row('ok', '<span class="k">✓</span><span class="lb">' + esc(label) + '</span><span class="cap">' + esc(s.provider || '') + ' · settled · ' + esc((s.verified_by || []).join('+') || 'verified') + '</span><span class="amt">' + fmt(s.price) + '</span>', t.id);
+  }
+  if (t.status === 'refunded') {
+    const r = t.refund || {};
+    return row('no', '<span class="k">↺</span><span class="lb">' + esc(label) + '</span><span class="cap">refunded · ' + esc(r.reason || '') + (t.slash ? ' · ' + esc(t.slash.provider) + ' slashed' : '') + '</span><span class="amt">$0</span>', t.id);
+  }
+  return row('run', '<span class="k">·</span><span class="lb">' + esc(label) + '</span><span class="cap">' + esc(t.quote?.provider || '') + ' · ' + esc(t.status) + '</span><span class="amt">' + (t.quote ? fmt(t.quote.price) : '') + '</span>', t.id);
+}
+
+// Metrics come from the real task list and the real sub-key balance.
+async function refresh() {
+  if (!A) return;
+  const [list, subs] = await Promise.all([
+    api('/v1/tasks?limit=50', { key: A.key }),
+    api('/v1/keys/sub', { key: PARENT }),
+  ]);
+  if (!A) return;
+  const tasks = list.tasks || [];
+  const me = (subs.sub_keys || []).find((k) => k.id === A.id);
+  A.done = tasks.filter((t) => t.status === 'settled').length;
+  A.spent = Math.round(tasks.filter((t) => t.status === 'settled').reduce((s, t) => s + (t.settlement?.price || 0), 0) * 1e6) / 1e6;
+  if (me) { A.balance = me.balance; A.frozen = !!me.frozen; }
+  [...tasks].reverse().forEach(taskRow); // oldest first so the newest ends up on top
+  render();
+}
+
+function showError(e) {
+  if (A) blocked('request failed', e);
+  else { $('live-empty').textContent = e.message || String(e); $('live-empty').hidden = false; }
+}
+
+// ---- create: fund a real sub-key from the parent key ----------------------
+$('a-create').onclick = async () => {
+  if (!PARENT) return;
+  const allow = [...$('a-allow').querySelectorAll('.a.on')].map((e) => e.dataset.c);
+  if (!allow.length) { $('a-hint').textContent = 'Pick at least one capability for the allowlist.'; return; }
+  const budget = Math.min(100, Math.max(0.01, Number($('a-budget').value) || 2));
+  const cap = Math.max(0.0001, Number($('a-cap').value) || 0.05);
+  const name = $('a-name').value.trim() || 'Agentic Account';
+  $('a-create').disabled = true; $('a-create').textContent = 'Funding…';
+  try {
+    // The sub-key's budget is transferred out of the parent, so top the parent up first.
+    const bal = await api('/v1/balance', { key: PARENT });
+    if (bal.balance < budget) await api('/v1/escrow/deposit', { method: 'POST', body: { amount: Math.round((budget - bal.balance + 0.01) * 1e6) / 1e6 }, key: PARENT });
+    const sub = await api('/v1/keys/sub', { method: 'POST', body: { name, fund: budget, allow, per_task_cap: cap }, key: PARENT });
+    A = { id: sub.id, key: sub.key, name, budget: sub.fund, cap: sub.per_task_cap, allow: sub.allow, frozen: !!sub.frozen, balance: sub.fund, spent: 0, done: 0 };
+    saveSub({ id: A.id, key: A.key, name: A.name, budget: A.budget, cap: A.cap, allow: A.allow });
+    $('feed').innerHTML = ''; rows.clear(); labels.clear();
+    row('ok', '<span class="k">✓</span><span class="lb">account funded · ' + esc(sub.id) + '</span><span class="cap">allow: ' + esc((sub.allow || []).join(', ')) + '</span><span class="amt">' + fmt(sub.fund) + '</span>');
+    $('a-hint').textContent = 'Funded from your sandbox key. Create another to replace it.';
+    render();
+    await refresh();
+  } catch (e) { showError(e); }
+  $('a-create').disabled = false; $('a-create').textContent = 'Create & connect account';
+};
+
+// ---- run: post the strategy as real tasks with the sub-key ----------------
+$('a-run').onclick = async () => {
+  if (!A || running) return;
+  running = true; render();
+  try {
+    for (const step of STRATEGY) {
+      if (!running || !A) break;
+      let created;
+      try {
+        created = await api('/v1/tasks', { method: 'POST', key: A.key, body: {
+          capability: step.capability, input: step.input, acceptance: step.acceptance || {},
+          budget: step.budget, deadline_ms: step.deadline_ms, ...(step.min_track ? { min_track: step.min_track } : {}),
+        } });
+      } catch (e) {
+        blocked(step.label, e);
+        // A frozen or empty account cannot post anything else: stop the run.
+        if (e.code === 'account_frozen' || e.code === 'escrow_insufficient') break;
+        continue;
+      }
+      if (!A) break;
+      labels.set(created.id, step.label);
+      taskRow(created);
+      const done = await waitTask(created.id, { key: A.key, onUpdate: (t) => { if (A) taskRow(t); } });
+      taskRow(done);
+      await refresh();
+    }
+  } catch (e) { showError(e); }
+  running = false;
+  if (A) { try { await refresh(); } catch (e) { showError(e); } }
   render();
 };
 
-$('a-disconnect').onclick = () => { running = false; A = null; render(); };
-$('a-freeze').onclick = () => { if (!A) return; A.frozen = true; running = false; event('<span class="k">✕</span><span class="lb">account frozen — posting stopped</span><span class="amt">kill switch</span>', false); render(); };
-
-$('a-run').onclick = async () => {
-  if (!A || A.frozen || running) return;
-  running = true; render();
-  while (running && A && !A.frozen) {
-    // pick an allowlisted strategy step the agent can afford under its cap
-    const options = STRATEGY.filter((s) => A.allow.has(s.real));
-    if (!options.length) { event('<span class="k">✕</span><span class="lb">no allowlisted capability to act on</span>', false); break; }
-    const s = options[Math.floor(Math.random() * options.length)];
-    let price = Math.round((s.lo + Math.random() * (s.hi - s.lo)) * 1e6) / 1e6;
-    if (price > A.cap) price = A.cap;                     // per-task cap enforced
-    if (A.spent + price > A.budget) { event('<span class="k">✕</span><span class="lb">budget reached — agent paused</span><span class="amt">' + fmt(A.budget) + '</span>', false); break; }
-
-    const prov = PROVIDERS[Math.floor(Math.random() * PROVIDERS.length)];
-    // ~1 in 6 fails verification → refund + slash, you pay nothing
-    const fail = s.flaky && Math.random() < 0.5 || Math.random() < 0.10;
-    await sleep(1400 + Math.random() * 500);
-    if (!running || !A || A.frozen) break;
-    if (fail) {
-      const slash = Math.round(price * 1.5 * 1e6) / 1e6; A.slashToYou = Math.round((A.slashToYou + slash) * 1e6) / 1e6;
-      event('<span class="k">↺</span><span class="lb">' + esc(s.label) + '</span><span class="cap">' + esc(prov) + ' slashed</span><span class="amt">$0</span>', false);
-    } else {
-      A.spent = Math.round((A.spent + price) * 1e6) / 1e6; A.done += 1;
-      event('<span class="k">✓</span><span class="lb">' + esc(s.label) + '</span><span class="cap">' + esc(prov) + ' · verified</span><span class="amt">' + fmt(price) + '</span>', true);
-    }
+// ---- freeze / unfreeze: the reversible kill switch -------------------------
+$('a-freeze').onclick = async () => {
+  if (!A || running) return;
+  try {
+    const r = await api('/v1/keys/sub/' + A.id + '/freeze', { method: 'POST', body: { frozen: !A.frozen }, key: PARENT });
+    if (!A) return;
+    A.frozen = !!r.frozen;
+    row(A.frozen ? 'no' : 'ok', '<span class="k">' + (A.frozen ? '✕' : '✓') + '</span><span class="lb">' + (A.frozen ? 'account frozen · posting stopped' : 'account unfrozen · posting resumed') + '</span><span class="amt">kill switch</span>');
     render();
-    await sleep(300);
-  }
-  running = false; render();
+  } catch (e) { showError(e); }
 };
 
-render();
+// ---- disconnect: revoke the sub-key, unspent balance returns to the parent --
+$('a-disconnect').onclick = async () => {
+  if (!A || running) return;
+  try {
+    const r = await api('/v1/keys/sub/' + A.id + '/revoke', { method: 'POST', body: {}, key: PARENT });
+    saveSub(null); A = null; rows.clear(); labels.clear(); $('feed').innerHTML = '';
+    render();
+    $('live-empty').textContent = 'Account ' + r.id + ' revoked. ' + fmt(r.refunded) + ' refunded to your sandbox key. Create an account to begin again.';
+  } catch (e) { showError(e); }
+};
+
+// ---- boot: one real sandbox key per browser; restore a stored account -------
+(async () => {
+  try {
+    PARENT = await ensureKey();
+    const stored = loadSub();
+    if (stored?.id && stored?.key) {
+      const { sub_keys = [] } = await api('/v1/keys/sub', { key: PARENT });
+      const me = sub_keys.find((k) => k.id === stored.id && !k.revoked);
+      if (me) {
+        A = { id: me.id, key: stored.key, name: me.name || stored.name, budget: stored.budget ?? me.balance, cap: me.per_task_cap, allow: me.allow, frozen: !!me.frozen, balance: me.balance, spent: 0, done: 0 };
+        render();
+        await refresh();
+      } else saveSub(null);
+    }
+    $('a-create').disabled = false; $('a-create').textContent = 'Create & connect account';
+  } catch (e) {
+    $('a-create').textContent = 'Sandbox unavailable';
+    showError(e);
+  }
+  render();
+})();
 </script>
 <script type="module" src="/assets/vouch.js"></script>
 </body>

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { sha256 } from './util.js';
 import { snapshotParams } from './launchpad-config.js';
-import { bondValue, bondCapacity, splitFees, slashPlan } from './launchpad.js';
+import { bondValue, bondCapacity, splitFees, slashPlan, slashBase } from './launchpad.js';
 
 // Settlement adapter — the seam between Vouch's engine (which decides pass/fail)
 // and where the money actually moves. Today the engine settles against its own
@@ -197,8 +197,10 @@ export function mockBondVault({ verifierPublicKeyPem, params, now = () => Date.n
     const t = now();
     a.slashWindow = a.slashWindow.filter((e) => t - e.ts < p.rollingSlashWindowMs);
     const slashedInWindowUsdg = round(a.slashWindow.reduce((s, e) => s + e.amountUsdg, 0));
+    // Slash base is the full bond at TWAP (unbonding tokens included, no
+    // liquidity floor): unbonding or a thin pool must never make a slash free.
     const plan = slashPlan({ priceUsdg: price, multiple, twapUsdg: a.token.twap,
-      bondRawValueUsdg: liveRaw(a), slashedInWindowUsdg }, p);
+      bondRawValueUsdg: slashBase({ tokenQty: a.bond, twapUsdg: a.token.twap }), slashedInWindowUsdg }, p);
     a.slashWindow.push({ ts: t, amountUsdg: plan.amountUsdg });
     pending[slashId] = { agentId, amountUsdg: plan.amountUsdg, tokenQty: plan.tokenQty,
       executeAfter: t + p.pendingSlashMs, settled: false };
@@ -213,6 +215,7 @@ export function mockBondVault({ verifierPublicKeyPem, params, now = () => Date.n
     const a = must(s.agentId);
     const qty = Math.min(s.tokenQty, a.bond);
     a.bond = round(a.bond - qty);
+    if (a.unbondingQty > a.bond) a.unbondingQty = a.bond; // the slash eats into the unbonding request first
     insurance.balance = round(insurance.balance + s.amountUsdg);
     s.settled = true;
     return { tokenQty: qty, amountUsdg: s.amountUsdg };

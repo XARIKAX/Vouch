@@ -1,9 +1,10 @@
 import { readBody } from './api.js';
-import { ApiError } from './engine.js';
+import { ApiError } from './errors.js';
 
 // Minimal Model Context Protocol server over Streamable HTTP (JSON-RPC 2.0,
-// single-response mode). Discovery (initialize, tools/list) is open;
-// tools/call requires a bearer key — matching the docs.
+// single-response mode) served at /mcp only. Discovery (initialize,
+// tools/list) is open; tools/call requires a bearer key and runs through the
+// same per-key rate limiter as the REST API.
 
 const TOOLS = [
   {
@@ -83,16 +84,37 @@ const TOOLS = [
   },
   {
     name: 'vouch_create_subkey',
-    description: 'Open an agentic account (capped, policy-bound sub-key) for a child agent: fund it from the parent, optionally restrict to a capability allowlist and a per-task spend cap.',
+    description: 'Open an agentic account (capped, policy-bound sub-key) for a child agent: fund it from the parent, optionally restrict to a capability allowlist (ids or prefixes like "text.*") and a per-task spend cap.',
     inputSchema: {
       type: 'object', required: ['fund'],
       properties: {
         fund: { type: 'number', description: 'USDC to transfer from the parent to the account (its dedicated budget)' },
-        allow: { type: 'array', items: { type: 'string' }, description: 'Capability allowlist' },
+        allow: { type: 'array', items: { type: 'string' }, description: 'Capability allowlist: exact ids or prefixes such as "text.*"' },
         per_task_cap: { type: 'number', description: 'Maximum USDC any single task may spend' },
         name: { type: 'string' },
       },
     },
+  },
+  {
+    name: 'vouch_list_subkeys',
+    description: 'List the agentic accounts (sub-keys) under this key with their allowlist, balance, frozen and revoked state.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'vouch_freeze_subkey',
+    description: 'Freeze (or unfreeze) an agentic account: a frozen account keeps its balance but cannot post tasks. Instant and reversible.',
+    inputSchema: {
+      type: 'object', required: ['sub_key_id'],
+      properties: {
+        sub_key_id: { type: 'string' },
+        frozen: { type: 'boolean', description: 'true to freeze (default), false to unfreeze' },
+      },
+    },
+  },
+  {
+    name: 'vouch_revoke_subkey',
+    description: 'Revoke an agentic account permanently and return its unspent balance to the parent.',
+    inputSchema: { type: 'object', required: ['sub_key_id'], properties: { sub_key_id: { type: 'string' } } },
   },
   {
     name: 'vouch_task_status',
@@ -115,6 +137,11 @@ const TOOLS = [
     },
   },
   {
+    name: 'vouch_dispute_status',
+    description: 'Check a dispute: reviewing, upheld (refund + slash) or rejected (settlement stands).',
+    inputSchema: { type: 'object', required: ['dispute_id'], properties: { dispute_id: { type: 'string' } } },
+  },
+  {
     name: 'vouch_balance',
     description: 'Read escrow balance, locked amounts, and recent settlement history.',
     inputSchema: { type: 'object', properties: {} },
@@ -126,42 +153,65 @@ const TOOLS = [
   },
   {
     name: 'vouch_get_agent',
-    description: 'Inspect one launched agent: its token bond (raw / haircut / open-quote capacity), unbonding status, and lifetime owner/buyback/burn/slash totals.',
+    description: 'Inspect one launched agent: its token bond (raw / haircut / open-quote capacity), unbonding status, pending slashes, and lifetime owner/buyback/burn/slash totals.',
     inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
   },
 ];
 
-export function createMcp(engine) {
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, Mcp-Session-Id, X-Admin-Token',
+  'Access-Control-Expose-Headers': 'Mcp-Session-Id',
+  'Access-Control-Max-Age': '600',
+};
+
+export function createMcp(engine, { limit } = {}) {
+  const asObject = (v, what) => {
+    if (v === undefined || v === null) return {};
+    if (typeof v !== 'object' || Array.isArray(v)) throw new ApiError(400, 'invalid_input', `${what} must be an object`);
+    return v;
+  };
+
   async function callTool(key, name, args = {}) {
+    const a = asObject(args, 'arguments');
     switch (name) {
-      case 'vouch_find_offers': return { offers: engine.offers(args) };
-      case 'vouch_post_task': return engine.createTask(key, args).task;
-      case 'vouch_task_status': return engine.getTask(key, args.task_id);
-      case 'vouch_dispute': return engine.openDispute(key, args.task_id, args);
+      case 'vouch_find_offers': return { offers: engine.offers(a) };
+      case 'vouch_post_task': return engine.createTask(key, a).task;
+      case 'vouch_task_status': return engine.getTask(key, a.task_id);
+      case 'vouch_dispute': return engine.openDispute(key, a.task_id, a);
+      case 'vouch_dispute_status': return engine.getDispute(key, a.dispute_id);
       case 'vouch_balance': return engine.balance(key);
-      case 'vouch_verify': return engine.verifyOutput(key, args);
-      case 'vouch_create_workflow': return engine.createWorkflow(key, args);
-      case 'vouch_workflow_status': return engine.getWorkflow(key, args.workflow_id);
+      case 'vouch_verify': return engine.verifyOutput(key, a);
+      case 'vouch_create_workflow': return engine.createWorkflow(key, a);
+      case 'vouch_workflow_status': return engine.getWorkflow(key, a.workflow_id);
       case 'vouch_list_providers': return { providers: engine.listProviders() };
       case 'vouch_list_agents': return { agents: engine.listAgents() };
-      case 'vouch_get_agent': return engine.getAgent(args.agent_id);
-      case 'vouch_get_attestation': return engine.getAttestation(key, args.task_id);
-      case 'vouch_create_subkey': return engine.createSubKey(key, args);
+      case 'vouch_get_agent': return engine.getAgent(a.agent_id);
+      case 'vouch_get_attestation': return engine.getAttestation(key, a.task_id);
+      case 'vouch_create_subkey': return engine.createSubKey(key, a);
+      case 'vouch_list_subkeys': return { sub_keys: engine.listSubKeys(key) };
+      case 'vouch_freeze_subkey': return engine.freezeSubKey(key, a.sub_key_id, a.frozen === undefined ? true : a.frozen === true);
+      case 'vouch_revoke_subkey': return engine.revokeSubKey(key, a.sub_key_id);
       default: throw new ApiError(404, 'unknown_tool', `No tool "${name}".`);
     }
   }
 
   return async function handle(req, res) {
-    const reply = (body) => {
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    const reply = (body, headers = {}) => {
+      res.writeHead(200, { 'Content-Type': 'application/json', ...CORS, ...headers });
       res.end(JSON.stringify(body));
     };
 
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, CORS);
+      return res.end();
+    }
     if (req.method === 'GET') {
-      return reply({ name: 'vouch', transport: 'streamable-http', hint: 'POST JSON-RPC 2.0 here' });
+      return reply({ name: 'vouch', transport: 'streamable-http', endpoint: '/mcp', hint: 'POST JSON-RPC 2.0 here' });
     }
     if (req.method !== 'POST') {
-      res.writeHead(405, { Allow: 'GET, POST' });
+      res.writeHead(405, { Allow: 'GET, POST, OPTIONS', ...CORS });
       return res.end();
     }
 
@@ -170,19 +220,20 @@ export function createMcp(engine) {
     catch { return reply({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }); }
 
     const { id = null, method, params = {} } = rpc ?? {};
-    const ok = (result) => reply({ jsonrpc: '2.0', id, result });
+    const ok = (result, headers) => reply({ jsonrpc: '2.0', id, result }, headers);
     const err = (code, message, data) => reply({ jsonrpc: '2.0', id, error: { code, message, data } });
+    const p = params && typeof params === 'object' && !Array.isArray(params) ? params : {};
 
     try {
       switch (method) {
         case 'initialize':
           return ok({
-            protocolVersion: params.protocolVersion ?? '2025-03-26',
+            protocolVersion: p.protocolVersion ?? '2025-03-26',
             capabilities: { tools: {} },
             serverInfo: { name: 'vouch', version: '0.1.0' },
           });
         case 'notifications/initialized':
-          res.writeHead(202); return res.end();
+          res.writeHead(202, CORS); return res.end();
         case 'ping':
           return ok({});
         case 'tools/list':
@@ -190,8 +241,9 @@ export function createMcp(engine) {
         case 'tools/call': {
           const m = /^Bearer\s+(\S+)$/.exec(req.headers.authorization ?? '');
           const key = engine.authenticate(m?.[1] ?? '');
-          const result = await callTool(key, params.name, params.arguments);
-          return ok({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
+          const rl = limit ? limit(key) : {};
+          const result = await callTool(key, p.name, p.arguments);
+          return ok({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }, rl);
         }
         default:
           return err(-32601, `Method not found: ${method}`);
@@ -203,7 +255,10 @@ export function createMcp(engine) {
           isError: true,
         });
       }
-      return err(-32603, e.message);
+      console.error('vouch: mcp call failed:', e);
+      return err(-32603, 'Internal error');
     }
   };
 }
+
+export const MCP_TOOL_NAMES = TOOLS.map((t) => t.name);

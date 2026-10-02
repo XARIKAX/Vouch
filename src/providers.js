@@ -173,9 +173,10 @@ async function execute(provider, task, cfg) {
   const honest = hash01(provider.id + task.id + 'roll') < provider.reliability;
 
   // Real model execution: an honest native provider does actual work through
-  // Claude when a key is configured. The unreliable path stays simulated so
-  // slashing remains demonstrable, and math.eval is computed for real below.
-  if (honest && cfg.anthropicKey) {
+  // the configured model when a key and model are set. The unreliable path
+  // stays simulated so slashing remains demonstrable, and math.eval is
+  // computed for real below.
+  if (honest && cfg.anthropicKey && (cfg.execModel || cfg.graderModel)) {
     const real = await claudeExecute(task, cfg);
     if (real) return real;
   }
@@ -237,7 +238,10 @@ async function execute(provider, task, cfg) {
 
 // ---------------------------------------------------------------------------
 // Seed network. Stake is USDC bonded by the provider; track is 0-100.
-// prv_shade is the cautionary tale: cheapest quotes, reliability 0.
+// prv_shade is the cautionary tale: reliability 0. It quotes the fastest SLA
+// on text.generate but its price ceiling sits above the reliable providers, so
+// a plain text.generate task settles by default and prv_shade only wins when a
+// buyer's deadline is tighter than any honest provider will promise.
 // ---------------------------------------------------------------------------
 export function seedProviders(state) {
   const seed = [
@@ -272,7 +276,7 @@ export function seedProviders(state) {
     {
       id: 'prv_shade', name: 'Shade Node', stake: 40, track: 62, reliability: 0,
       offers: {
-        'text.generate': { price_ceiling: 0.006, sla_deadline_ms: 6000 },
+        'text.generate': { price_ceiling: 0.03, sla_deadline_ms: 6000 },
       },
     },
   ];

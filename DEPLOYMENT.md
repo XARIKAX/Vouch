@@ -12,9 +12,14 @@ Vouch runs in two modes:
   runs the request **and all background work it spawned** (task execution,
   verification, dispute review — `engine.drain()`), then flushes one write.
 
-> Plain Vercel with no Redis configured still works, but state is in-memory
-> per instance and lost on every cold start — keys, escrows, and tasks
-> evaporate. Demo only; the function logs a warning.
+> Plain Vercel with no Redis configured still works. The function creates
+> the app once per warm instance and keeps it in memory, so keys, escrows and
+> tasks survive between requests on that instance and are lost on every cold
+> start or when traffic lands on another instance. Demo only; the function
+> logs a warning.
+
+Settlement in both modes is a sandbox ledger. No real funds move. Settles in
+a sandbox ledger today. On-chain settlement is next.
 
 ## Option A — Vercel (serverless)
 
@@ -29,21 +34,26 @@ Vouch runs in two modes:
    manually instead, create a database at [upstash.com](https://upstash.com)
    and set those two env vars under project → Settings → Environment
    Variables.
-3. Add `ANTHROPIC_API_KEY` (project → Settings → Environment Variables) for
-   the Claude grading panel; without it grading falls back to the offline
-   heuristic.
-4. **Redeploy** (Deployments → ⋯ → Redeploy) so the new env vars apply.
-5. Verify `https://<domain>/health` returns `{"ok":true,...}` and `/`,
-   `/docs`, `/services`, `/dashboard` render.
-6. First boot against an empty store mints the **bootstrap key** and prints
+3. Add `VOUCH_ATTEST_KEY` (a PKCS8 ed25519 PEM) so attestation receipts stay
+   verifiable across invocations and instances. Without it the engine keeps a
+   generated key in its state snapshot, which only holds while the snapshot
+   does. Required for durable receipts.
+4. Add `ANTHROPIC_API_KEY` (project → Settings → Environment Variables) for
+   real execution by the built-in providers and the model grading panel;
+   without it the simulator and the offline heuristic grader run.
+5. **Redeploy** (Deployments → ⋯ → Redeploy) so the new env vars apply.
+6. Verify `https://<domain>/health` returns `{"ok":true,...}` and `/`,
+   `/docs`, `/services`, `/dashboard` render. `/mcp` answers JSON-RPC.
+7. First boot against an empty store mints the **bootstrap key** and prints
    it once to the function logs (project → Logs, look for
    `vouch: bootstrap key`). Store it safely.
 
 ### Serverless caveats
 
-- `vercel.json` sets `maxDuration: 300`. A task's whole lifecycle (executor +
+- `vercel.json` sets `maxDuration: 60`. A task's whole lifecycle (executor +
   verification + grading) must finish within it, so keep quoted
-  `deadline_ms` well under that. If your plan rejects 300, lower it to 60.
+  `deadline_ms` well under 60 s. Raise it in `vercel.json` only if your plan
+  allows a longer function duration.
 - Task-event SSE (`GET /v1/tasks/:id/events`) replays events and closes for
   finished tasks; it cannot stream live progress across invocations.
 - Rate-limit buckets are per warm instance, not global.
@@ -61,8 +71,9 @@ check automatically.
 1. Sign in at [railway.app](https://railway.app) → **New Project** →
    **Deploy from GitHub repo** → select `xarikax/vouch`, branch `main`.
    Railway detects the `Dockerfile` and builds it.
-2. Open the service → **Variables** and add `ANTHROPIC_API_KEY` (and any
-   optional overrides). Do **not** set `VOUCH_EPHEMERAL`.
+2. Open the service → **Variables** and add `VOUCH_ATTEST_KEY`,
+   `ANTHROPIC_API_KEY` and any optional overrides. Do **not** set
+   `VOUCH_EPHEMERAL`.
 3. Service → **Settings → Volumes**: mount path **`/data`** — this is where
    `state.json` lives; without it, state is lost on every redeploy.
 4. Service → **Settings → Networking → Generate Domain** (port **4402** if
@@ -79,7 +90,7 @@ scale out).
 ```sh
 fly launch --copy-config --no-deploy   # creates the app, keeps fly.toml
 fly volumes create vouch_data --region lhr --size 1
-fly secrets set ANTHROPIC_API_KEY=sk-ant-...
+fly secrets set VOUCH_ATTEST_KEY="$(cat attest.pem)" ANTHROPIC_API_KEY=...
 fly deploy
 fly logs        # grab the bootstrap key on first boot
 ```
@@ -107,16 +118,21 @@ Before real traffic:
    resets on every cold start). Server mode: mount a volume at `/data`.
 2. **Lock signup.** Set `VOUCH_LOCK_SIGNUP=1` and `VOUCH_ADMIN_TOKEN=…` so
    `POST /v1/keys` and `POST /v1/providers` require an `X-Admin-Token` header.
-   Otherwise anyone can mint faucet-funded keys — fine for a demo, not for real
-   value.
-3. **Real grading.** Set `ANTHROPIC_API_KEY` so rubric verification uses the
-   Claude panel instead of the offline heuristic.
-4. **Stable attestations.** Set `VOUCH_ATTEST_KEY` (a PKCS8 ed25519 PEM) so
-   proof-of-verified-work signatures stay valid across restarts/instances;
-   otherwise a fresh key is generated per boot and old receipts stop verifying.
-5. **On-chain settlement** (optional, when ready): deploy `contracts/VouchEscrow.sol`
-   and wire the engine onto the settlement adapter — see `ONCHAIN.md`. Until
-   then escrow/stake are a simulated bond.
+   Otherwise anyone can mint faucet-funded keys: fine for a demo, not for real
+   value. The same token authorizes launched-agent writes in place of the
+   owner's key and `POST /v1/admin/guardian`.
+3. **Real execution and grading.** Set `ANTHROPIC_API_KEY` so the built-in
+   providers do real work for text capabilities and rubric verification uses
+   the model panel instead of the offline heuristic.
+4. **Durable attestations.** Set `VOUCH_ATTEST_KEY` (a PKCS8 ed25519 PEM) so
+   proof-of-verified-work signatures stay valid across restarts and instances.
+   Without it the engine persists a generated key inside its state snapshot;
+   lose the snapshot and old receipts stop verifying against
+   `GET /v1/attestation/key`. Generate one with
+   `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))"`.
+5. **On-chain settlement** is not available yet. `contracts/*.sol` are
+   untested drafts and the engine settles on a sandbox ledger. See
+   `ONCHAIN.md` for the plan.
 
 ## Environment variables
 
@@ -127,10 +143,10 @@ Before real traffic:
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Serverless state store (`KV_REST_API_*` also accepted) | unset → in-memory |
 | `VOUCH_STATE_KEY` | Redis key for the state snapshot | `vouch:state` |
 | `VOUCH_LOCK_SIGNUP` | `1` = gate key/provider minting behind `X-Admin-Token` | unset (open) |
-| `VOUCH_ADMIN_TOKEN` | Admin token accepted when signup is locked | unset |
-| `VOUCH_ATTEST_KEY` | PKCS8 ed25519 PEM for stable attestation signing | unset → ephemeral per boot |
-| `ANTHROPIC_API_KEY` | Claude grading panel | unset → offline heuristic |
-| `VOUCH_GRADER_MODEL` | Grader model override | engine default |
+| `VOUCH_ADMIN_TOKEN` | Admin token for locked minting, launched-agent writes and `POST /v1/admin/guardian` | unset |
+| `VOUCH_ATTEST_KEY` | PKCS8 ed25519 PEM for durable attestation signing | unset → generated key kept in state |
+| `ANTHROPIC_API_KEY` | Real execution for built-in text providers + model grading panel | unset → simulator + offline heuristic |
+| `VOUCH_GRADER_MODEL` / `VOUCH_EXEC_MODEL` | Grading / execution model override | engine default |
 | `VOUCH_GRADER_URL` | Custom webhook grader | unset |
 | `VOUCH_ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
 | `VOUCH_EPHEMERAL` | `1` = in-memory state (dev only) | unset |
@@ -144,4 +160,4 @@ Before real traffic:
 
 1. Create a free Alpaca account and generate **paper** API keys (no real money, no funding needed).
 2. Set `ALPACA_KEY_ID` and `ALPACA_SECRET_KEY` in your host's env vars, and (recommended) a `BROKER_ORDER_TOKEN`.
-3. Redeploy. The **Alpaca (paper)** data source on `/trade` unlocks itself; the agent then trades real market data with real paper orders — still gated by a verified thesis. Leave `ALPACA_BASE_URL` on the paper host: the adapter refuses to run against the live (real-money) endpoint. Vouch is not a broker-dealer; live real-money trading is out of scope here.
+3. Redeploy. The **Alpaca (paper)** data source on `/trade` unlocks itself; the agent then trades real market data with real paper orders, still gated by a verified thesis. Every `POST /v1/broker/order` must carry a `thesis` object that passes the server's checks (`json_parseable`, a regex on `direction` and `confidence`, `length_between` 120); otherwise it is rejected with `422 thesis_rejected` before the broker is called. Leave `ALPACA_BASE_URL` on the paper host: the adapter refuses to run against the live (real-money) endpoint. Vouch is not a broker-dealer; live real-money trading is out of scope here.

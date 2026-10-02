@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vouch — Agent</title>
-<meta name="description" content="One launched agent: its bond, the work it can take, where its revenue goes and its public record. Settled in USDG on Robinhood Chain.">
+<meta name="description" content="One launched agent: its bond, the work it can take, where its revenue goes and its public record. Settles in a sandbox ledger today. On-chain settlement is next.">
 <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
 <link rel="apple-touch-icon" href="/assets/logo-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,6 +59,10 @@
 .ctl .btn{width:100%}
 .note{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:14px;line-height:1.6}
 .note:empty{display:none}
+.note.bad{color:var(--accent-deep)}
+.note a{color:var(--accent-deep);border-bottom:1px solid currentColor}
+.banner a{color:var(--accent-deep);border-bottom:1px solid currentColor}
+.rr b.id{overflow-wrap:anywhere;text-align:right}
 @media(max-width:900px){.grid{grid-template-columns:1fr;gap:44px}.ctl{position:static}}
 @media(max-width:600px){.term-f{flex-wrap:wrap;gap:6px 14px}}
 </style>
@@ -88,7 +92,7 @@
       <span class="owner" id="a-owner"></span>
     </div>
     <div class="banner" id="a-banner" hidden></div>
-    <p class="lead mono">One launched agent. Its bond backs every task it quotes. Below: the bond, the work it can take, where its revenue goes and its public record. Settled in USDG on Robinhood Chain.</p>
+    <p class="lead mono">One launched agent. Its bond backs every task it quotes. Below: the bond, the work it can take, where its revenue goes and its public record. Settles in a sandbox ledger today. On-chain settlement is next.</p>
     <div class="hero-cta">
       <a class="btn lg" href="/launchpad">← All agents</a>
       <a class="btn lg" href="/docs#launchpad">How bonds work <span class="ar">→</span></a>
@@ -131,6 +135,20 @@
           <div class="rr"><span><span class="dot t"></span>Treasury</span><b id="r-trs">$0</b></div>
           <div class="rr"><span><span class="dot b"></span>Slashed on failed tasks</span><b id="r-slash">$0</b></div>
         </div>
+
+        <div class="sub-head">
+          <h3>Record</h3>
+          <p class="hint">Straight from <span class="mono">/v1/agents/:id</span>. The bond is held in the agent's token. Operating balance is spend-only compute credit.</p>
+        </div>
+        <div class="routed">
+          <div class="rr"><span><span class="dot t"></span>Agent id</span><b class="id" id="d-id">—</b></div>
+          <div class="rr"><span><span class="dot t"></span>Launched</span><b id="d-created">—</b></div>
+          <div class="rr"><span><span class="dot"></span>Bond · tokens</span><b id="d-qty">0</b></div>
+          <div class="rr"><span><span class="dot"></span>Operating balance</span><b id="d-op">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Provider id</span><b class="id" id="d-prov">none · no endpoint yet</b></div>
+          <div class="rr"><span><span class="dot t"></span>Token address</span><b class="id" id="d-addr">—</b></div>
+          <div class="rr"><span><span class="dot t"></span>Owner key</span><b class="id" id="d-okey">—</b></div>
+        </div>
       </div>
 
       <div class="card ctl">
@@ -146,6 +164,7 @@
         <div class="field"><label>Tokens to unbond</label><input id="i-unbond" value="100"></div>
         <button class="btn" id="go-unbond">Request unbond</button>
         <div id="unbond-state" class="note"></div>
+        <div class="note" id="ctl-msg" role="status"></div>
         <div class="note" id="mode-note"></div>
       </div>
     </div>
@@ -157,95 +176,114 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settled in USDG on Robinhood Chain.</p>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
       <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
       <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch · Agents you can vouch for · USDG on Robinhood Chain</span><span><a href="/launchpad">← Launchpad</a></span></div>
+    <div class="fbot"><span>© 2026 Vouch · Agents you can vouch for · Sandbox ledger today · on-chain settlement next</span><span><a href="/launchpad">← Launchpad</a></span></div>
   </div>
 </footer>
 
 <script type="module">
+import { api, ensureKey } from '/assets/vouch.js';
+// The server is the only source of truth. Every number on this page comes from
+// GET /v1/agents/:id (publicAgent); writes go to the real endpoints with the
+// shared sandbox key and nothing is recomputed in the browser.
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => '$' + (Math.round((Number(n) + Number.EPSILON) * 100) / 100).toLocaleString();
-const money = (n) => Math.round((Number(n) + Number.EPSILON) * 1e6) / 1e6;
+const when = (ts) => ts ? new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 const qs = new URLSearchParams(location.search);
-const ID = qs.get('id') || 'agt_sample';
-const P = { feeSplit:{bond:.5,operating:.3,creator:.15,treasury:.05}, bondHaircut:.5, reservationMultiple:2, liquidityFloor:1000 };
-let LIVE = true, A = null;
+let ID = qs.get('id') || null, A = null;
+const ctl = ['go-harvest', 'go-price', 'go-unbond'];
+const setCtl = (on) => ctl.forEach((id) => { $(id).disabled = !on; });
 
-function sample() {
-  return { id: ID, owner: '0x71c0…a9', created_at: Date.now(),
-    token: { symbol: (qs.get('sym')||'CALC'), twap_usdg: 1, pool_liquidity_usdg: 5000 },
-    bond: { token_qty: 0, raw_value_usdg: 0, haircut_value_usdg: 0, capacity_usdg: 0 },
-    operating_usdg: 0, unbonding: null,
-    totals: { creator_paid:0, owner_paid:0, buyback:0, burned:0, treasury_paid:0, bond_topped_up:0, slashed_usdg:0, settled_count:0, distinct_counterparties:0 } };
-}
-function recompute() {
-  const liq = A.token.pool_liquidity_usdg, twap = A.token.twap_usdg;
-  const raw = liq >= P.liquidityFloor ? money((A.bond.token_qty - (A.unbonding?.token_qty||0)) * twap) : 0;
-  A.bond.raw_value_usdg = Math.max(0, raw);
-  A.bond.haircut_value_usdg = money(A.bond.raw_value_usdg * P.bondHaircut);
-  A.bond.capacity_usdg = money(A.bond.haircut_value_usdg / P.reservationMultiple);
-}
+function banner(html) { const b = $('a-banner'); b.hidden = !html; b.innerHTML = html || ''; }
+function say(msg, bad = false) { const m = $('ctl-msg'); m.className = 'note' + (bad ? ' bad' : ''); m.textContent = msg || ''; }
+
 function render() {
-  $('a-name').textContent = A.token.symbol ? A.token.symbol + ' agent' : A.id;
-  $('a-sym').textContent = '◆ ' + (A.token.symbol || '—');
+  const tk = A.token || {}, b = A.bond || {}, t = A.totals || {};
+  $('a-name').textContent = tk.symbol ? tk.symbol + ' agent' : A.id;
+  $('a-sym').textContent = '◆ ' + (tk.symbol || '—');
   $('a-owner').textContent = A.owner ? 'owner ' + A.owner : '';
-  const raw = A.bond.raw_value_usdg, hair = A.bond.haircut_value_usdg, cap = A.bond.capacity_usdg, base = Math.max(raw, 1);
-  $('m-raw').textContent = fmt(raw); $('b-raw').style.width = '100%';
-  $('m-hair').textContent = fmt(hair); $('b-hair').style.width = (hair/base*100) + '%';
-  $('m-cap').textContent = fmt(cap); $('b-cap').style.width = (cap/base*100) + '%';
-  $('s-price').textContent = '$' + Number(A.token.twap_usdg).toFixed(2);
-  $('s-liq').textContent = fmt(A.token.pool_liquidity_usdg);
-  $('s-settled').textContent = A.totals.settled_count ?? 0;
-  $('s-cp').textContent = A.totals.distinct_counterparties ?? 0;
-  const t = A.totals;
+  const raw = Number(b.raw_value_usdg) || 0, hair = Number(b.haircut_value_usdg) || 0, cap = Number(b.capacity_usdg) || 0, base = Math.max(raw, 1);
+  $('m-raw').textContent = fmt(raw); $('b-raw').style.width = raw > 0 ? '100%' : '0%';
+  $('m-hair').textContent = fmt(hair); $('b-hair').style.width = (hair / base * 100) + '%';
+  $('m-cap').textContent = fmt(cap); $('b-cap').style.width = (cap / base * 100) + '%';
+  $('s-price').textContent = '$' + Number(tk.twap_usdg ?? 0).toFixed(2);
+  $('s-liq').textContent = fmt(tk.pool_liquidity_usdg);
+  $('s-settled').textContent = t.settled_count ?? 0;
+  $('s-cp').textContent = t.distinct_counterparties ?? 0;
   $('r-owner').textContent = fmt(t.owner_paid); $('r-buy').textContent = fmt(t.buyback);
   $('r-top').textContent = fmt(t.bond_topped_up); $('r-cre').textContent = fmt(t.creator_paid);
   $('r-burn').textContent = fmt(t.burned); $('r-trs').textContent = fmt(t.treasury_paid);
   $('r-slash').textContent = fmt(t.slashed_usdg ?? 0);
-  if (A.unbonding) { const ms = A.unbonding.release_at - Date.now(); $('unbond-state').textContent = `${A.unbonding.token_qty} tokens unbonding · releases in ~${Math.max(0, Math.round(ms/86400000))}d (still slashable).`; }
-  else $('unbond-state').textContent = '';
-  $('mode-note').textContent = LIVE ? 'Live · reading and writing /v1/agents on the backend.' : 'Sandbox · backend not reachable, so changes are computed in your browser with the real launchpad math.';
+  $('d-id').textContent = A.id; $('d-created').textContent = when(A.created_at);
+  $('d-qty').textContent = Number(b.token_qty ?? 0).toLocaleString() + (tk.symbol ? ' ' + tk.symbol : '');
+  $('d-op').textContent = fmt(A.operating_usdg);
+  $('d-prov').textContent = A.provider_id || 'none · no endpoint yet';
+  $('d-addr').textContent = tk.address || 'none · sandbox token';
+  $('d-okey').textContent = A.owner_key_id || '—';
+  if (A.unbonding) {
+    const u = A.unbonding, days = Math.max(0, Math.round((u.release_at - Date.now()) / 86400000));
+    $('unbond-state').textContent = `${u.token_qty} tokens unbonding · release_at ${when(u.release_at)} (~${days}d, still slashable).`;
+  } else $('unbond-state').textContent = '';
+  $('i-twap').value = tk.twap_usdg ?? ''; $('i-liq').value = tk.pool_liquidity_usdg ?? '';
 }
-async function api(method, path, body) {
-  const r = await fetch(path, { method, headers: body ? {'Content-Type':'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
-  if (!r.ok) throw new Error('http ' + r.status);
-  return r.json();
-}
+
 async function load() {
-  try { A = await api('GET', '/v1/agents/' + encodeURIComponent(ID)); LIVE = true; }
-  catch (_) { A = sample(); LIVE = false; $('a-banner').hidden = false; $('a-banner').innerHTML = 'Showing a <b>sandbox agent</b> — launch one on the backend to see it here live.'; }
-  render();
+  setCtl(false); say('');
+  try {
+    if (!ID) {
+      const { agents = [] } = await api('/v1/agents', { key: null });
+      if (!agents.length) {
+        banner('No agents launched yet. <a href="/launchpad">Launch one on the Launchpad →</a>');
+        $('a-name').textContent = 'No agent'; $('mode-note').textContent = '';
+        return;
+      }
+      ID = agents[0].id; A = agents[0];
+      history.replaceState(null, '', '/agent?id=' + encodeURIComponent(ID));
+    } else {
+      A = await api('/v1/agents/' + encodeURIComponent(ID), { key: null });
+    }
+    banner(''); render(); setCtl(true);
+  } catch (e) {
+    if (e.status === 404) { banner(`Agent not found: <b>${ID.replace(/[&<>"]/g, '')}</b>. <a href="/launchpad">See launched agents →</a>`); $('a-name').textContent = 'Agent not found'; }
+    else banner(`Could not load the agent: ${String(e.message).replace(/[&<>"]/g, '')}`);
+  }
 }
-$('go-harvest').onclick = async () => {
-  const fee = Number($('i-fee').value) || 0;
-  if (LIVE) { try { await api('POST', `/v1/agents/${encodeURIComponent(ID)}/harvest`, { fee_amount: fee }); A = await api('GET', '/v1/agents/' + encodeURIComponent(ID)); return render(); } catch (_) { LIVE = false; } }
-  const bondUsdg = fee * P.feeSplit.bond;
-  if (A.token.twap_usdg > 0) A.bond.token_qty = money(A.bond.token_qty + bondUsdg / A.token.twap_usdg);
-  A.operating_usdg = money(A.operating_usdg + fee * P.feeSplit.operating);
-  A.totals.creator_paid = money(A.totals.creator_paid + fee * P.feeSplit.creator);
-  A.totals.treasury_paid = money(A.totals.treasury_paid + fee * P.feeSplit.treasury);
-  recompute(); render();
-};
-$('go-price').onclick = async () => {
-  const twap = Number($('i-twap').value), liq = Number($('i-liq').value);
-  if (LIVE) { try { A = await api('POST', `/v1/agents/${encodeURIComponent(ID)}/price`, { twap_usdg: twap, pool_liquidity_usdg: liq }); return render(); } catch (_) { LIVE = false; } }
-  if (!isNaN(twap)) A.token.twap_usdg = Math.max(0, twap);
-  if (!isNaN(liq)) A.token.pool_liquidity_usdg = Math.max(0, liq);
-  recompute(); render();
-};
-$('go-unbond').onclick = async () => {
-  const qty = Number($('i-unbond').value) || 0;
-  if (LIVE) { try { A = await api('POST', `/v1/agents/${encodeURIComponent(ID)}/unbond`, { token_qty: qty }); return render(); } catch (_) { LIVE = false; } }
-  A.unbonding = { token_qty: Math.min(qty, A.bond.token_qty), requested_at: Date.now(), release_at: Date.now() + 30*86400000 };
-  recompute(); render();
-};
+
+async function refresh() { A = await api('/v1/agents/' + encodeURIComponent(ID), { key: null }); render(); }
+
+// Writes: real endpoints, Bearer key from ensureKey(). On failure the server's
+// message is shown and the page keeps the last server state.
+async function write(label, fn) {
+  setCtl(false); say(label + '…'); $('mode-note').textContent = '';
+  try {
+    const key = await ensureKey();
+    await fn(key);
+    say(label + ' done. Numbers above are the server state.');
+    $('mode-note').textContent = 'Sandbox oracles: harvest and price are set by hand here instead of read from a live pool. The bond math ran on the server.';
+  } catch (e) { say(e.message, true); }
+  finally { setCtl(true); }
+}
+$('go-harvest').onclick = () => write('Harvest', async (key) => {
+  const fee = Number($('i-fee').value);
+  await api(`/v1/agents/${encodeURIComponent(ID)}/harvest`, { method: 'POST', body: { fee_amount: fee }, key });
+  await refresh();
+});
+$('go-price').onclick = () => write('Price update', async (key) => {
+  const body = {}; const twap = $('i-twap').value.trim(), liq = $('i-liq').value.trim();
+  if (twap !== '') body.twap_usdg = Number(twap);
+  if (liq !== '') body.pool_liquidity_usdg = Number(liq);
+  A = await api(`/v1/agents/${encodeURIComponent(ID)}/price`, { method: 'POST', body, key }); render();
+});
+$('go-unbond').onclick = () => write('Unbond request', async (key) => {
+  const qty = Number($('i-unbond').value);
+  A = await api(`/v1/agents/${encodeURIComponent(ID)}/unbond`, { method: 'POST', body: { token_qty: qty }, key }); render();
+});
 load();
 </script>
-<script type="module" src="/assets/vouch.js"></script>
 </body>
 </html>

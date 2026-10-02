@@ -1,12 +1,18 @@
 # On-chain settlement — design sketch
 
+> **Status, plainly:** settlement today is a sandbox ledger. Every balance,
+> stake, payout and slash is an entry inside `src/engine.js`. No chain, no
+> stablecoin, no real funds. The Solidity files in `contracts/` are **untested
+> drafts**: never compiled against a toolchain, never audited, never deployed.
+> Settles in a sandbox ledger today. On-chain settlement is next.
+
 Today Vouch's escrow and provider stake are a **simulated ledger** inside
 `src/engine.js` (balances in `state.accounts`, stake in `state.providers`;
 `money()` accounting, `txHash()` cosmetic hashes). That's enough to prove the
 mechanism end-to-end, but the value moved is fake. This document sketches the
-path to **real USDC settlement and real slashable stake on-chain**, which is
-the one axis where routing-layer competitors (settling USDC on Base today)
-currently have something we don't.
+path to **real stablecoin settlement and real slashable stake on-chain**, which
+is the one axis where routing-layer competitors (settling a stablecoin on-chain
+today) currently have something we don't.
 
 The goal is not to rewrite Vouch. The engine already models the exact state
 machine a contract needs — escrow lock → verified pass → release, or fail →
@@ -30,15 +36,17 @@ and move only the *custody and settlement of funds* on-chain.
  └────────────────────────┘
 ```
 
-- **Custody moves on-chain.** A `VouchEscrow` contract on Base (USDC-native,
-  cheap) holds the task's escrow and the provider's reserved stake for the
-  lifetime of the task. The engine never touches funds — it only *instructs*.
+- **Custody moves on-chain.** A `VouchEscrow` contract on a cheap EVM chain
+  with a native stablecoin holds the task's escrow and the provider's reserved
+  stake for the lifetime of the task. The engine never touches funds. It only
+  *instructs*.
 - **The engine becomes the verifier oracle.** Verification stays off-chain
   (schema, deterministic checks, the Claude rubric panel — none of that can or
   should run on-chain). The engine signs a verdict `(taskId, pass, receiptHash)`
   with a verifier key; the contract acts on the signed verdict.
 - **Receipts become real.** `txHash()` stops being cosmetic — every lock,
-  release, refund, and slash is an actual Base transaction the agent can audit.
+  release, refund, and slash is an actual on-chain transaction the agent can
+  audit.
 
 ## Contract surface (minimal)
 
@@ -99,31 +107,38 @@ Small, contained — the state machine is already correct:
 
 ## Why this wins the comparison
 
-A routing layer settles USDC **on delivery** — the chain records that a call
-happened. Vouch would settle USDC **on verified correctness**, with the
-provider's stake slashed on-chain when it fails. Same rail (USDC on Base),
-strictly stronger guarantee: the block explorer becomes proof that *the buyer
-never paid for a wrong answer*. That turns the marketing claim into something
-a third party can verify on-chain — which is exactly the credibility a
-competitor's "settled on Base" badge is trading on.
+A routing layer settles a stablecoin **on delivery**: the chain records that
+a call happened. Vouch would settle **on verified correctness**, with the
+provider's stake slashed on-chain when it fails. Same rail, strictly stronger
+guarantee: the block explorer becomes proof that *the buyer never paid for a
+wrong answer*. That turns the marketing claim into something a third party can
+verify on-chain, which is exactly the credibility a competitor's "settled
+on-chain" badge is trading on. None of this is built yet; see Status.
 
 ## Status
 
-- **`contracts/VouchEscrow.sol`** — the v1 escrow contract: holds USDC escrow +
-  provider stake, and `settle` / `refundAndSlash` act only on a verifier-signed
-  verdict (ECDSA `ecrecover`). Slashed stake accrues to an on-chain insurance
-  pool.
-- **`src/settlement.js`** — the settlement adapter: a secp256k1 verifier
-  (Ethereum's curve) that signs verdicts, plus a `mockChain()` backend that
-  verifies those signatures and moves the ledger exactly as the contract's
-  `ecrecover` would. Fully tested (`test/settlement.test.js`): valid verdicts
-  settle and refund, and a forged signature is rejected with escrow untouched.
-- **Remaining to go live** (needs a chain + funded key — not doable in this
-  sandbox): deploy `VouchEscrow` to Base Sepolia, swap `mockChain()` for a
-  JSON-RPC backend (viem/ethers), point the engine's escrow calls at the
-  adapter, and switch the verdict hash from sha256 to keccak256/EIP-712 to
-  match the contract. The signing + recovery flow is already the real one.
+- **Settlement today is a sandbox ledger.** The engine's `lockEscrow`,
+  `settleEscrow`, `refundEscrow` and `slashProvider` move numbers in a JSON
+  snapshot. The engine does not call the settlement adapter. Nothing in the
+  running product touches a chain.
+- **`contracts/VouchEscrow.sol`** and **`contracts/AgentBondVault.sol`** are
+  **untested drafts** of the v1 escrow contract and the agent bond vault.
+  They have not been compiled with a Solidity toolchain, have no contract
+  tests, have not been audited, and have not been deployed to any network.
+  Treat them as a specification of intent, not as working code.
+- **`src/settlement.js`** is the settlement adapter sketch: a secp256k1
+  verifier that signs verdicts, plus an in-memory `mockChain()` that checks
+  those signatures and moves a ledger the way the draft contract is meant to.
+  `test/settlement.test.js` covers the mock: valid verdicts settle and refund,
+  a forged signature is rejected, the guardian pause blocks slash execution.
+  Those tests prove the JavaScript mock, not the Solidity.
+- **Remaining to go live** (needs a chain, a funded key and a review; none of
+  it is doable in this sandbox): compile and test the contracts, audit them,
+  deploy to a testnet, swap `mockChain()` for a JSON-RPC backend, point the
+  engine's ledger calls at the adapter, and switch the verdict hash from
+  sha256 to keccak256/EIP-712 to match the contract.
 
-> The site does not claim on-chain settlement is live — escrow/stake remain a
-> simulated bond until `VouchEscrow` is deployed and the engine is switched onto
-> the adapter.
+> The site does not claim on-chain settlement is live. Pages and docs say
+> "Settles in a sandbox ledger today. On-chain settlement is next." and name
+> no chain or stablecoin. Escrow and stake remain a simulated bond until a
+> contract is deployed and the engine is switched onto the adapter.

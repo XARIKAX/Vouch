@@ -1,11 +1,15 @@
+import vm from 'node:vm';
 import { validateOutput, primaryValue } from './catalog.js';
 import { hash01 } from './util.js';
 import { claudeGrade } from './grader.js';
+import { assertPublicUrl, fetchWithTimeout, OUTBOUND_TIMEOUT_MS } from './netguard.js';
 
 // ---------------------------------------------------------------------------
 // Verification pipeline: schema → checks → rubric → webhook.
 // First failure stops the pipeline; nothing settles without a full pass.
-// Returns { pass, verified_by: [...], failed?: { validator, detail } }.
+// Returns { pass, verified_by: [...], failed?: { validator, detail, criteria_error? } }.
+// `criteria_error` marks a failure caused by the buyer's own acceptance
+// criteria (a check that could not run), never by the provider's output.
 // ---------------------------------------------------------------------------
 
 export const KNOWN_ASSERTS = new Set([
@@ -13,11 +17,35 @@ export const KNOWN_ASSERTS = new Set([
   'word_count', 'numeric_between', 'one_of', 'json_parseable',
 ]);
 
+// Regex guard rails: pattern and subject are size-capped, patterns with
+// nested quantifiers (the classic catastrophic-backtracking shape) are
+// refused up front, and the match runs under a hard CPU timeout.
+export const REGEX_MAX_PATTERN = 200;
+export const REGEX_MAX_TEXT = 20000;
+export const REGEX_TIMEOUT_MS = 250;
+const NESTED_QUANTIFIER = /\((?:[^()\\]|\\.)*(?:[+*]|\{\d*,?\d*\})\??(?:[^()\\]|\\.)*\)(?:[+*]|\{\d*,?\d*\})/;
+
+export function regexProblem(pattern) {
+  if (typeof pattern !== 'string' || !pattern.length) return 'pattern must be a non-empty string';
+  if (pattern.length > REGEX_MAX_PATTERN) return `pattern longer than ${REGEX_MAX_PATTERN} characters`;
+  if (NESTED_QUANTIFIER.test(pattern)) return 'pattern has nested quantifiers (catastrophic backtracking risk)';
+  try { new RegExp(pattern); } catch { return `invalid pattern "${pattern}"`; }
+  return null;
+}
+
+// Run re.test(text) in a vm context with a timeout. V8 interrupts regex
+// execution on termination, so a pathological match ends after the budget.
+export function safeRegexTest(re, text) {
+  const ctx = vm.createContext({ re, text: String(text).slice(0, REGEX_MAX_TEXT) });
+  return vm.runInContext('re.test(text)', ctx, { timeout: REGEX_TIMEOUT_MS });
+}
+
 const atPath = (output, path) => (path ? output?.[path] : undefined);
 const textOf = (task, output) => {
   const v = primaryValue(task.capability, output);
   return typeof v === 'string' ? v : JSON.stringify(output ?? '');
 };
+const LINKS_MAX = 10;
 
 async function runCheck(check, task, output, cfg) {
   const text = check.path !== undefined ? String(atPath(output, check.path) ?? '') : textOf(task, output);
@@ -30,16 +58,19 @@ async function runCheck(check, task, output, cfg) {
     }
     case 'contains_none': {
       const hit = (check.values || []).find((v) => text.toLowerCase().includes(String(v).toLowerCase()));
-      return hit ? `output contains forbidden value "${hit}"` : null;
+      return hit !== undefined ? `output contains forbidden value "${hit}"` : null;
     }
     case 'contains_all': {
       const missing = (check.values || []).find((v) => !text.toLowerCase().includes(String(v).toLowerCase()));
-      return missing ? `output missing required value "${missing}"` : null;
+      return missing !== undefined ? `output missing required value "${missing}"` : null;
     }
     case 'regex': {
-      let re;
-      try { re = new RegExp(check.pattern); } catch { return `invalid pattern "${check.pattern}"`; }
-      return re.test(text) ? null : `output does not match /${check.pattern}/`;
+      const problem = regexProblem(check.pattern);
+      if (problem) return problem;
+      let ok;
+      try { ok = safeRegexTest(new RegExp(check.pattern), text); }
+      catch { return `pattern /${check.pattern}/ exceeded the ${REGEX_TIMEOUT_MS} ms match budget`; }
+      return ok ? null : `output does not match /${check.pattern}/`;
     }
     case 'equals': {
       const actual = atPath(output, check.path);
@@ -70,24 +101,26 @@ async function runCheck(check, task, output, cfg) {
     case 'json_parseable': {
       const src = check.path !== undefined ? atPath(output, check.path) : text;
       let parsed;
-      try { parsed = typeof src === 'object' ? src : JSON.parse(String(src)); }
+      try { parsed = typeof src === 'object' && src !== null ? src : JSON.parse(String(src)); }
       catch { return 'output is not valid JSON'; }
       for (const key of check.has ?? []) {
-        if (parsed == null || !(key in parsed)) return `parsed JSON missing key "${key}"`;
+        if (parsed === null || typeof parsed !== 'object' || !(key in parsed)) return `parsed JSON missing key "${key}"`;
       }
       return null;
     }
     case 'links_resolve': {
       const urls = [...text.matchAll(/https?:\/\/[^\s)"'<>\]]+/g)].map((m) => m[0]);
+      if (urls.length > LINKS_MAX) return `output has ${urls.length} links; links_resolve checks at most ${LINKS_MAX}`;
       for (const url of urls) {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), cfg.linkTimeoutMs ?? 4000);
         try {
-          const ctrl = new AbortController();
-          const t = setTimeout(() => ctrl.abort(), cfg.linkTimeoutMs ?? 4000);
           const res = await fetch(url, { method: 'HEAD', signal: ctrl.signal });
-          clearTimeout(t);
           if (!res.ok && res.status !== 405) return `link ${url} returned ${res.status}`;
         } catch {
           return `link ${url} did not resolve`;
+        } finally {
+          clearTimeout(t);
         }
       }
       return null;
@@ -98,20 +131,22 @@ async function runCheck(check, task, output, cfg) {
 }
 
 // Rubric panel: three independent graders, majority wins. Grader resolution:
-//   1. VOUCH_GRADER_URL      — your own endpoint ({input, output, rubric, grader} -> {pass})
-//   2. ANTHROPIC_API_KEY     — a Claude judge panel (three personas, see grader.js)
+//   1. VOUCH_GRADER_URL      — your own endpoint ({input, output, rubric, grader, context} -> {pass})
+//   2. ANTHROPIC_API_KEY + VOUCH_GRADER_MODEL — a model judge panel (three personas, see grader.js)
 //   3. deterministic heuristic — offline fallback so the stack runs anywhere
-async function gradeOnce(task, output, rubric, graderIdx, cfg) {
-  if (!cfg.graderUrl && cfg.anthropicKey) {
-    return claudeGrade(task, output, rubric, graderIdx, cfg);
+// `context` carries dispute material (reason + evidence) on a re-review; every
+// grader backend receives it.
+async function gradeOnce(task, output, rubric, graderIdx, cfg, context = null) {
+  if (!cfg.graderUrl && cfg.anthropicKey && cfg.graderModel) {
+    return claudeGrade(task, output, rubric, graderIdx, cfg, context);
   }
   if (cfg.graderUrl) {
     try {
-      const res = await fetch(cfg.graderUrl, {
+      const res = await fetchWithTimeout(cfg.graderUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: task.input, output, rubric, grader: graderIdx }),
-      });
+        body: JSON.stringify({ input: task.input, output, rubric, grader: graderIdx, ...(context ? { context } : {}) }),
+      }, cfg.graderTimeoutMs ?? OUTBOUND_TIMEOUT_MS);
       const body = await res.json();
       return !!body.pass;
     } catch {
@@ -127,18 +162,19 @@ async function gradeOnce(task, output, rubric, graderIdx, cfg) {
     const overlap = promptWords.some((w) => text.toLowerCase().includes(w));
     if (!overlap) return false;
   }
-  // Deterministic per-grader jitter stands in for model disagreement.
-  return hash01(task.id + 'grader' + graderIdx) > 0.02;
+  // Deterministic per-grader jitter stands in for model disagreement (rare:
+  // a single seat dissents on ~0.5% of tasks; the majority still passes).
+  return hash01(task.id + 'grader' + graderIdx) > 0.005;
 }
 
-export async function gradeRubric(task, output, rubric, cfg, seedOffset = 0) {
+export async function gradeRubric(task, output, rubric, cfg, seedOffset = 0, context = null) {
   const votes = [];
-  for (let g = 0; g < 3; g++) votes.push(await gradeOnce(task, output, rubric, (g + seedOffset) % 3, cfg));
+  for (let g = 0; g < 3; g++) votes.push(await gradeOnce(task, output, rubric, (g + seedOffset) % 3, cfg, context));
   const passes = votes.filter(Boolean).length;
   return { pass: passes >= 2, passes };
 }
 
-export async function verify(task, output, cfg) {
+export async function verify(task, output, cfg, context = null) {
   const verifiedBy = [];
 
   const schema = validateOutput(task.capability, output ?? {});
@@ -147,16 +183,27 @@ export async function verify(task, output, cfg) {
   }
   verifiedBy.push('schema');
 
-  for (const check of task.acceptance.checks ?? []) {
-    const failure = await runCheck(check, task, output, cfg);
+  for (const check of task.acceptance?.checks ?? []) {
+    let failure;
+    try {
+      failure = await runCheck(check, task, output, cfg);
+    } catch (e) {
+      // The check itself could not run: a buyer-side criteria problem, never
+      // the provider's fault. Reported as such so the engine refunds without
+      // slashing.
+      return {
+        pass: false, verified_by: verifiedBy,
+        failed: { validator: `checks.${check.assert}`, detail: `check could not run: ${e.message}`, criteria_error: true },
+      };
+    }
     if (failure) {
       return { pass: false, verified_by: verifiedBy, failed: { validator: `checks.${check.assert}`, detail: failure } };
     }
   }
-  if (task.acceptance.checks?.length) verifiedBy.push('checks');
+  if (task.acceptance?.checks?.length) verifiedBy.push('checks');
 
-  if (task.acceptance.rubric) {
-    const { pass, passes } = await gradeRubric(task, output, task.acceptance.rubric, cfg);
+  if (task.acceptance?.rubric) {
+    const { pass, passes } = await gradeRubric(task, output, task.acceptance.rubric, cfg, 0, context);
     if (!pass) {
       return {
         pass: false, verified_by: verifiedBy,
@@ -166,13 +213,13 @@ export async function verify(task, output, cfg) {
     verifiedBy.push(`rubric:${passes}/3`);
   }
 
-  if (task.acceptance.webhook) {
+  if (task.acceptance?.webhook) {
     try {
-      const res = await fetch(task.acceptance.webhook, {
+      const res = await fetchWithTimeout(task.acceptance.webhook, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: task.id, capability: task.capability, output }),
-      });
+        body: JSON.stringify({ task_id: task.id, capability: task.capability, output, ...(context ? { context } : {}) }),
+      }, cfg.webhookTimeoutMs ?? OUTBOUND_TIMEOUT_MS);
       const body = await res.json();
       if (!body.pass) {
         return {
@@ -192,7 +239,51 @@ export async function verify(task, output, cfg) {
   return { pass: true, verified_by: verifiedBy };
 }
 
-export function validateAcceptance(acceptance) {
+// ---- acceptance validation (400 on bad criteria) --------------------------
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+const isPrimitive = (v) => v === null || ['string', 'number', 'boolean'].includes(typeof v);
+
+function checkProblem(c) {
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return 'each check must be an object';
+  if (!KNOWN_ASSERTS.has(c.assert)) return `unknown assert "${c?.assert}" — known: ${[...KNOWN_ASSERTS].join(', ')}`;
+  const at = `checks.${c.assert}`;
+  if (c.path !== undefined && typeof c.path !== 'string') return `${at}.path must be a string`;
+  for (const k of ['min', 'max', 'tolerance']) {
+    if (c[k] !== undefined && !isNum(c[k])) return `${at}.${k} must be a number`;
+  }
+  if (c.min !== undefined && c.max !== undefined && c.min > c.max) return `${at}: min exceeds max`;
+  switch (c.assert) {
+    case 'contains_none':
+    case 'contains_all':
+    case 'one_of':
+      if (!Array.isArray(c.values) || !c.values.every(isPrimitive)) return `${at}.values must be an array of strings or numbers`;
+      if (!c.values.length) return `${at}.values must not be empty`;
+      break;
+    case 'regex': {
+      const p = regexProblem(c.pattern);
+      if (p) return `${at}.pattern: ${p}`;
+      break;
+    }
+    case 'equals':
+      if (!('value' in c)) return `${at}.value is required`;
+      if (typeof c.path !== 'string') return `${at}.path is required`;
+      if (c.value !== null && typeof c.value === 'object') return `${at}.value must be a string, number, boolean or null`;
+      break;
+    case 'json_parseable':
+      if (c.has !== undefined && (!Array.isArray(c.has) || !c.has.every((k) => typeof k === 'string'))) return `${at}.has must be an array of key names`;
+      break;
+    case 'length_between':
+    case 'word_count':
+    case 'numeric_between':
+      if (c.min === undefined && c.max === undefined) return `${at} needs min and/or max`;
+      break;
+    default:
+      break;
+  }
+  return null;
+}
+
+export function validateAcceptance(acceptance, cfg = {}) {
   if (acceptance === undefined) return { ok: true };
   if (acceptance === null || typeof acceptance !== 'object' || Array.isArray(acceptance)) {
     return { ok: false, detail: 'acceptance must be an object' };
@@ -204,17 +295,18 @@ export function validateAcceptance(acceptance) {
   }
   if (acceptance.checks !== undefined) {
     if (!Array.isArray(acceptance.checks)) return { ok: false, detail: 'acceptance.checks must be an array' };
+    if (acceptance.checks.length > 32) return { ok: false, detail: 'acceptance.checks is capped at 32 checks' };
     for (const c of acceptance.checks) {
-      if (!c || !KNOWN_ASSERTS.has(c.assert)) {
-        return { ok: false, detail: `unknown assert "${c?.assert}" — known: ${[...KNOWN_ASSERTS].join(', ')}` };
-      }
+      const problem = checkProblem(c);
+      if (problem) return { ok: false, detail: problem };
     }
   }
   if (acceptance.rubric !== undefined && typeof acceptance.rubric !== 'string') {
     return { ok: false, detail: 'acceptance.rubric must be a string' };
   }
-  if (acceptance.webhook !== undefined && !/^https?:\/\//.test(acceptance.webhook ?? '')) {
-    return { ok: false, detail: 'acceptance.webhook must be an http(s) URL' };
+  if (acceptance.webhook !== undefined) {
+    try { assertPublicUrl(acceptance.webhook, 'acceptance.webhook', { allowPrivate: !!cfg.allowPrivateWebhooks }); }
+    catch (e) { return { ok: false, detail: e.message }; }
   }
   return { ok: true };
 }

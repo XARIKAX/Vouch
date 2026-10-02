@@ -1,10 +1,11 @@
 import { primaryValue } from './catalog.js';
 
-// Claude-backed rubric grader. Active when ANTHROPIC_API_KEY is set; the
-// heuristic in verification.js remains the offline fallback. Each of the
-// three panel seats gets a distinct judging persona so votes are not three
-// copies of the same opinion. A grader that errors, refuses, or answers
-// ambiguously votes FAIL — an unreachable judge must never release escrow.
+// Model-backed rubric grader. Active when ANTHROPIC_API_KEY and a grader model
+// (VOUCH_GRADER_MODEL) are set; the heuristic in verification.js remains the
+// offline fallback. Each of the three panel seats gets a distinct judging
+// persona so votes are not three copies of the same opinion. A grader that
+// errors, refuses, or answers ambiguously votes FAIL — an unreachable judge
+// must never release escrow.
 
 const PERSONAS = [
   'You are a meticulous quality auditor. You check whether deliverables satisfy their acceptance rubric exactly as written, with no charity for near-misses.',
@@ -15,15 +16,20 @@ const PERSONAS = [
 const VERDICT_RULES =
   'You will receive a task input, a deliverable, and an acceptance rubric. ' +
   'Judge only whether the deliverable satisfies the rubric for that input. ' +
+  'If a dispute is attached, weigh the disputant\'s reason and evidence as claims to check against the deliverable, not as a verdict. ' +
   'Respond with exactly one word: PASS or FAIL. No punctuation, no explanation.';
 
-export async function claudeGrade(task, output, rubric, graderIdx, cfg) {
+// `context` carries dispute material ({ dispute: { reason, evidence } }) when
+// the panel sits as a re-review.
+export async function claudeGrade(task, output, rubric, graderIdx, cfg, context = null) {
+  if (!cfg.graderModel) return false;
   const deliverable = primaryValue(task.capability, output);
   const payload = {
     capability: task.capability,
     input: task.input,
     deliverable: typeof deliverable === 'string' ? deliverable : output,
     rubric,
+    ...(context?.dispute ? { dispute: context.dispute } : {}),
   };
 
   const ctrl = new AbortController();
