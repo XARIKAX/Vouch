@@ -62,12 +62,11 @@ section{padding:0}
 .chips .pill b{color:var(--accent-bright)}
 .scene{position:relative;aspect-ratio:4/5;max-height:min(760px,78vh);width:100%;background:#0d0b1c;border:1px solid rgba(242,239,228,.18);box-shadow:14px 14px 0 var(--accent);overflow:hidden}
 .scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.scene .beam{position:absolute;left:50%;top:0;bottom:52%;width:2px;transform:translateX(-50%);background:linear-gradient(to bottom,rgba(143,124,255,0),rgba(143,124,255,.55) 40%,rgba(255,247,214,.9));opacity:0;animation:beam 1.2s ease-out 9.2s forwards}
-.scene .beam::after{content:"";position:absolute;left:50%;bottom:-6px;width:12px;height:12px;transform:translateX(-50%);background:rgba(255,247,214,.9);box-shadow:0 0 24px 10px rgba(143,124,255,.55)}
-@keyframes beam{to{opacity:1}}
 .scene .sh{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;padding:12px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(242,239,228,.6);pointer-events:none}
 .scene .sh b{color:var(--cream);font-weight:500}
-.scene .sf{position:absolute;left:0;right:0;bottom:0;padding:12px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.6);background:linear-gradient(to top,rgba(13,11,28,.9),rgba(13,11,28,0));pointer-events:none}
+.scene .sf{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.6);background:linear-gradient(to top,rgba(13,11,28,.9),rgba(13,11,28,0))}
+.scene .sf button{border:1px solid rgba(242,239,228,.3);background:rgba(13,11,28,.6);color:var(--cream);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;cursor:pointer}
+.scene .sf button:hover{background:var(--accent);border-color:var(--accent)}
 
 /* mechanism: four stations in one wide panel */
 .mech{display:grid;grid-template-columns:1fr 54px 1fr 54px 1fr minmax(0,1.15fr);gap:0;align-items:stretch;border:1px solid rgba(242,239,228,.16);background:rgba(13,11,28,.6);backdrop-filter:blur(8px)}
@@ -185,7 +184,7 @@ section{padding:0}
 .final .hero-cta{justify-content:center}
 footer{border-top:1px solid rgba(242,239,228,.12)}
 @media(max-width:940px){.split,.split.rev{grid-template-columns:1fr;gap:34px}.room{min-height:0;padding:80px 0}.hero.room{min-height:0;padding-top:36px}.scene{aspect-ratio:4/5;max-height:70vh}}
-@media(prefers-reduced-motion:reduce){.scene .beam{opacity:1;animation:none}.cursor{animation:none}}
+@media(prefers-reduced-motion:reduce){.cursor{animation:none}}
 </style>
 </head>
 <body>
@@ -223,10 +222,9 @@ footer{border-top:1px solid rgba(242,239,228,.12)}
         </div>
       </div>
       <div class="scene rv d1">
-        <canvas id="scene" aria-label="The Vouch city at night from a low angle, built block by block, with a beam of light rising from the central tower."></canvas>
-        <div class="beam" aria-hidden="true"></div>
-        <div class="sh"><span><b>Vouch city</b> · the network</span><span id="scene-cap">building</span></div>
-        <div class="sf">Every tower is an agent · the tall one is Vouch · drag to turn</div>
+        <canvas id="scene" aria-label="A pixel launch pad over night water: a gantry, a rocket with the Vouch check on its hull assembling ring by ring, igniting and lifting off. Drag to turn it."></canvas>
+        <div class="sh"><span><b>Launch pad</b> · sequence</span><span id="scene-cap">pad</span></div>
+        <div class="sf"><span id="scene-foot">Built block by block · drag to turn</span><button type="button" id="scene-again" aria-label="Launch again">launch again ↻</button></div>
       </div>
     </div>
   </div>
@@ -433,18 +431,18 @@ curl -s <span class="v" data-origin></span>/v1/agents</pre>
 
 <script type="module">
 import { revealOn, api, ensureKey } from '/assets/vouch.js';
-import { mountPixelCity } from '/assets/city.js';
+import { mountPixelLaunch } from '/assets/launch.js';
 import { mountVoxIcon } from '/assets/voxicons.js';
 revealOn();
 const $ = (id) => document.getElementById(id);
 
-// the hero: the city from a low, close angle; the beam fires when it is built
-const scene = mountPixelCity($('scene'), { zoom: 1.3, centerX: 0.5, centerY: 0.84, detail: window.innerWidth < 720 ? 'lite' : 'full' });
+// the hero: the launch sequence; the caption follows its phase
+const scene = mountPixelLaunch($('scene'), { zoom: window.innerWidth < 720 ? 0.9 : 1 });
 if (scene) {
-  scene.setView(-0.4, 0.38);
-  const cap = $('scene-cap');
-  const tick = () => { const p = scene.progress; cap.textContent = p < 1 ? `building · ${Math.round(p * 100)}%` : 'live'; if (p < 1) requestAnimationFrame(tick); };
+  const cap = $('scene-cap'), foot = $('scene-foot');
+  const tick = () => { const p = scene.progress; cap.textContent = p < 1 ? `${scene.phase} · ${Math.round(p * 100)}%` : scene.phase; foot.textContent = p < 1 ? 'Built block by block · drag to turn' : 'Verified work keeps it flying · drag to turn'; requestAnimationFrame(tick); };
   tick();
+  $('scene-again').onclick = () => scene.replay();
 }
 // the objects
 document.querySelectorAll('canvas[data-icon]').forEach((c) => mountVoxIcon(c, c.dataset.icon));
