@@ -10,7 +10,7 @@ import { createRedisClient } from './redis-client.js';
 // Each flush is a compare-and-set on a version counter (one Lua EVAL, atomic
 // on the server). On a conflict the store re-loads the newer snapshot, merges
 // this invocation's records on top (record-level: ours win where both have
-// the same id, theirs are kept where we have none) and retries once.
+// the same id, theirs are kept where we have none) and retries, a few times.
 //
 // Reads env vars from either the Upstash integration or the Vercel KV names:
 //   UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN
@@ -21,6 +21,8 @@ import { createRedisClient } from './redis-client.js';
 // whichever is configured with createRemoteStore().
 
 const COLLECTIONS = ['keys', 'accounts', 'providers', 'tasks', 'disputes', 'workflows', 'agents', 'cache'];
+// How many times a flush re-loads, merges and retries after a lost compare-and-set.
+const CAS_ATTEMPTS = 4;
 
 // KEYS[1] = state key, KEYS[2] = version key.
 // ARGV[1] = version we loaded, ARGV[2] = snapshot, ARGV[3] = next version.
@@ -114,7 +116,7 @@ function snapshotStore({ command, key, path }) {
     if (!dirty) return null;
     const state = dirty;
     dirty = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < CAS_ATTEMPTS; attempt++) {
       const next = loadedVersion + 1;
       state.version = next;
       const snapshot = JSON.stringify(state, stateReplacer);
@@ -124,11 +126,11 @@ function snapshotStore({ command, key, path }) {
         return { version: next, merged: attempt > 0 };
       }
       // Conflict: another invocation flushed since we loaded. Re-load, merge
-      // our records on top of the newer snapshot, and retry once.
+      // our records on top of the newer snapshot, and retry.
       const remote = await load();
       mergeStates(state, remote);
     }
-    throw new Error('state store write conflict: another invocation kept winning; this invocation\'s writes were not persisted');
+    throw new Error(`state store write conflict: another invocation kept winning (${CAS_ATTEMPTS} attempts); this invocation's writes were not persisted`);
   };
 
   return { load, save, flush, path, get version() { return loadedVersion; } };

@@ -9,8 +9,11 @@ Vouch runs in two modes:
 - **Serverless mode** (`api/index.js` + `vercel.json`) — the same app wrapped
   as a Vercel function, persisting state to Upstash Redis over its REST API
   (still zero npm dependencies). Each invocation loads the state snapshot,
-  runs the request **and all background work it spawned** (task execution,
-  verification, dispute review — `engine.drain()`), then flushes one write.
+  runs the request and writes its changes back before the reply is finished.
+  The background work the request spawned (task execution, verification,
+  dispute review — `engine.drain()`) then runs under Vercel's request
+  context, the same hook the `waitUntil` helper uses, and writes a second
+  time with the outcome. Polling from any instance sees the task at once.
 
 > Plain Vercel with no Redis configured still works. The function creates
 > the app once per warm instance and keeps it in memory, so keys, escrows and
