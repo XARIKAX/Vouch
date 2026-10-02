@@ -25,10 +25,23 @@ export function canonical(v) {
 // body so either paste works.
 export function normalizePem(raw) {
   if (!raw) return raw;
-  let t = String(raw).trim().replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace(/^VOUCH_ATTEST_KEY=/, '').trim();
+  let t = String(raw).trim()
+    .replace(/\\n/g, '\n')
+    .replace(/[\u2010-\u2015\u2212]/g, '-')            // typographic dashes → '-'
+    .replace(/[\u00a0\u2000-\u200b\ufeff]/g, ' ')     // odd spaces → plain space
+    .replace(/^["'`]+|["'`]+$/g, '')
+    .replace(/^VOUCH_ATTEST_KEY=/, '')
+    .trim();
   const m = t.match(/-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/);
   const wrap = (label, body) => `-----BEGIN ${label}-----\n${body.match(/.{1,64}/g).join('\n')}\n-----END ${label}-----\n`;
-  if (m) return wrap(m[1], m[2].replace(/\s+/g, ''));
+  if (m) {
+    // A '+' inside the base64 body often arrives as a space after a copy
+    // through a form or URL-decoder; a 64-char ed25519 body is restored by
+    // mapping single interior spaces back to '+'.
+    let body = m[2].trim().replace(/\r?\n/g, '');
+    if (/ /.test(body) && body.replace(/ /g, '+').length === 64) body = body.replace(/ /g, '+');
+    return wrap(m[1], body.replace(/\s+/g, ''));
+  }
   // A bare base64 body (the one line between the markers) is still usable.
   const bare = t.replace(/\s+/g, '');
   if (/^[A-Za-z0-9+/]+=*$/.test(bare) && bare.length >= 60) return wrap('PRIVATE KEY', bare);
@@ -41,7 +54,23 @@ export function describeKeyShape(raw) {
   const t = String(raw);
   const lines = t.split(/\r?\n/).length;
   const hasBegin = /BEGIN/.test(t), hasEnd = /END/.test(t);
-  return `${t.length} chars, ${lines} line${lines === 1 ? '' : 's'}, BEGIN ${hasBegin ? 'present' : 'missing'}, END ${hasEnd ? 'present' : 'missing'}, literal \\n ${/\\n/.test(t) ? 'present' : 'absent'}`;
+  const parts = [`${t.length} chars`, `${lines} line${lines === 1 ? '' : 's'}`,
+    `BEGIN ${hasBegin ? 'present' : 'missing'}`, `END ${hasEnd ? 'present' : 'missing'}`,
+    `literal \\n ${/\\n/.test(t) ? 'present' : 'absent'}`];
+  if (/[\u2010-\u2015\u2212]/.test(t)) parts.push('typographic dashes present');
+  const m = t.match(/-----BEGIN [A-Z ]+-----([\s\S]*?)-----END/);
+  if (m) {
+    const body = m[1].replace(/\s+/g, '');
+    const b64ok = /^[A-Za-z0-9+/]+=*$/.test(body);
+    let decoded = 'n/a';
+    if (b64ok) {
+      const buf = Buffer.from(body, 'base64');
+      decoded = `${buf.length} bytes` + (buf.subarray(0, 16).toString('hex') === '302e020100300506032b657004220420' ? ', ed25519 PKCS8 header ok' : ', not an ed25519 PKCS8 header');
+    }
+    parts.push(`body ${body.length} chars (expect 64)`, `base64 ${b64ok ? 'valid' : 'invalid'}`, `decoded ${decoded}`);
+    if (/^[0-9a-f]{64}$/i.test(body)) parts.push('body looks like a 64-char hex token, not a key');
+  }
+  return parts.join(', ');
 }
 
 export function createAttestor(cfg = {}) {

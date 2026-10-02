@@ -310,3 +310,24 @@ test('attestation key: a bare base64 body or a KEY= prefix still parses; an inva
   assert.ok(!a.detail.includes('MC4CAQAw'), 'the value itself is not echoed');
   assert.equal(describeKeyShape(''), 'empty');
 });
+
+test('attestation key: typographic dashes and a plus-turned-space are repaired; the shape report says what is wrong', async () => {
+  const { normalizePem, createAttestor, describeKeyShape } = await import('../src/attest.js');
+  const crypto = await import('node:crypto');
+  let good, body;
+  do { // pick a key whose body contains a '+' so the space repair is exercised
+    good = crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    body = good.split('\n').filter((l) => l && !l.startsWith('-----')).join('');
+  } while (!body.includes('+'));
+  const dashed = good.replace(/-----/g, '\u2013\u2013\u2013\u2013\u2013');
+  assert.equal(normalizePem(dashed), good, 'en-dashes repaired');
+  const spaced = good.replace(body, body.replace(/\+/g, ' '));
+  assert.equal(normalizePem(spaced), good, 'plus-as-space repaired');
+  assert.equal(createAttestor({ attestKey: spaced }).keyId, createAttestor({ attestKey: good }).keyId);
+  const hex = `-----BEGIN PRIVATE KEY-----\n${'ab'.repeat(32)}\n-----END PRIVATE KEY-----`;
+  const d = describeKeyShape(hex);
+  assert.match(d, /body 64 chars/); assert.match(d, /looks like a 64-char hex token/);
+  const bad = describeKeyShape(good.replace(body, body.slice(0, 63)));
+  assert.match(bad, /body 63 chars \(expect 64\)/);
+  assert.match(describeKeyShape(good), /ed25519 PKCS8 header ok/);
+});
