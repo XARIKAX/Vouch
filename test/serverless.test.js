@@ -255,3 +255,61 @@ test('vercel handler: a task is persisted before execution and again after settl
     delete process.env.UPSTASH_REDIS_REST_URL; delete process.env.UPSTASH_REDIS_REST_TOKEN; delete process.env.VOUCH_FAST;
   }
 });
+
+// On Vercel the function may be frozen as soon as the response ends. The
+// handler therefore (1) holds res.end until the request's own changes are in
+// Redis and (2) hands the execution + grading to the platform's request
+// context (waitUntil) so it keeps running after the reply.
+test('vercel handler: the task is in Redis before the reply ends; the work runs under waitUntil', async () => {
+  process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.test';
+  process.env.UPSTASH_REDIS_REST_TOKEN = 't';
+  process.env.VOUCH_FAST = '1';
+  const { kv, writes, restore } = fakeRedis();
+  const CTX = Symbol.for('@vercel/request-context');
+  const background = [];
+  globalThis[CTX] = { get: () => ({ waitUntil: (p) => background.push(p) }) };
+  try {
+    const { default: handler } = await import('../api/index.js');
+    const invoke = async (method, path, body, headers = {}) => {
+      const req = new EventEmitter(); Object.assign(req, { method, url: path, headers });
+      if (body !== undefined) req.body = body;
+      const res = {
+        headers: {}, status: 0, chunks: [], storedAtEnd: null,
+        writeHead(s, h) { this.status = s; Object.assign(this.headers, h); },
+        write(c) { this.chunks.push(c); },
+        end(c) { if (c) this.chunks.push(c); this.storedAtEnd = kv.get('vouch:state') ?? null; },
+        on() {},
+      };
+      await handler(req, res); return res;
+    };
+    const token = JSON.parse((await invoke('POST', '/v1/keys', { name: 'bg' })).chunks.join('')).key;
+    await Promise.all(background.splice(0));
+    const before = writes();
+    const posted = await invoke('POST', '/v1/tasks', {
+      capability: 'math.eval', input: { expression: '6*7' },
+      acceptance: { checks: [{ assert: 'equals', path: 'result', value: 42 }] }, budget: 0.01, deadline_ms: 5000,
+    }, { authorization: `Bearer ${token}` });
+    assert.equal(posted.status, 201);
+    const id = JSON.parse(posted.chunks.join('')).id;
+    // The reply was held until the first flush landed: the task was already stored when end() ran.
+    assert.equal(JSON.parse(posted.storedAtEnd).tasks[id].status, 'dispatched', 'visible to other instances before the client sees the reply');
+    assert.equal(writes() - before, 1, 'the handler returned after one flush');
+    assert.equal(background.length, 1, 'execution + grading handed to waitUntil');
+    // Another instance polling now finds it (no 404) while the work is still running.
+    const early = await invoke('GET', `/v1/tasks/${id}`, undefined, { authorization: `Bearer ${token}` });
+    assert.equal(early.status, 200);
+    await Promise.all(background.splice(0));
+    assert.equal(writes() - before, 2, 'the outcome was flushed when the background work finished; the read-only poll wrote nothing');
+    assert.equal(JSON.parse(kv.get('vouch:state')).tasks[id].status, 'settled');
+    // Read-only invocations never write the snapshot back.
+    const w = writes();
+    await invoke('GET', '/v1/tasks', undefined, { authorization: `Bearer ${token}` });
+    await invoke('GET', '/v1/status');
+    await Promise.all(background.splice(0));
+    assert.equal(writes(), w, 'reads do not rewrite state');
+  } finally {
+    delete globalThis[CTX];
+    restore();
+    delete process.env.UPSTASH_REDIS_REST_URL; delete process.env.UPSTASH_REDIS_REST_TOKEN; delete process.env.VOUCH_FAST;
+  }
+});

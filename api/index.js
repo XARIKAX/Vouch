@@ -4,9 +4,15 @@
 // Serverless differences from `node server.js`:
 //   - State lives in Redis instead of a local file: Upstash over REST, or any
 //     Redis via REDIS_URL (Vercel's Redis integration), both zero-dep.
-//     Each invocation loads a fresh snapshot, runs the request plus all
-//     background work it spawned (engine.drain()), then flushes one
-//     compare-and-set write (see store-upstash.js for the conflict path).
+//     Each invocation loads a fresh snapshot and runs the request. The
+//     request's own changes are flushed (one compare-and-set write) BEFORE
+//     the response is finished, so a poll that lands on another instance a
+//     moment later already sees the new task. The background work the
+//     request spawned (execution, grading, dispute review: engine.drain())
+//     then runs under Vercel's request context (the same hook the
+//     @vercel/functions `waitUntil` helper uses) and flushes a second write
+//     with the outcome. Without that hook (local tests, other hosts) the
+//     background work is awaited inline instead.
 //   - Without a Redis configured (UPSTASH_REDIS_REST_URL/_TOKEN, KV_REST_API_*,
 //     or REDIS_URL) the app is
 //     created ONCE at module scope and kept for the life of the instance:
@@ -30,6 +36,17 @@ let modules = null;
 let localApp = null;      // module-scope app when no remote store is configured
 let warnedEphemeral = false;
 
+// Vercel keeps a function alive past the response for any promise handed to
+// the request context's waitUntil (what `@vercel/functions` wraps). Without
+// it the instance may be frozen the moment the response ends and the
+// background work would only progress when a later request thaws it.
+const REQUEST_CONTEXT = Symbol.for('@vercel/request-context');
+export function runInBackground(promise) {
+  const ctx = globalThis[REQUEST_CONTEXT]?.get?.();
+  if (typeof ctx?.waitUntil === 'function') { ctx.waitUntil(promise); return null; }
+  return promise;
+}
+
 export default async function vercelHandler(req, res) {
   try {
     modules ??= await Promise.all([
@@ -47,7 +64,7 @@ export default async function vercelHandler(req, res) {
       }
       localApp ??= createApp({ persistPath: null, limiterBuckets });
       await localApp.handler(req, res);
-      await localApp.engine.drain();
+      await runInBackground(localApp.engine.drain());
       return;
     }
 
@@ -63,7 +80,7 @@ export default async function vercelHandler(req, res) {
       localApp ??= createApp({ persistPath: null, limiterBuckets });
       localApp.engine.cfg.storeError = reason;
       await localApp.handler(req, res);
-      await localApp.engine.drain();
+      await runInBackground(localApp.engine.drain());
       return;
     }
     const { engine, handler } = createApp({
@@ -80,18 +97,26 @@ export default async function vercelHandler(req, res) {
       console.log(`vouch: bootstrap key (sandbox tier, shown once): ${bootstrap.token}`);
     }
 
-    await handler(req, res);
-    // Persist what the request itself changed BEFORE the background work
-    // (execution, grading) runs: another instance polling for the new task
-    // must find it even while this one is still working on it. A second
-    // flush after drain() persists the outcome. A failed flush loses this
-    // invocation's writes but must not turn an already-sent response into a
-    // crash.
+    // A failed flush loses this invocation's writes but must never turn an
+    // already-sent response into a crash.
     const flush = () => remote.flush().catch((e) => console.error(`vouch: state flush failed: ${e.message}`));
-    await flush();
-    await engine.drain();
-    await flush();
-    remote.close?.();
+
+    // Persist what the request changed BEFORE the client sees the reply:
+    // res.end is held until the write lands. The response body is already
+    // complete at that point, so the client only waits one Redis round trip.
+    let ended = null;
+    const realEnd = res.end.bind(res);
+    res.end = (...args) => {
+      ended ??= flush().then(() => realEnd(...args));
+      return res;
+    };
+    await handler(req, res);
+    await (ended ?? flush());
+
+    // Then the background work and the flush that carries its outcome.
+    await runInBackground(
+      engine.drain().then(flush).finally(() => remote.close?.())
+    );
   } catch (err) {
     modules = null; // retry module load on the next invocation
     const errorId = crypto.randomUUID();

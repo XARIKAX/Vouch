@@ -1,6 +1,9 @@
 import { hash01, sleep } from './util.js';
 import { claudeExecute } from './execute-claude.js';
 
+// Upper bound on the simulated provider's think time outside fast mode.
+const SIM_LATENCY_CAP_MS = 1200;
+
 // ---------------------------------------------------------------------------
 // Safe arithmetic evaluator (numbers, + - * / and parentheses only).
 // ---------------------------------------------------------------------------
@@ -182,8 +185,10 @@ async function execute(provider, task, cfg) {
   }
 
   // Simulated execution (offline / sandbox): deterministic latency + output.
+  // The delay scales with the quote's deadline so providers feel distinct,
+  // capped so a long deadline never turns into seconds of idle waiting.
   const latency = Math.max(5, Math.floor(task.quote.deadline_ms * (0.3 + 0.3 * hash01(provider.id + task.id))));
-  await sleep(cfg.fast ? Math.min(latency, 60) : latency);
+  await sleep(cfg.fast ? Math.min(latency, 60) : Math.min(latency, SIM_LATENCY_CAP_MS));
 
   if (cap === 'math.eval') {
     let result;

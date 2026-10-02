@@ -71,9 +71,19 @@ export function createEngine(cfg = {}) {
   // 'configured' (env key), 'invalid' (env key rejected, generated used), or 'generated' / 'state'.
   cfg.attestSource = cfg.attestKey ? attestor.source : (state.attest.private_key_pem ? 'state' : 'generated');
   cfg.attestDetail = attestor.detail ?? null;
-  if (!cfg.attestKey || attestor.source === 'invalid') state.attest.private_key_pem = attestor.privateKeyPem;
+  // A read-only invocation must not write the snapshot back (on serverless
+  // every poll would race the writer that carries a settlement), so boot only
+  // marks the state dirty when it actually changed something.
+  let bootDirty = false;
+  if ((!cfg.attestKey || attestor.source === 'invalid') && state.attest.private_key_pem !== attestor.privateKeyPem) {
+    state.attest.private_key_pem = attestor.privateKeyPem;
+    bootDirty = true;
+  }
   state.attest.public_keys ??= {};
-  state.attest.public_keys[attestor.keyId] = attestor.publicKeyPem;
+  if (state.attest.public_keys[attestor.keyId] !== attestor.publicKeyPem) {
+    state.attest.public_keys[attestor.keyId] = attestor.publicKeyPem;
+    bootDirty = true;
+  }
 
   const persist = () => store.save(state);
   const flush = () => store.flush?.();
@@ -1669,22 +1679,25 @@ export function createEngine(cfg = {}) {
   if (loaded) {
     const now = Date.now();
     const stale = (ts) => now - (ts ?? 0) >= cfg.recoveryGraceMs;
+    let touched = bootDirty;
     for (const task of Object.values(state.tasks)) {
       if (TERMINAL.has(task.status) || task.status === 'disputed' || !task.quote || !stale(task.createdAt)) continue;
       if (task.consensusQuotes) releaseConsensus(task);
       refundTask(task, 'platform_restart', 'platform restarted while the task was in flight', { slash: false });
+      touched = true;
     }
     for (const d of Object.values(state.disputes)) {
       if (d.status !== 'reviewing' || !stale(d.openedAt)) continue;
       const task = state.tasks[d.taskId];
       if (task && task.quote) track(resolveDispute(d, task));
       else { d.status = 'void'; d.resolvedAt = now; }
+      touched = true;
     }
     for (const wf of Object.values(state.workflows)) {
       if (wf.status === 'running' && stale(wf.createdAt)) track(resumeWorkflow(wf));
     }
-    processPendingSlashes();
-    persist();
+    if (processPendingSlashes() > 0) touched = true;
+    if (touched) persist();
   }
 
   return {
