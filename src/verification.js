@@ -162,8 +162,9 @@ async function gradeOnce(task, output, rubric, graderIdx, cfg, context = null) {
     const overlap = promptWords.some((w) => text.toLowerCase().includes(w));
     if (!overlap) return false;
   }
-  // Deterministic per-grader jitter stands in for model disagreement.
-  return hash01(task.id + 'grader' + graderIdx) > 0.02;
+  // Deterministic per-grader jitter stands in for model disagreement (rare:
+  // a single seat dissents on ~0.5% of tasks; the majority still passes).
+  return hash01(task.id + 'grader' + graderIdx) > 0.005;
 }
 
 export async function gradeRubric(task, output, rubric, cfg, seedOffset = 0, context = null) {

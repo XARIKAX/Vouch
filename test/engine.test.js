@@ -55,7 +55,7 @@ test('junk output fails verification: full refund, provider slashed', async () =
   const stakeBefore = engine.state.providers.prv_shade.stake;
   const trackBefore = engine.state.providers.prv_shade.track;
 
-  // Budget below every reliable provider's floor — only prv_shade quotes.
+  // A deadline tighter than any reliable provider's SLA — only prv_shade promises it.
   const { task } = engine.createTask(key, {
     capability: 'text.generate',
     input: { prompt: 'anything at all' },
@@ -65,8 +65,8 @@ test('junk output fails verification: full refund, provider slashed', async () =
         { assert: 'contains_none', values: ['###', 'ERROR'] },
       ],
     },
-    budget: 0.006,
-    deadline_ms: 8000,
+    budget: 0.03,
+    deadline_ms: 6000,
   });
   assert.equal(task.quote.provider, 'prv_shade');
 

@@ -8,42 +8,85 @@ import { readBody } from '../src/api.js';
 const FAST = { fast: true };
 
 // A fake Upstash REST endpoint backed by a Map, installed over global fetch.
+// Speaks the command form (POST ["GET", key] / ["EVAL", script, ...]) and
+// implements the compare-and-set script's semantics.
 function fakeRedis() {
   const kv = new Map();
   const original = globalThis.fetch;
+  let writes = 0;
   globalThis.fetch = async (url, opts = {}) => {
     const u = String(url);
-    let m;
-    if ((m = /https:\/\/fake\.upstash\.test\/get\/(.+)$/.exec(u))) {
-      return new Response(JSON.stringify({ result: kv.get(decodeURIComponent(m[1])) ?? null }));
+    if (!u.startsWith('https://fake.upstash.test')) return original(url, opts);
+    const cmd = JSON.parse(String(opts.body));
+    const [name, ...args] = cmd;
+    if (name === 'GET') return new Response(JSON.stringify({ result: kv.get(args[0]) ?? null }));
+    if (name === 'SET') { kv.set(args[0], String(args[1])); writes++; return new Response(JSON.stringify({ result: 'OK' })); }
+    if (name === 'EVAL') {
+      const [, , stateKey, versionKey, expected, snapshot, next] = args;
+      const cur = kv.get(versionKey);
+      if ((cur === undefined && expected === '0') || cur === expected) {
+        kv.set(stateKey, snapshot); kv.set(versionKey, next); writes++;
+        return new Response(JSON.stringify({ result: 1 }));
+      }
+      return new Response(JSON.stringify({ result: 0 }));
     }
-    if ((m = /https:\/\/fake\.upstash\.test\/set\/(.+)$/.exec(u))) {
-      kv.set(decodeURIComponent(m[1]), String(opts.body));
-      return new Response(JSON.stringify({ result: 'OK' }));
-    }
-    return original(url, opts);
+    return new Response(JSON.stringify({ error: `unsupported ${name}` }), { status: 400 });
   };
-  return { kv, restore: () => { globalThis.fetch = original; } };
+  return { kv, writes: () => writes, restore: () => { globalThis.fetch = original; } };
 }
 
-test('upstash store: save is buffered, flush writes once, load round-trips', async () => {
-  const { kv, restore } = fakeRedis();
+test('upstash store: save is buffered, flush writes once (CAS), load round-trips', async () => {
+  const { kv, writes, restore } = fakeRedis();
   try {
     const store = createUpstashStore({ url: 'https://fake.upstash.test', token: 't', key: 'vouch:test' });
     assert.equal(await store.load(), null);
 
-    const state = { tasks: { t1: { id: 't1', timer: 'runtime-only' } }, keys: {} };
+    const handle = setTimeout(() => {}, 100000);
+    const state = { tasks: { t1: { id: 't1', timer: handle, input: { timer: 'user data named timer' } } }, keys: {} };
     store.save(state);
     store.save(state); // repeated saves collapse into one write
-    assert.equal(kv.size, 0, 'nothing written before flush');
-    await store.flush();
-    assert.equal(kv.size, 1);
+    assert.equal(writes(), 0, 'nothing written before flush');
+    const r = await store.flush();
+    assert.equal(writes(), 1);
+    assert.equal(r.version, 1);
+    assert.equal(kv.get('vouch:test:version'), '1');
 
     const loaded = await store.load();
     assert.equal(loaded.tasks.t1.id, 't1');
-    assert.equal(loaded.tasks.t1.timer, undefined, 'runtime-only fields dropped');
+    assert.equal(loaded.tasks.t1.timer, undefined, 'runtime timer handles dropped');
+    assert.equal(loaded.tasks.t1.input.timer, 'user data named timer', 'user data named "timer" kept');
+    assert.equal(loaded.version, 1);
+    clearTimeout(handle);
 
-    await store.flush(); // no dirty state -> no-op
+    assert.equal(await store.flush(), null); // no dirty state -> no-op
+  } finally {
+    restore();
+  }
+});
+
+test('upstash store: a concurrent writer bumps the version → flush merges and retries once', async () => {
+  const { kv, restore } = fakeRedis();
+  try {
+    const a = createUpstashStore({ url: 'https://fake.upstash.test', token: 't', key: 'vouch:cas' });
+    const b = createUpstashStore({ url: 'https://fake.upstash.test', token: 't', key: 'vouch:cas' });
+    // Both invocations load the same (empty) snapshot.
+    assert.equal(await a.load(), null);
+    assert.equal(await b.load(), null);
+    // B flushes first: version 0 → 1.
+    b.save({ keys: { kb: { id: 'kb' } }, tasks: {}, insurance: { balance: 1 } });
+    assert.equal((await b.flush()).version, 1);
+    // A's CAS at version 0 fails; it re-loads, merges B's records under its own, retries at version 2.
+    const local = { keys: { ka: { id: 'ka' } }, tasks: { t: { id: 't' } }, insurance: { balance: 7 } };
+    a.save(local);
+    const r = await a.flush();
+    assert.equal(r.merged, true);
+    assert.equal(r.version, 2);
+    const stored = JSON.parse(kv.get('vouch:cas'));
+    assert.deepEqual(Object.keys(stored.keys).sort(), ['ka', 'kb'], 'both invocations\' records survive');
+    assert.equal(stored.insurance.balance, 7, 'pools stay with the merging invocation');
+    assert.equal(kv.get('vouch:cas:version'), '2');
+    // The engine object was merged in place, so the live state matches what was written.
+    assert.ok(local.keys.kb);
   } finally {
     restore();
   }
