@@ -145,14 +145,19 @@ export function mountPixelLaunch(canvas, opts = {}) {
 
   function resize() { const r = canvas.getBoundingClientRect(); DPR = Math.min(2, window.devicePixelRatio || 1); W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height)); canvas.width = W * DPR; canvas.height = H * DPR; scale = Math.max(W / LW, H / LH); ox = (W - LW * scale) / 2; oy = (H - LH * scale) / 2; }
 
-  // the flight profile: lift (world y) and engine power from progress
-  const profile = (now, tm) => {
+  // the flight profile: lift (world y) and engine power. After the sequence
+  // completes the rocket keeps accelerating until it has left the frame; the
+  // smoke clears, and the next rocket assembles on the same pad.
+  let flightT = 0, gone = false, goneAt = 0;
+  const profile = (now) => {
     const ign = clamp((now - 0.70) / 0.06, 0, 1);               // ignition builds
-    const lift = now < 0.78 ? 0 : 16 * Math.pow(clamp((now - 0.78) / 0.22, 0, 1), 1.9);
-    const hover = now >= 1 ? Math.sin(tm / 1100) * 0.35 : 0;
-    return { ign, lift: lift + hover, power: now >= 1 ? 0.55 + 0.1 * Math.sin(tm / 300) : ign * (0.6 + 0.6 * clamp((now - 0.78) / 0.1, 0, 1)) };
+    let lift = now < 0.78 ? 0 : 16 * Math.pow(clamp((now - 0.78) / 0.22, 0, 1), 1.9);
+    if (now >= 1) lift = 16 + 9 * flightT + 16 * flightT * flightT;
+    const power = gone ? 0 : now >= 1 ? 1 : ign * (0.6 + 0.6 * clamp((now - 0.78) / 0.1, 0, 1));
+    return { ign, lift, power };
   };
-  const phaseOf = (now) => now < 0.26 ? 'pad' : now < 0.56 ? 'assembly' : now < 0.70 ? 'countdown' : now < 0.78 ? 'ignition' : now < 1 ? 'lift-off' : 'in orbit';
+  const phaseOf = (now) => gone ? 'next agent' : now < 0.26 ? 'pad' : now < 0.56 ? 'assembly' : now < 0.70 ? 'countdown' : now < 0.78 ? 'ignition' : now < 1 ? 'lift-off' : 'in flight';
+  const relaunch = () => { p = 0.24; t0 = performance.now() - 0.24 * DUR; flightT = 0; gone = false; idleSince = performance.now() + DUR; };
 
   let cy_, sy_, cp_, sp_;
   const proj = (x, y, z) => { const rx = x * cy_ - z * sy_, rz = x * sy_ + z * cy_; return { sx: CX + rx * S, sy: CY - (y * cp_ - rz * sp_) * S, d: rz * cp_ + y * sp_ }; };
@@ -163,7 +168,8 @@ export function mountPixelLaunch(canvas, opts = {}) {
   const colFor = (v) => { const c = C[v.c] || C.hull[0]; return Array.isArray(c[0]) ? c[(v.shade ?? 0) % c.length] : c; };
 
   function draw(now, tm, dt) {
-    const { ign, lift, power } = profile(now, tm);
+    const { ign, lift, power } = profile(now);
+    void ign;
     cy_ = Math.cos(yaw); sy_ = Math.sin(yaw); cp_ = Math.cos(pitch); sp_ = Math.sin(pitch);
     const c = (x, y, z) => { const q = proj(x, y, z); return [q.sx - CX, q.sy - CY]; };
     const O = { top: [c(-.5, 1, -.5), c(.5, 1, -.5), c(.5, 1, .5), c(-.5, 1, .5)], px: [c(.5, 0, -.5), c(.5, 0, .5), c(.5, 1, .5), c(.5, 1, -.5)], nx: [c(-.5, 0, .5), c(-.5, 0, -.5), c(-.5, 1, -.5), c(-.5, 1, .5)], pz: [c(.5, 0, .5), c(-.5, 0, .5), c(-.5, 1, .5), c(.5, 1, .5)], nz: [c(-.5, 0, -.5), c(.5, 0, -.5), c(.5, 1, -.5), c(-.5, 1, -.5)] };
@@ -200,7 +206,7 @@ export function mountPixelLaunch(canvas, opts = {}) {
       const flush = (bit) => { const r = runs.get(bit); if (!r) return; runs.delete(bit); const q = proj(col.x, r.y0 + r.off, col.z), h = r.y1 - r.y0 + 1, o = r.o; face(q.sx, q.sy, [o[0], o[1], [o[1][0], o[1][1] + riseY * (h - 1)], [o[0][0], o[0][1] + riseY * (h - 1)]], css(r.col, r.lm)); };
       const flushAll = () => { for (const [bit] of sides) flush(bit); };
       for (const v of col.vs) {
-        if (now < v.t0 || (v.g === 'arm' && armGone(v))) { flushAll(); continue; }
+        if (now < v.t0 || (v.g === 'arm' && armGone(v)) || (gone && v.g === 'rocket')) { flushAll(); continue; }
         const off = v.g === 'rocket' ? lift : 0;
         const k = clamp((now - v.t0) / 0.05, 0, 1);
         const cc = colFor(v);
@@ -220,7 +226,7 @@ export function mountPixelLaunch(canvas, opts = {}) {
     // beacons blink
     { const blink = Math.floor(tm / 600) % 2 === 0; for (const v of m.vox) if (v.beacon && now >= v.t0) { const q = proj(v.x, v.y + 1, v.z); px(q.sx, q.sy, css(C.beacon, 1, blink ? .95 : .3)); } }
     // porthole glow once assembled
-    if (now > 0.6) { const q = proj(0, 24.5 + lift, 0); g.fillStyle = css(C.window, 1, .10 + .05 * Math.sin(tm / 400)); g.beginPath(); g.ellipse(q.sx, q.sy, 10, 4, 0, 0, Math.PI * 2); g.fill(); }
+    if (now > 0.6 && !gone) { const q = proj(0, 24.5 + lift, 0); g.fillStyle = css(C.window, 1, .10 + .05 * Math.sin(tm / 400)); g.beginPath(); g.ellipse(q.sx, q.sy, 10, 4, 0, 0, Math.PI * 2); g.fill(); }
 
     // --- exhaust: a bright column under the nozzles, then particles and smoke ---
     const NOZ = 0.6;                                              // world y of the nozzle mouths (mount height minus the skirt)
@@ -262,6 +268,14 @@ export function mountPixelLaunch(canvas, opts = {}) {
     const dt = lastFrame ? Math.min(0.05, (tm - lastFrame) / 1000) : 0.016; lastFrame = tm;
     if (p < 1) p = clamp((tm - t0) / DUR, 0, 1);
     const now = p;
+    if (now >= 1 && !gone) {
+      flightT += dt;
+      // off the top of the frame: the nose is above the buffer
+      const { lift } = profile(now);
+      cy_ = Math.cos(yaw); sy_ = Math.sin(yaw); cp_ = Math.cos(pitch); sp_ = Math.sin(pitch);
+      if (proj(0, lift, 0).sy < -8 * S) { gone = true; goneAt = tm; }
+    }
+    if (gone && tm - goneAt > 2600 && !reduce) relaunch();
     shake = now > 0.70 && now < 0.86 ? 1 - Math.abs((now - 0.78) / 0.08) : shake * 0.9;
     if (!dragging) { yaw += vyaw; vyaw *= 0.93; if (!reduce && tm - idleSince > 2600) yaw += 0.0012; }
     draw(now, tm, dt);
@@ -279,7 +293,8 @@ export function mountPixelLaunch(canvas, opts = {}) {
   raf = requestAnimationFrame(frame);
   return {
     destroy() { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); window.removeEventListener('touchend', onUp); },
-    replay() { p = 0; t0 = performance.now(); particles.length = 0; idleSince = t0 + DUR; },
+    replay() { p = 0; t0 = performance.now(); particles.length = 0; flightT = 0; gone = false; idleSince = t0 + DUR; },
+    relaunch,
     setView(y, pt) { yaw = y; pitch = clamp(pt, 0.05, 0.9); idleSince = performance.now(); },
     get progress() { return p; },
     get phase() { return phaseOf(p); },
