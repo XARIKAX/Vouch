@@ -25,18 +25,32 @@ export function canonical(v) {
 // body so either paste works.
 export function normalizePem(raw) {
   if (!raw) return raw;
-  let t = String(raw).trim().replace(/\\n/g, '\n').replace(/^["']|["']$/g, '');
+  let t = String(raw).trim().replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').replace(/^VOUCH_ATTEST_KEY=/, '').trim();
   const m = t.match(/-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/);
-  if (!m) return t;
-  const body = m[2].replace(/\s+/g, '');
-  return `-----BEGIN ${m[1]}-----\n${body.match(/.{1,64}/g).join('\n')}\n-----END ${m[1]}-----\n`;
+  const wrap = (label, body) => `-----BEGIN ${label}-----\n${body.match(/.{1,64}/g).join('\n')}\n-----END ${label}-----\n`;
+  if (m) return wrap(m[1], m[2].replace(/\s+/g, ''));
+  // A bare base64 body (the one line between the markers) is still usable.
+  const bare = t.replace(/\s+/g, '');
+  if (/^[A-Za-z0-9+/]+=*$/.test(bare) && bare.length >= 60) return wrap('PRIVATE KEY', bare);
+  return t;
+}
+
+// A secret-free description of a key value that failed to parse, for /v1/status.
+export function describeKeyShape(raw) {
+  if (!raw) return 'empty';
+  const t = String(raw);
+  const lines = t.split(/\r?\n/).length;
+  const hasBegin = /BEGIN/.test(t), hasEnd = /END/.test(t);
+  return `${t.length} chars, ${lines} line${lines === 1 ? '' : 's'}, BEGIN ${hasBegin ? 'present' : 'missing'}, END ${hasEnd ? 'present' : 'missing'}, literal \\n ${/\\n/.test(t) ? 'present' : 'absent'}`;
 }
 
 export function createAttestor(cfg = {}) {
   let privateKey;
   let publicKey;
   let source = 'generated';
-  const pem = normalizePem(cfg.attestKey || process.env.VOUCH_ATTEST_KEY);
+  let detail = null;
+  const rawKey = cfg.attestKey || process.env.VOUCH_ATTEST_KEY;
+  const pem = normalizePem(rawKey);
   if (pem) {
     try {
       privateKey = crypto.createPrivateKey(pem);
@@ -45,7 +59,8 @@ export function createAttestor(cfg = {}) {
     } catch (e) {
       privateKey = undefined; // fall through to a generated key on a bad PEM
       source = 'invalid';
-      console.error(`vouch: VOUCH_ATTEST_KEY is not a valid PKCS8 ed25519 PEM (${e.message}); using a generated key instead`);
+      detail = `${e.message}; value is ${describeKeyShape(rawKey)}`;
+      console.error(`vouch: VOUCH_ATTEST_KEY is not a valid PKCS8 ed25519 PEM (${detail}); using a generated key instead`);
     }
   }
   if (!privateKey) {
@@ -63,7 +78,7 @@ export function createAttestor(cfg = {}) {
     return { payload: body, alg: 'ed25519', key_id: keyId, signature };
   }
 
-  return { attest, publicKeyPem, privateKeyPem, keyId, source };
+  return { attest, publicKeyPem, privateKeyPem, keyId, source, detail };
 }
 
 // Anyone holding the public key can verify an attestation offline.

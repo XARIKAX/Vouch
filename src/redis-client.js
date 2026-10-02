@@ -75,6 +75,7 @@ export function createRedisClient(url, { timeoutMs = 5000 } = {}) {
   let buffer = Buffer.alloc(0);
   const waiting = [];      // { resolve, reject, timer } in send order
   let connecting = null;
+  let ready = false;       // connected AND authenticated / db selected
 
   const fail = (err) => {
     while (waiting.length) { const w = waiting.shift(); clearTimeout(w.timer); w.reject(err); }
@@ -92,11 +93,14 @@ export function createRedisClient(url, { timeoutMs = 5000 } = {}) {
     }
     buffer = pos ? buffer.subarray(pos) : buffer;
   };
-  const destroy = () => { if (socket) { socket.destroy(); socket = null; } buffer = Buffer.alloc(0); };
+  const destroy = () => { if (socket) { socket.destroy(); socket = null; } buffer = Buffer.alloc(0); ready = false; };
 
+  // Concurrent callers must all wait for the handshake (connect, AUTH,
+  // SELECT) to finish; checking `ready` only after `connecting` guarantees a
+  // second command cannot slip onto the wire ahead of AUTH.
   const connect = () => {
-    if (socket && !socket.destroyed) return Promise.resolve();
     if (connecting) return connecting;
+    if (ready && socket && !socket.destroyed) return Promise.resolve();
     connecting = new Promise((resolve, reject) => {
       const onError = (e) => { connecting = null; fail(e); destroy(); reject(e); };
       const s = cfg.tls
@@ -111,7 +115,8 @@ export function createRedisClient(url, { timeoutMs = 5000 } = {}) {
     }).then(async () => {
       if (cfg.password) await raw(cfg.username ? ['AUTH', cfg.username, cfg.password] : ['AUTH', cfg.password]);
       if (cfg.db) await raw(['SELECT', String(cfg.db)]);
-    });
+      ready = true;
+    }).finally(() => { connecting = null; });
     return connecting;
   };
 

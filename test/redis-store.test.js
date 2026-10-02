@@ -140,3 +140,25 @@ test('resp encoding is binary-safe for multibyte payloads', () => {
   const buf = encodeCommand(['SET', 'k', 'héllo ✓']);
   assert.equal(buf.toString(), `*3\r\n$3\r\nSET\r\n$1\r\nk\r\n$${Buffer.byteLength('héllo ✓')}\r\nhéllo ✓\r\n`);
 });
+
+test('redis client: concurrent first commands all wait for AUTH (regression for NOAUTH on load)', async () => {
+  const srv = await fakeRedisServer({ password: 'pw' });
+  const c = createRedisClient(srv.url('default:pw@'));
+  try {
+    const results = await Promise.all([c.command(['GET', 'a']), c.command(['GET', 'b']), c.command(['PING'])]);
+    assert.deepEqual(results, [null, null, 'PONG']);
+    assert.equal(srv.log[0], 'AUTH', 'AUTH is the first thing on the wire');
+    assert.equal(srv.log.filter((n) => n === 'AUTH').length, 1, 'authenticated once');
+  } finally { c.close(); srv.close(); }
+});
+
+test('redis store: load() against a password-protected Redis issues its two reads after AUTH', async () => {
+  const srv = await fakeRedisServer({ password: 'pw' });
+  const store = createRedisStore({ url: srv.url('default:pw@'), key: 'vouch:auth' });
+  try {
+    assert.equal(await store.load(), null);
+    store.save({ keys: {}, tasks: {} });
+    assert.equal((await store.flush()).version, 1);
+    assert.equal(srv.log[0], 'AUTH');
+  } finally { store.close(); srv.close(); }
+});
