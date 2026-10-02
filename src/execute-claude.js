@@ -13,7 +13,7 @@ const stripFences = (t) => t.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '
 
 const SPECS = {
   'text.generate': {
-    max_tokens: 1024,
+    max_tokens: 700,
     system: 'You are a capable assistant fulfilling a paid task. Respond directly and substantively to the request. No preamble, no meta-commentary, no filler — deliver the work itself.',
     user: (input) => String(input?.prompt ?? ''),
     wrap: (text) => ({ text }),
@@ -49,6 +49,13 @@ const SPECS = {
     wrap: (text) => ({ label: text.trim() }),
   },
 };
+
+// Capabilities a native provider serves through the model when one is configured.
+export const MODEL_CAPABILITIES = new Set(Object.keys(SPECS));
+
+// True when native providers will execute through the model for this capability.
+export const modelBacked = (cfg, capability) =>
+  !!(cfg.anthropicKey && (cfg.execModel || cfg.graderModel) && MODEL_CAPABILITIES.has(capability));
 
 export async function claudeExecute(task, cfg) {
   const spec = SPECS[task.capability];

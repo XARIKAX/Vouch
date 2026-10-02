@@ -379,7 +379,7 @@ Auth       Authorization: Bearer vch_your_key</code></pre></div>
       "checks": [{ "assert": "length_between", "min": 120 }]
     },
     "budget": 0.03,
-    "deadline_ms": 10000
+    "deadline_ms": 30000
   }'</code></pre></div></div>
         <div class="tab-pane"><div class="codewrap term"><pre><code>import requests
 
@@ -393,7 +393,7 @@ task = requests.post(
             "checks": [{"assert": "length_between", "min": 120}],
         },
         "budget": 0.03,
-        "deadline_ms": 10000,
+        "deadline_ms": 30000,
     },
 ).json()
 print(task["id"], task["quote"]["price"])</code></pre></div></div>
@@ -410,7 +410,7 @@ print(task["id"], task["quote"]["price"])</code></pre></div></div>
       checks: [{ assert: "length_between", min: 120 }]
     },
     budget: 0.03,
-    deadline_ms: 10000
+    deadline_ms: 30000
   })
 });
 const task = await res.json();
@@ -660,7 +660,7 @@ console.log(task.id, task.quote.price);</code></pre></div></div>
       ]
     },
     "budget": 0.03,
-    "deadline_ms": 10000,
+    "deadline_ms": 30000,
     "retry": true
   }'</code></pre></div>
 
@@ -1041,7 +1041,7 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
   "input": { "prompt": "…" },
   "acceptance": { "checks": [{ "assert": "length_between", "min": 120 }] },
   "budget": 0.03,
-  "deadline_ms": 10000,
+  "deadline_ms": 30000,
   "retry": true
 }</code></pre></div>
 
@@ -1069,7 +1069,7 @@ X-Escrow-Ceiling-Remaining: 4.97</code></pre></div>
   "input": { "prompt": "…" },
   "acceptance": { "checks": [{ "assert": "length_between", "min": 120 }] },
   "budget": 0.05,
-  "deadline_ms": 8000,
+  "deadline_ms": 30000,
   "consensus": 2
 }</code></pre></div>
 

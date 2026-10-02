@@ -58,7 +58,7 @@ curl -s localhost:4402/v1/tasks \
     "input": { "prompt": "Explain why verifying output before payment matters for AI agents." },
     "acceptance": { "checks": [{ "assert": "length_between", "min": 120 }] },
     "budget": 0.03,
-    "deadline_ms": 10000,
+    "deadline_ms": 30000,
     "retry": true
   }'
 ```
@@ -212,6 +212,7 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `ANTHROPIC_API_KEY` | unset | Real execution for the built-in text providers and the three-persona rubric panel. Unset: simulator + heuristic grader |
 | `VOUCH_GRADER_URL` | unset | Your own rubric grader (`{input, output, rubric, grader}` → `{pass}`); takes precedence over the model panel |
 | `VOUCH_GRADER_MODEL` / `VOUCH_EXEC_MODEL` | engine default | Override the grading / execution model |
+| `VOUCH_MODEL_SLA_MS` | `20000` | With a real model configured, built-in text providers quote at least this deadline. Set `deadline_ms` at or above it for model-backed tasks |
 | `VOUCH_LOCK_SIGNUP` | unset | `1` gates `POST /v1/keys` and `POST /v1/providers` behind `X-Admin-Token` |
 | `VOUCH_ADMIN_TOKEN` | unset | Admin token for locked minting, agent writes and `POST /v1/admin/guardian` |
 | `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` | unset | Alpaca **paper** keys for `/v1/broker/*`; `ALPACA_BASE_URL` must stay on the paper host |

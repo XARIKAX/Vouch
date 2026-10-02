@@ -1,6 +1,7 @@
 import { id, txHash, hash01, money, clamp, sha256, sleep } from './util.js';
 import { CAPABILITIES, validateInput } from './catalog.js';
 import { seedProviders, runExecutor } from './providers.js';
+import { modelBacked } from './execute-claude.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
 import { createAttestor, canonical } from './attest.js';
@@ -30,6 +31,10 @@ export function createEngine(cfg = {}) {
     // offline heuristic grader and the sandbox simulator are used.
     graderModel: process.env.VOUCH_GRADER_MODEL || null,
     execModel: process.env.VOUCH_EXEC_MODEL || null,
+    // When native providers execute through a real model, their quoted
+    // deadline is at least this: a model answer plus a cold start takes far
+    // longer than the sandbox simulator's seed SLAs. Not applied in fast mode.
+    modelSlaMs: Number(process.env.VOUCH_MODEL_SLA_MS) || 20000,
     persistPath: null,
     store: null,           // injected store (serverless); overrides persistPath
     recoveryGraceMs: 0,    // boot recovery skips in-flight work younger than this
@@ -355,11 +360,16 @@ export function createEngine(cfg = {}) {
   // (provider, task) so runs are reproducible.
   function collectQuotes(task) {
     const quotes = [];
+    // Native providers doing real model work cannot promise the simulator's
+    // seed SLAs; their quote is floored at cfg.modelSlaMs so a buyer who sets
+    // a shorter deadline gets an honest 409 instead of a refund later.
+    const floor = (!cfg.fast && modelBacked(cfg, task.capability)) ? cfg.modelSlaMs : 0;
     for (const p of Object.values(state.providers)) {
       const offer = p.offers[task.capability];
       if (!offer) continue;
       const price = money(offer.price_ceiling * (0.7 + 0.25 * hash01(p.id + task.id + 'price')));
-      const deadline_ms = Math.floor(offer.sla_deadline_ms * (0.8 + 0.2 * hash01(p.id + task.id + 'dl')));
+      const native = !p.endpoint_url && p.protocol !== 'x402';
+      const deadline_ms = Math.max(native ? floor : 0, Math.floor(offer.sla_deadline_ms * (0.8 + 0.2 * hash01(p.id + task.id + 'dl'))));
       quotes.push({
         provider: p.id, price, deadline_ms,
         track: p.track, stake_available: money(p.stake - p.stakeReserved),
