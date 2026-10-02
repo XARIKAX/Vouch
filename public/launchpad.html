@@ -440,7 +440,7 @@ const $ = (id) => document.getElementById(id);
 const scene = mountPixelLaunch($('scene'), { zoom: window.innerWidth < 720 ? 0.9 : 1 });
 if (scene) {
   const cap = $('scene-cap'), foot = $('scene-foot');
-  const tick = () => { const p = scene.progress; cap.textContent = p < 1 ? `${scene.phase} · ${Math.round(p * 100)}%` : scene.phase; foot.textContent = p < 1 ? 'Built block by block · drag to turn' : 'Verified work keeps it flying · drag to turn'; requestAnimationFrame(tick); };
+  const tick = () => { const p = scene.progress, ph = scene.phase; cap.textContent = p < 1 ? `${ph} · ${Math.round(p * 100)}%` : ph; foot.textContent = ph === 'in flight' ? 'Verified work keeps it flying · drag to turn' : ph === 'next agent' ? 'Pad clear · the next agent assembles' : 'Built block by block · drag to turn'; requestAnimationFrame(tick); };
   tick();
   $('scene-again').onclick = () => scene.replay();
 }
