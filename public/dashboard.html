@@ -164,7 +164,7 @@
         <div class="crow" id="c-extra" hidden></div>
         <div class="crow">
           <div class="field w-num"><label for="c-budget">Budget ($)</label><input id="c-budget" value="0.03"></div>
-          <div class="field w-num"><label for="c-deadline">Deadline (ms)</label><input id="c-deadline" value="10000"></div>
+          <div class="field w-num"><label for="c-deadline">Deadline (ms)</label><input id="c-deadline" value="30000"></div>
           <div class="field"><label for="c-rubric">Pass-or-fail criteria (optional rubric)</label><input id="c-rubric" placeholder="e.g. substantive, on-topic, no filler"></div>
         </div>
         <div class="crow last">
@@ -328,6 +328,8 @@ async function refreshLedger() {
 let tasks = [];
 let pollTimer = null;
 const pill = (s) => `<span class="pill ${esc(s)}">${esc(s)}</span>`;
+// How the output was produced: real model, sandbox simulator, or an external provider.
+const execLabel = (x) => ({ model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' }[x.mode] ?? x.mode) + (x.ms ? ` in ${(x.ms / 1000).toFixed(1)}s` : '');
 
 function detail(t) {
   const s = t.settlement, r = t.refund;
@@ -336,10 +338,12 @@ function detail(t) {
     if (s.cached) bits.push('served from cache');
     if (s.consensus) bits.push(`consensus ${s.consensus.passed}/${s.consensus.dispatched}`);
     if (s.attempts > 1) bits.push(`settled on attempt ${s.attempts}`);
+    if (t.execution?.mode) bits.push(execLabel(t.execution));
     return esc(bits.join(' · ')) + ` <a class="linkbtn" href="/verify?task=${esc(t.id)}" target="_blank" rel="noopener">proof ↗</a>`;
   }
   if (t.status === 'refunded') {
     const bits = [r ? `${r.reason}: ${r.detail}` : 'refunded'];
+    if (t.execution?.mode) bits.push(execLabel(t.execution));
     if (t.slash?.amount) bits.push(`provider slashed −${money(t.slash.amount)}`);
     if (t.compensation?.amount) bits.push(`insurance paid you ${money(t.compensation.amount)}`);
     if (t.attempts?.length > 1) bits.push(`${t.attempts.length} attempts`);
@@ -461,9 +465,9 @@ const SAMPLES = [
     acceptance: { checks: [{ assert: 'equals', path: 'result', value: 95 }] }, budget: 0.01, deadline_ms: 5000 },
   { capability: 'text.generate', input: { prompt: 'why escrow beats retries for autonomous agents' },
     acceptance: { checks: [{ assert: 'length_between', min: 120 }, { assert: 'contains_none', values: ['###', 'ERROR'] }], rubric: 'substantive, on-topic' },
-    budget: 0.03, deadline_ms: 10000, min_track: 70 },
+    budget: 0.03, deadline_ms: 30000, min_track: 70 },
   { capability: 'classify.text', input: { text: 'The settlement landed and the agent was paid on time.', labels: ['positive', 'negative', 'neutral'] },
-    acceptance: { checks: [{ assert: 'one_of', path: 'label', values: ['positive', 'negative', 'neutral'] }] }, budget: 0.01, deadline_ms: 8000 },
+    acceptance: { checks: [{ assert: 'one_of', path: 'label', values: ['positive', 'negative', 'neutral'] }] }, budget: 0.01, deadline_ms: 30000 },
 ];
 let sampleIdx = 0;
 $('sample').onclick = () => post(SAMPLES[sampleIdx++ % SAMPLES.length], note, $('sample'));

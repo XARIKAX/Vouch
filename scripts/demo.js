@@ -76,7 +76,7 @@ try {
         rubric: 'answers the prompt; no filler',
       },
       budget: 0.03,
-      deadline_ms: 10000,
+      deadline_ms: 30000,
     },
   });
   const textDone = await waitTerminal(KEY, textTask.id);

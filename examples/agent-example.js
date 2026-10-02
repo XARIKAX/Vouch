@@ -22,7 +22,7 @@ const task = await vouch.run({
   capability: 'text.generate',
   input: { prompt: 'In two sentences, why does verifying output before payment matter for AI agents?' },
   acceptance: { checks: [{ assert: 'word_count', min: 15 }, { assert: 'contains_none', values: ['###', 'ERROR'] }] },
-  budget: 0.03, deadline_ms: 12000, retry: true,
+  budget: 0.03, deadline_ms: 30000, retry: true,
 });
 log('task:', task.status, '·', task.settlement ? '$' + task.settlement.price : task.refund?.reason);
 if (task.status === 'settled') log('output:', JSON.stringify(task.output).slice(0, 120) + '…');

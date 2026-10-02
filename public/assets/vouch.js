@@ -121,7 +121,7 @@ export async function ensureKey(name = 'sandbox') {
 // A just-created task can take a moment to become visible to other serverless
 // instances, so a 404 inside the first `graceMs` is treated as "not yet", not
 // as an error.
-export async function waitTask(id, { key = getKey(), timeoutMs = 30000, every = 400, graceMs = 12000, onUpdate } = {}) {
+export async function waitTask(id, { key = getKey(), timeoutMs = 60000, every = 400, graceMs = 12000, onUpdate } = {}) {
   const t0 = Date.now();
   for (;;) {
     let t;

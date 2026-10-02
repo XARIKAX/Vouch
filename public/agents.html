@@ -335,17 +335,17 @@ $('a-allow').querySelectorAll('.a').forEach((el) => el.onclick = () => el.classL
 // The server enforces the allowlist, the per-task cap and the freeze state.
 const BRIEF = 'Cloud providers reported record capital spending on AI infrastructure this quarter. Demand for accelerators outpaced supply for the third quarter in a row. Power and cooling are now the binding constraint for new data centers. Several operators signed multi-year energy contracts to secure capacity.';
 const STRATEGY = [
-  { label: 'Draft a market brief on AI infra', capability: 'text.generate', budget: 0.03, deadline_ms: 15000, min_track: 70,
+  { label: 'Draft a market brief on AI infra', capability: 'text.generate', budget: 0.03, deadline_ms: 30000, min_track: 70,
     input: { prompt: 'Draft a short market brief on AI infrastructure spending' } },
-  { label: 'Summarize the latest filing', capability: 'text.summarize', budget: 0.01, deadline_ms: 10000,
+  { label: 'Summarize the latest filing', capability: 'text.summarize', budget: 0.01, deadline_ms: 30000,
     input: { text: BRIEF } },
   { label: 'Size the position (risk model)', capability: 'math.eval', budget: 0.006, deadline_ms: 4000,
     input: { expression: '(120 * 0.35) + 18' }, acceptance: { checks: [{ assert: 'equals', path: 'result', value: 60 }] } },
-  { label: 'Extract KPIs from the report', capability: 'extract.structured', budget: 0.015, deadline_ms: 10000,
+  { label: 'Extract KPIs from the report', capability: 'extract.structured', budget: 0.015, deadline_ms: 30000,
     input: { text: BRIEF, fields: 'spending, constraint, contracts' } },
-  { label: 'Classify the sentiment of the news', capability: 'classify.text', budget: 0.008, deadline_ms: 6000,
+  { label: 'Classify the sentiment of the news', capability: 'classify.text', budget: 0.008, deadline_ms: 30000,
     input: { text: 'Shares rose after the earnings beat and raised guidance.', labels: ['positive', 'negative', 'neutral'] } },
-  { label: 'Translate the portfolio update', capability: 'translate.text', budget: 0.012, deadline_ms: 9000,
+  { label: 'Translate the portfolio update', capability: 'translate.text', budget: 0.012, deadline_ms: 30000,
     input: { text: 'Portfolio update: positions sized, risk within limits.', target_lang: 'fr' } },
 ];
 

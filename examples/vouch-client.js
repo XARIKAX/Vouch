@@ -9,7 +9,7 @@
 //     capability: 'text.generate',
 //     input: { prompt: 'why verification beats retries' },
 //     acceptance: { checks: [{ assert: 'word_count', min: 40 }] },
-//     budget: 0.03, deadline_ms: 10000, retry: true,
+//     budget: 0.03, deadline_ms: 30000, retry: true,
 //   });
 //   console.log(task.status, task.output);
 

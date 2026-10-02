@@ -169,9 +169,23 @@ async function executeX402(provider, task, cfg) {
   }
 }
 
+// Every run records how the output was produced on the task
+// (task.execution: mode model | simulated | external | x402, elapsed ms) so a
+// receipt shows whether real work or the sandbox simulator answered.
 async function execute(provider, task, cfg) {
-  if (provider.protocol === 'x402') return executeX402(provider, task, cfg);
-  if (provider.endpoint_url) return executeExternal(provider, task);
+  const t0 = Date.now();
+  let mode = 'simulated';
+  let model = null;
+  try {
+    return await executeInner(provider, task, cfg, (m, name = null) => { mode = m; model = name; });
+  } finally {
+    task.execution = { mode, ...(model ? { model } : {}), ms: Date.now() - t0 };
+  }
+}
+
+async function executeInner(provider, task, cfg, setMode) {
+  if (provider.protocol === 'x402') { setMode('x402'); return executeX402(provider, task, cfg); }
+  if (provider.endpoint_url) { setMode('external'); return executeExternal(provider, task); }
   const cap = task.capability;
   const honest = hash01(provider.id + task.id + 'roll') < provider.reliability;
 
@@ -181,7 +195,7 @@ async function execute(provider, task, cfg) {
   // computed for real below.
   if (honest && cfg.anthropicKey && (cfg.execModel || cfg.graderModel)) {
     const real = await claudeExecute(task, cfg);
-    if (real) return real;
+    if (real) { setMode('model', cfg.execModel || cfg.graderModel); return real; }
   }
 
   // Simulated execution (offline / sandbox): deterministic latency + output.

@@ -1,16 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <!-- Vouch mark: a near-black rounded tile, a violet check, and the small violet square at the tip of the long stroke. -->
+  <!-- Vouch mark: a bevelled violet check with the small square at the tip of the long stroke. No tile. -->
   <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1b1a21"/>
-      <stop offset="1" stop-color="#0f0e13"/>
+    <linearGradient id="face" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6a55ff"/>
+      <stop offset="0.55" stop-color="#5440ea"/>
+      <stop offset="1" stop-color="#3f2ccd"/>
     </linearGradient>
-    <linearGradient id="check" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#5a40ea"/>
-      <stop offset="1" stop-color="#4a30d2"/>
+    <linearGradient id="side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2d1f9a"/>
+      <stop offset="1" stop-color="#1c1366"/>
     </linearGradient>
   </defs>
-  <rect width="100" height="100" rx="12" fill="url(#tile)"/>
-  <path d="M6.5 40H29L40.6 61L70.3 15.7H91.3L38.5 97Z" fill="url(#check)"/>
-  <rect x="81" y="8" width="10.3" height="7.7" fill="#5a40ea"/>
+  <!-- extruded side, offset down-right -->
+  <path d="M9.5 42.5H32L43.6 63.5L73.3 18.2H94.3L41.5 99.5Z" fill="url(#side)"/>
+  <rect x="84" y="10.5" width="10.3" height="7.7" fill="#2d1f9a"/>
+  <!-- face -->
+  <path d="M6.5 40H29L40.6 61L70.3 15.7H91.3L38.5 97Z" fill="url(#face)"/>
+  <rect x="81" y="8" width="10.3" height="7.7" fill="#6a55ff"/>
+  <!-- bevel highlight along the upper edges -->
+  <path d="M6.5 40H29L40.6 61L70.3 15.7H91.3" fill="none" stroke="#b3a7ff" stroke-width="1.4" stroke-linejoin="miter" opacity="0.85"/>
+  <path d="M81 15.7V8H91.3" fill="none" stroke="#b3a7ff" stroke-width="1.2" opacity="0.85"/>
 </svg>
