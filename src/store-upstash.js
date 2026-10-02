@@ -36,15 +36,91 @@ end
 return 0`.trim();
 
 // Merge `remote` (a newer snapshot) into `local` (this invocation's live
-// state) in place. Collections union by id with local winning; pools and
-// counters stay local (this invocation is the one that moved them).
-export function mergeStates(local, remote) {
+// state) in place.
+//
+// With `base` (the snapshot this invocation loaded) the merge is three-way:
+//   - money and counters (account balances, locked escrow, provider stake and
+//     earnings, the insurance and treasury pools) are merged by DELTA: what
+//     this invocation moved is applied on top of what the other invocation
+//     wrote, so two tasks locking escrow on the same account at the same time
+//     both keep their lock, and nothing is applied twice;
+//   - ledgers (account history, insurance claims, pending slashes) union by id;
+//   - records (tasks, keys, disputes, ...) take the local copy only where this
+//     invocation changed it; an untouched copy never reverts another
+//     invocation's write. A task that the other side already finished stays
+//     finished (the first terminal state wins).
+// Without `base` (a fresh store with nothing loaded) collections union by id
+// with local winning, and pools stay local.
+const money = (n) => Math.round(n * 1e6) / 1e6;
+const same = (a, b) => JSON.stringify(a ?? null, stateReplacer) === JSON.stringify(b ?? null, stateReplacer);
+const TERMINAL = new Set(['settled', 'refunded']);
+const DELTA_FIELDS = {
+  accounts: ['balance', 'locked', 'lockedToday'],
+  providers: ['stake', 'stakeReserved', 'earnings', 'track', 'settledCount', 'slashedCount'],
+};
+const NON_NEGATIVE = new Set(['locked', 'lockedToday', 'stakeReserved', 'balance', 'stake']);
+const LEDGERS = { accounts: [['history', (e) => e.tx ?? `${e.ts}:${e.kind}:${e.amount}`]] };
+
+function unionList(local = [], remote = [], keyOf) {
+  const seen = new Set(local.map(keyOf));
+  const out = local.slice();
+  for (const e of remote) { const k = keyOf(e); if (!seen.has(k)) { seen.add(k); out.push(e); } }
+  out.sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0));
+  return out;
+}
+
+function mergeDeltaRecord(loc, rem, bas, fields, ledgers = []) {
+  if (!bas) return loc;                                   // new here: ours as is
+  const out = { ...rem };
+  for (const f of fields) {
+    if (typeof loc[f] !== 'number') continue;
+    const delta = loc[f] - (typeof bas[f] === 'number' ? bas[f] : 0);
+    let v = money((typeof rem[f] === 'number' ? rem[f] : 0) + delta);
+    if (NON_NEGATIVE.has(f) && v < 0) v = 0;
+    if (f === 'track') v = Math.min(100, Math.max(0, v));
+    out[f] = v;
+  }
+  for (const [f, keyOf] of ledgers) out[f] = unionList(loc[f], rem[f], keyOf);
+  // anything else: ours where we changed it, theirs otherwise
+  for (const k of Object.keys(loc)) {
+    if (fields.includes(k) || ledgers.some(([f]) => f === k)) continue;
+    if (!same(loc[k], bas[k])) out[k] = loc[k];
+    else if (!(k in rem)) out[k] = loc[k];
+  }
+  return out;
+}
+
+export function mergeStates(local, remote, base = null) {
   if (!remote || typeof remote !== 'object') return local;
   for (const c of COLLECTIONS) {
     if (!remote[c] || typeof remote[c] !== 'object') continue;
     local[c] ??= {};
-    for (const [id, rec] of Object.entries(remote[c])) {
-      if (!(id in local[c])) local[c][id] = rec;
+    const ids = new Set([...Object.keys(local[c]), ...Object.keys(remote[c])]);
+    for (const id of ids) {
+      const loc = local[c][id], rem = remote[c][id], bas = base?.[c]?.[id];
+      if (loc === undefined) { local[c][id] = rem; continue; }
+      if (rem === undefined) continue;                     // ours only
+      if (!base) continue;                                 // two-way: local wins
+      if (DELTA_FIELDS[c]) { local[c][id] = mergeDeltaRecord(loc, rem, bas, DELTA_FIELDS[c], LEDGERS[c]); continue; }
+      const changedHere = !same(loc, bas);
+      if (!changedHere) { local[c][id] = rem; continue; }
+      if (c === 'tasks' && TERMINAL.has(rem.status) && !TERMINAL.has(bas?.status)) local[c][id] = rem; // finished elsewhere first
+      // otherwise ours
+    }
+  }
+  if (base) {
+    for (const pool of ['insurance', 'treasury']) {
+      if (!remote[pool] || !local[pool]) continue;
+      const fields = pool === 'insurance' ? ['balance', 'funded'] : ['balance', 'burned', 'buyback'];
+      const merged = mergeDeltaRecord(local[pool], remote[pool], base[pool] ?? {}, fields,
+        pool === 'insurance' ? [['claims', (e) => `${e.ts}:${e.task}:${e.amount}`]] : []);
+      Object.assign(local[pool], merged);
+    }
+    if (remote.launchpad?.pending_slashes && local.launchpad) {
+      local.launchpad.pending_slashes = unionList(local.launchpad.pending_slashes, remote.launchpad.pending_slashes, (s) => s.id ?? `${s.queued_at}:${s.agent_id}`);
+    }
+    if (remote.attest?.public_keys && local.attest) {
+      local.attest.public_keys = { ...remote.attest.public_keys, ...(local.attest.public_keys ?? {}) };
     }
   }
   for (const k of Object.keys(remote)) {
@@ -97,12 +173,14 @@ function snapshotStore({ command, key, path }) {
   const versionKey = `${key}:version`;
   let dirty = null;        // latest state reference awaiting flush
   let loadedVersion = 0;   // version of the snapshot this invocation started from
+  let base = null;         // untouched copy of what was loaded, for the three-way merge
 
   const load = async () => {
     const [raw, ver] = await Promise.all([command(['GET', key], 'read'), command(['GET', versionKey], 'read')]);
     loadedVersion = ver == null ? 0 : Number(ver) || 0;
-    if (raw == null) return null;
+    if (raw == null) { base = null; return null; }
     const state = JSON.parse(raw);
+    base = JSON.parse(raw);
     if (typeof state.version === 'number' && !ver) loadedVersion = state.version;
     return state;
   };
@@ -126,9 +204,12 @@ function snapshotStore({ command, key, path }) {
         return { version: next, merged: attempt > 0 };
       }
       // Conflict: another invocation flushed since we loaded. Re-load, merge
-      // our records on top of the newer snapshot, and retry.
+      // our changes on top of the newer snapshot (three-way, against the
+      // snapshot we started from), and retry. After the merge our live state
+      // equals the newer snapshot plus our deltas, so it becomes the new base.
+      const myBase = base;
       const remote = await load();
-      mergeStates(state, remote);
+      mergeStates(state, remote, myBase);
     }
     throw new Error(`state store write conflict: another invocation kept winning (${CAS_ATTEMPTS} attempts); this invocation's writes were not persisted`);
   };

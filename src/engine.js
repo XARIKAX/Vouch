@@ -89,6 +89,16 @@ export function createEngine(cfg = {}) {
     state.attest.public_keys[attestor.keyId] = attestor.publicKeyPem;
     bootDirty = true;
   }
+  // Escrow counters can never be negative. A snapshot written before the
+  // three-way merge existed may carry one; repair it and say so.
+  for (const [id, acct] of Object.entries(state.accounts ?? {})) {
+    for (const f of ['locked', 'lockedToday']) {
+      if (typeof acct[f] === 'number' && acct[f] < 0) {
+        console.warn(`vouch: account ${id} had ${f} ${acct[f]}; reset to 0`);
+        acct[f] = 0; bootDirty = true;
+      }
+    }
+  }
 
   const persist = () => store.save(state);
   const flush = () => store.flush?.();
