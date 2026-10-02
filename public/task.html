@@ -311,7 +311,7 @@ const secs = (ms) => (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's';
 const when = (ts) => new Date(ts).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
 const TERMINAL = new Set(['settled', 'refunded']);
 const PRIMARY = { 'text.generate': 'text', 'text.summarize': 'summary', 'image.generate': 'url', 'audio.speak': 'url', 'embed.text': 'vector', 'math.eval': 'result', 'code.generate': 'code', 'translate.text': 'translation', 'extract.structured': 'data', 'classify.text': 'label', 'research.web': 'text' };
-const MODE = { model: 'Model output', simulated: 'Sandbox output', external: 'External provider', x402: 'x402 provider' };
+const MODE = { model: 'Model output', image: 'Generated image', simulated: 'Sandbox output', external: 'External provider', x402: 'x402 provider' };
 const id = new URLSearchParams(location.search).get('id');
 let counted = false;
 

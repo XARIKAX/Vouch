@@ -425,6 +425,7 @@ export function createApi(engine, { buckets } = {}) {
         exec_model: c.anthropicKey ? (c.execModel || c.graderModel || null) : null,
         grading: c.anthropicKey && c.graderModel ? 'model' : (c.graderUrl ? 'webhook' : 'heuristic'),
         grader_model: c.anthropicKey && c.graderModel ? c.graderModel : null,
+        image: c.imageProvider && c.imageProvider !== 'none' ? c.imageProvider : 'placeholder',
         attestation_key: c.attestSource ?? (c.attestKey ? 'configured' : 'generated'),
         attestation_key_detail: c.attestDetail ?? null,
         store: c.storeError ? 'remote-error' : (c.store ? 'remote' : (c.persistPath ? 'file' : 'memory')),

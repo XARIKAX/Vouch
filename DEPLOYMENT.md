@@ -163,6 +163,8 @@ Before real traffic:
 | `VOUCH_ATTEST_KEY` | PKCS8 ed25519 PEM for durable attestation signing | unset → generated key kept in state |
 | `ANTHROPIC_API_KEY` | Real execution for built-in text providers + model grading panel | unset → simulator + offline heuristic |
 | `VOUCH_GRADER_MODEL` / `VOUCH_EXEC_MODEL` | Grading / execution model override | engine default |
+| `VOUCH_IMAGE_PROVIDER` | Real image generation for `image.generate` through a keyless, URL-based image API; verification fetches the picture and the vision grader panel judges it against the prompt. `none` returns a labelled placeholder | `pollinations` when `ANTHROPIC_API_KEY` is set |
+| `VOUCH_IMAGE_BASE_URL` / `VOUCH_IMAGE_MODEL` | Image API base URL and model name | `https://image.pollinations.ai` / `flux` |
 | `VOUCH_MODEL_SLA_MS` | Minimum deadline the built-in text providers quote when they execute through a real model (a buyer's `deadline_ms` below it gets a 409 with the nearest quote) | `20000` |
 | `VOUCH_GRADER_URL` | Custom webhook grader | unset |
 | `VOUCH_ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |

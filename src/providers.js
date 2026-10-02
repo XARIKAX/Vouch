@@ -1,5 +1,6 @@
 import { hash01, sleep } from './util.js';
 import { claudeExecute } from './execute-claude.js';
+import { imageOn, buildImageUrl, placeholderImageUrl } from './image.js';
 
 // Upper bound on the simulated provider's think time outside fast mode.
 const SIM_LATENCY_CAP_MS = 1200;
@@ -201,6 +202,12 @@ async function executeInner(provider, task, cfg, setMode, diag) {
     const real = await claudeExecute(task, cfg, diag);
     if (real) { setMode('model', cfg.execModel || cfg.graderModel); return real; }
   }
+  // Real image generation: the provider commits to a URL the image API
+  // renders on fetch; verification fetches it (see verification.js).
+  if (cap === 'image.generate' && honest && imageOn(cfg)) {
+    setMode('image', cfg.imageProvider);
+    return { url: buildImageUrl(cfg, task) };
+  }
 
   // Simulated execution (offline / sandbox): deterministic latency + output.
   // The delay scales with the quote's deadline so providers feel distinct,
@@ -225,12 +232,7 @@ async function executeInner(provider, task, cfg, setMode, diag) {
     const firstSentences = src.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ');
     return { summary: `${firstSentences} In short: ${src.slice(0, 80).trim()}${src.length > 80 ? '…' : ''}` };
   }
-  if (cap === 'image.generate') {
-    const seed = Math.floor(hash01(task.id) * 1e6);
-    const w = task.input.width ?? 1024;
-    const h = task.input.height ?? 1024;
-    return { url: `https://picsum.photos/seed/${seed}/${w}/${h}` };
-  }
+  if (cap === 'image.generate') return { url: placeholderImageUrl(task) }; // labelled as a placeholder on its face
   if (cap === 'audio.speak') {
     const seed = hash01(task.id + task.input.text).toString(16).slice(2, 12);
     return { url: `https://cdn.vouch.example/tts/${seed}.mp3` };

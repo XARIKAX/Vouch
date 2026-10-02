@@ -422,7 +422,7 @@ let tasks = [];
 let pollTimer = null;
 const pill = (s) => `<span class="pill ${esc(s)}">${esc(s)}</span>`;
 // How the output was produced: real model, sandbox simulator, or an external provider.
-const execLabel = (x) => ({ model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' }[x.mode] ?? x.mode)
+const execLabel = (x) => ({ model: 'model output', image: 'generated image', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' }[x.mode] ?? x.mode)
   + (x.ms ? ` in ${(x.ms / 1000).toFixed(1)}s` : '') + (x.model_error ? ` (${x.model_error})` : '');
 
 // Every row opens the task page, where the delivered work (text, image, code, figure) is shown in full.
@@ -490,7 +490,7 @@ async function refreshTasks() {
 const live = (() => {
   const STAGES = [['01', 'Posted'], ['02', 'Quoted'], ['03', 'Dispatched'], ['04', 'Delivered'], ['05', 'Verifying'], ['06', 'Settled']];
   const PRIMARY = { 'text.generate': 'text', 'text.summarize': 'summary', 'image.generate': 'url', 'audio.speak': 'url', 'embed.text': 'vector', 'math.eval': 'result', 'code.generate': 'code', 'translate.text': 'translation', 'extract.structured': 'data', 'classify.text': 'label', 'research.web': 'text' };
-  const MODE = { model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' };
+  const MODE = { model: 'model output', image: 'generated image', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' };
   const known = new Map();      // id -> latest task record seen
   let current = null;           // id on screen
   let typed = new Map();        // id -> characters revealed so far
@@ -777,6 +777,8 @@ function acceptanceFor(cap, rubric) {
   const a = {};
   if (cap.startsWith('text.')) a.checks = [{ assert: 'length_between', min: 60 }];
   if (rubric) a.rubric = rubric;
+  // An image is judged on the picture: the vision grader panel checks it against the prompt.
+  else if (cap === 'image.generate') a.rubric = 'the image clearly depicts what the prompt asks for';
   return a;
 }
 $('c-post').onclick = () => {

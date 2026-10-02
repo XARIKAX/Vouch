@@ -2,6 +2,7 @@ import vm from 'node:vm';
 import { validateOutput, primaryValue } from './catalog.js';
 import { hash01 } from './util.js';
 import { claudeGrade } from './grader.js';
+import { fetchImage } from './image.js';
 import { assertPublicUrl, fetchWithTimeout, OUTBOUND_TIMEOUT_MS } from './netguard.js';
 
 // ---------------------------------------------------------------------------
@@ -187,6 +188,16 @@ export async function verify(task, output, cfg, context = null) {
     return { pass: false, verified_by: verifiedBy, failed: { validator: 'schema', detail: schema.detail } };
   }
   verifiedBy.push('schema');
+
+  // A generated image must really exist: fetch it (bounded), require an
+  // image content type, and hand the bytes to the rubric graders so a
+  // vision-capable panel judges the picture itself, not its URL.
+  if (task.capability === 'image.generate' && task.execution?.mode === 'image') {
+    const img = await fetchImage(String(output.url), { timeoutMs: cfg.imageFetchTimeoutMs ?? 40000 });
+    if (!img.ok) return { pass: false, verified_by: verifiedBy, failed: { validator: 'image', detail: img.error } };
+    verifiedBy.push('image');
+    context = { ...(context ?? {}), image: { media_type: img.media_type, bytes: img.bytes } };
+  }
 
   for (const check of task.acceptance?.checks ?? []) {
     let failure;
