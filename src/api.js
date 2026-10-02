@@ -3,6 +3,13 @@ import { ApiError } from './errors.js';
 import { CAPABILITIES } from './catalog.js';
 import * as broker from './broker.js';
 import { checkThesis, THESIS_ACCEPTANCE, THESIS_CAPABILITY } from './thesis.js';
+import { probeModel } from './execute-claude.js';
+
+// GET /v1/status?probe=1 makes one tiny model call per configured model; the
+// result is cached per process so the public endpoint cannot be used to run
+// up a bill.
+const PROBE_TTL_MS = 5 * 60 * 1000;
+let probeCache = { at: 0, result: null };
 
 const MAX_BODY = 256 * 1024;
 
@@ -393,10 +400,27 @@ export function createApi(engine, { buckets } = {}) {
     }],
 
     // Deployment status: what is configured, never the secrets themselves.
-    ['GET', /^\/v1\/status$/, async (req, res) => {
+    // ?probe=1 adds one minimal live call per configured model (cached for a
+    // few minutes per instance) so a rejected key or a wrong model id is
+    // reported in words.
+    ['GET', /^\/v1\/status$/, async (req, res, _p, query) => {
       const rl = limit(keyOrAnon(req));
       const c = engine.cfg;
+      let model_probe;
+      if (query.get('probe') === '1' || query.get('probe') === 'model') {
+        if (Date.now() - probeCache.at > PROBE_TTL_MS) {
+          const exec = c.execModel || c.graderModel || null;
+          probeCache = { at: Date.now(), result: {
+            checked_at: new Date().toISOString(),
+            exec: await probeModel(c, exec),
+            grader: c.graderModel && c.graderModel !== exec ? await probeModel(c, c.graderModel) : null,
+          } };
+          if (probeCache.result.grader === null && c.graderModel) probeCache.result.grader = probeCache.result.exec;
+        }
+        model_probe = probeCache.result;
+      }
       send(res, 200, {
+        ...(model_probe ? { model_probe } : {}),
         execution: c.anthropicKey && (c.execModel || c.graderModel) ? 'model' : 'simulator',
         exec_model: c.anthropicKey ? (c.execModel || c.graderModel || null) : null,
         grading: c.anthropicKey && c.graderModel ? 'model' : (c.graderUrl ? 'webhook' : 'heuristic'),

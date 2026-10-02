@@ -76,7 +76,17 @@ export const MODEL_CAPABILITIES = new Set(Object.keys(SPECS));
 export const modelBacked = (cfg, capability) =>
   !!(cfg.anthropicKey && (cfg.execModel || cfg.graderModel) && MODEL_CAPABILITIES.has(capability));
 
-export async function claudeExecute(task, cfg) {
+// A short, secret-free description of a failed API response: the status
+// plus the API's own error message ("model: x not found", "invalid x-api-key").
+export async function describeApiError(res) {
+  let msg = '';
+  try { const j = await res.json(); msg = j?.error?.message || j?.error?.type || ''; } catch { /* no JSON body */ }
+  return `${res.status}${msg ? ' ' + String(msg).slice(0, 240) : ''}`;
+}
+
+// `diag.error` receives why the model did not answer (the caller records it
+// on the task) so a fallback to the simulator is never silent.
+export async function claudeExecute(task, cfg, diag = {}) {
   const spec = SPECS[task.capability];
   const model = cfg.execModel || cfg.graderModel;
   if (!spec || !cfg.anthropicKey || !model) return null;
@@ -103,17 +113,47 @@ export async function claudeExecute(task, cfg) {
         messages: [{ role: 'user', content: prompt }],
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) { diag.error = `model API ${await describeApiError(res)}`; return null; }
     const body = await res.json();
-    if (body.stop_reason === 'refusal') return null;
+    if (body.stop_reason === 'refusal') { diag.error = 'model refused the request'; return null; }
     const text = (body.content ?? [])
       .filter((b) => b.type === 'text')
       .map((b) => b.text)
       .join('')
       .trim();
-    return text ? spec.wrap(text, task.input) : null;
-  } catch {
-    return null; // fall back to the simulator on any error/timeout
+    if (!text) { diag.error = 'model returned no text'; return null; }
+    const out = spec.wrap(text, task.input);
+    if (!out) diag.error = 'model output could not be parsed';
+    return out;
+  } catch (e) {
+    // fall back to the simulator on any error/timeout, and say why
+    diag.error = e.name === 'AbortError' ? `model call timed out after ${budget} ms` : `model API unreachable: ${e.message}`;
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// One minimal call (max_tokens 1) to confirm the key and model actually
+// work. Used by GET /v1/status?probe=1 so a wrong model id or a rejected key
+// shows up as text instead of as silent simulator fallbacks.
+export async function probeModel(cfg, model) {
+  if (!cfg.anthropicKey) return { ok: false, model: model ?? null, error: 'no API key configured' };
+  if (!model) return { ok: false, model: null, error: 'no model configured' };
+  const t0 = Date.now();
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), cfg.probeTimeoutMs ?? 15000);
+  try {
+    const res = await fetch(`${cfg.anthropicBaseUrl}/v1/messages`, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json', 'x-api-key': cfg.anthropicKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
+    });
+    if (!res.ok) return { ok: false, model, status: res.status, error: await describeApiError(res), ms: Date.now() - t0 };
+    return { ok: true, model, status: res.status, ms: Date.now() - t0 };
+  } catch (e) {
+    return { ok: false, model, error: e.name === 'AbortError' ? 'timed out' : `unreachable: ${e.message}`, ms: Date.now() - t0 };
   } finally {
     clearTimeout(timeout);
   }

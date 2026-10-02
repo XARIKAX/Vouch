@@ -16,6 +16,7 @@ const PAGES = {
   '/providers': 'public/providers.html', '/agents': 'public/agents.html',
   '/launchpad': 'public/launchpad.html', '/agent': 'public/agent.html',
   '/trade': 'public/trade.html', '/verify': 'public/verify.html', '/metrics': 'public/metrics.html',
+  '/task': 'public/task.html',
 };
 const ASSET_TYPES = {
   '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml',

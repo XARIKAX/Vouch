@@ -80,6 +80,8 @@
 .term tbody tr{transition:background .15s}
 .term tbody tr:hover{background:rgba(242,239,228,.035)}
 .term .empty{color:rgba(242,239,228,.45);padding:26px 16px;text-align:center}
+.term .tlink{color:var(--cream);border-bottom:1px dashed rgba(242,239,228,.4)}
+.term .tlink:hover{color:var(--accent-bright);border-bottom-color:var(--accent-bright)}
 .term .pill{display:inline-flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;background:transparent;color:rgba(242,239,228,.7);border:1px solid rgba(242,239,228,.25)}
 .term .pill::before{content:"";width:6px;height:6px;background:currentColor}
 .term .pill.settled{color:var(--green);border-color:var(--green)}
@@ -329,7 +331,8 @@ let tasks = [];
 let pollTimer = null;
 const pill = (s) => `<span class="pill ${esc(s)}">${esc(s)}</span>`;
 // How the output was produced: real model, sandbox simulator, or an external provider.
-const execLabel = (x) => ({ model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' }[x.mode] ?? x.mode) + (x.ms ? ` in ${(x.ms / 1000).toFixed(1)}s` : '');
+const execLabel = (x) => ({ model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' }[x.mode] ?? x.mode)
+  + (x.ms ? ` in ${(x.ms / 1000).toFixed(1)}s` : '') + (x.model_error ? ` (${x.model_error})` : '');
 
 function detail(t) {
   const s = t.settlement, r = t.refund;
@@ -359,7 +362,7 @@ function detail(t) {
 function rowHtml(t) {
   const agent = t.settlement?.provider ?? t.quote?.provider ?? '—';
   const price = t.settlement?.price ?? t.quote?.price ?? t.escrow?.locked;
-  return `<tr data-id="${esc(t.id)}"><td class="mono">${esc(t.id)}</td><td class="mono">${esc(t.capability)}</td><td>${pill(t.status)}</td>` +
+  return `<tr data-id="${esc(t.id)}"><td class="mono"><a class="tlink" href="/task?id=${esc(t.id)}" title="What the agent did">${esc(t.id)}</a></td><td class="mono">${esc(t.capability)}</td><td>${pill(t.status)}</td>` +
     `<td class="mono">${esc(agent)}</td><td class="mono">${price === undefined ? '—' : money(price)}</td><td>${detail(t)}</td></tr>`;
 }
 function renderTasks() {

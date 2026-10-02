@@ -73,7 +73,7 @@ test('C1: a malformed request target answers 400 and the server keeps serving', 
 test('static routes serve pages and assets; traversal out of /assets is refused', async () => {
   const { server, call } = await boot();
   try {
-    for (const p of ['/', '/dashboard', '/docs', '/verify', '/trade']) {
+    for (const p of ['/', '/dashboard', '/docs', '/verify', '/trade', '/task']) {
       const r = await call('GET', p);
       assert.equal(r.status, 200, p);
       assert.match(r.headers.get('content-type'), /text\/html/);
@@ -344,5 +344,6 @@ test('attestation key: URL-safe base64 bodies are accepted and invalid character
   assert.equal(normalizePem(urlsafe), good);
   assert.equal(createAttestor({ attestKey: urlsafe }).keyId, createAttestor({ attestKey: good }).keyId);
   const d = describeKeyShape(urlsafe);
-  assert.match(d, /base64 invalid/); assert.match(d, /invalid characters: "-"/);
+  // the body may also hold "_" (from "/"), listed first when it appears first
+  assert.match(d, /base64 invalid/); assert.match(d, /invalid characters: (?:"_", )?"-"/);
 });
