@@ -118,10 +118,18 @@ export async function ensureKey(name = 'sandbox') {
 }
 
 // Poll a task until it reaches a terminal state (settled / refunded) or the timeout.
-export async function waitTask(id, { key = getKey(), timeoutMs = 20000, every = 300, onUpdate } = {}) {
+// A just-created task can take a moment to become visible to other serverless
+// instances, so a 404 inside the first `graceMs` is treated as "not yet", not
+// as an error.
+export async function waitTask(id, { key = getKey(), timeoutMs = 30000, every = 400, graceMs = 12000, onUpdate } = {}) {
   const t0 = Date.now();
   for (;;) {
-    const t = await api(`/v1/tasks/${id}`, { key });
+    let t;
+    try { t = await api(`/v1/tasks/${id}`, { key }); }
+    catch (e) {
+      if (e.status === 404 && Date.now() - t0 < graceMs) { await new Promise((r) => setTimeout(r, every)); continue; }
+      throw e;
+    }
     onUpdate?.(t);
     if (t.status === 'settled' || t.status === 'refunded') return t;
     if (Date.now() - t0 > timeoutMs) return t;
