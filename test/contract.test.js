@@ -482,3 +482,22 @@ test('POST /v1/broker/order: 422 thesis_rejected until the thesis verifies, then
     assert.equal(good.body.error.code, 'broker_unconfigured');
   } finally { server.close(); }
 });
+
+test('GET /v1/status reports configuration without secrets', async () => {
+  const { createApp } = await import('../server.js');
+  const { server } = createApp({ fast: true, anthropicKey: 'sk-test', execModel: 'exec-x', graderModel: 'grade-y', attestKey: null });
+  await new Promise((r) => server.listen(0, r));
+  try {
+    const res = await fetch(`http://localhost:${server.address().port}/v1/status`);
+    assert.equal(res.status, 200);
+    const j = await res.json();
+    assert.equal(j.execution, 'model');
+    assert.equal(j.exec_model, 'exec-x');
+    assert.equal(j.grading, 'model');
+    assert.equal(j.grader_model, 'grade-y');
+    assert.equal(j.attestation_key, 'generated');
+    assert.equal(j.store, 'memory');
+    assert.equal(j.broker, 'simulated');
+    assert.ok(!JSON.stringify(j).includes('sk-test'), 'the key itself never appears');
+  } finally { server.close(); }
+});
