@@ -334,6 +334,8 @@ const pill = (s) => `<span class="pill ${esc(s)}">${esc(s)}</span>`;
 const execLabel = (x) => ({ model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' }[x.mode] ?? x.mode)
   + (x.ms ? ` in ${(x.ms / 1000).toFixed(1)}s` : '') + (x.model_error ? ` (${x.model_error})` : '');
 
+// Every row opens the task page, where the delivered work (text, image, code, figure) is shown in full.
+const view = (t) => ` <a class="linkbtn" href="/task?id=${esc(t.id)}">${t.capability === 'image.generate' && t.status === 'settled' ? 'view image' : 'view'} ↗</a>`;
 function detail(t) {
   const s = t.settlement, r = t.refund;
   if (t.status === 'settled' && s) {
@@ -342,7 +344,7 @@ function detail(t) {
     if (s.consensus) bits.push(`consensus ${s.consensus.passed}/${s.consensus.dispatched}`);
     if (s.attempts > 1) bits.push(`settled on attempt ${s.attempts}`);
     if (t.execution?.mode) bits.push(execLabel(t.execution));
-    return esc(bits.join(' · ')) + ` <a class="linkbtn" href="/verify?task=${esc(t.id)}" target="_blank" rel="noopener">proof ↗</a>`;
+    return esc(bits.join(' · ')) + view(t) + ` <a class="linkbtn" href="/verify?task=${esc(t.id)}" target="_blank" rel="noopener">proof ↗</a>`;
   }
   if (t.status === 'refunded') {
     const bits = [r ? `${r.reason}: ${r.detail}` : 'refunded'];
@@ -350,7 +352,7 @@ function detail(t) {
     if (t.slash?.amount) bits.push(`provider slashed −${money(t.slash.amount)}`);
     if (t.compensation?.amount) bits.push(`insurance paid you ${money(t.compensation.amount)}`);
     if (t.attempts?.length > 1) bits.push(`${t.attempts.length} attempts`);
-    return esc(bits.join(' · '));
+    return esc(bits.join(' · ')) + view(t);
   }
   const last = t.events?.[t.events.length - 1];
   if (last?.status === 'verifying' && last.validators) return esc(`verifying [${last.validators.join(', ')}]`);
