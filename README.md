@@ -212,6 +212,8 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `ANTHROPIC_API_KEY` | unset | Real execution for the built-in text providers and the three-persona rubric panel. Unset: simulator + heuristic grader |
 | `VOUCH_GRADER_URL` | unset | Your own rubric grader (`{input, output, rubric, grader}` → `{pass}`); takes precedence over the model panel |
 | `VOUCH_GRADER_MODEL` / `VOUCH_EXEC_MODEL` | engine default | Override the grading / execution model |
+| `VOUCH_IMAGE_PROVIDER` | `pollinations` when `ANTHROPIC_API_KEY` is set, else `none` | Real image generation for `image.generate` through a keyless, URL-based image API. Verification fetches the picture and the vision grader panel judges it against the prompt. `none` returns a labelled placeholder |
+| `VOUCH_IMAGE_BASE_URL` / `VOUCH_IMAGE_MODEL` | `https://image.pollinations.ai` / `flux` | Image API base and model name |
 | `VOUCH_MODEL_SLA_MS` | `20000` | With a real model configured, built-in text providers quote at least this deadline. Set `deadline_ms` at or above it for model-backed tasks |
 | `VOUCH_LOCK_SIGNUP` | unset | `1` gates `POST /v1/keys` and `POST /v1/providers` behind `X-Admin-Token` |
 | `VOUCH_ADMIN_TOKEN` | unset | Admin token for locked minting, agent writes and `POST /v1/admin/guardian` |

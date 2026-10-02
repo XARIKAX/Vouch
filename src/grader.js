@@ -1,5 +1,6 @@
 import { primaryValue } from './catalog.js';
 import { describeApiError } from './execute-claude.js';
+import { fetchImage } from './image.js';
 
 // Model-backed rubric grader. Active when ANTHROPIC_API_KEY and a grader model
 // (VOUCH_GRADER_MODEL) are set; the heuristic in verification.js remains the
@@ -26,13 +27,24 @@ export async function claudeGrade(task, output, rubric, graderIdx, cfg, context 
   if (!cfg.graderModel) return false;
   const note = (why) => { if (diag && Array.isArray(diag.errors)) diag.errors.push(why); };
   const deliverable = primaryValue(task.capability, output);
+  // An image task is judged on the picture: verification passes the fetched
+  // bytes in context.image; a re-review (dispute) fetches them again.
+  let image = context?.image ?? null;
+  if (!image && task.capability === 'image.generate' && typeof deliverable === 'string') {
+    const got = await fetchImage(deliverable, { timeoutMs: cfg.imageFetchTimeoutMs ?? 40000 });
+    if (!got.ok) { note(`grader could not fetch the image: ${got.error}`); return false; }
+    image = { media_type: got.media_type, bytes: got.bytes };
+  }
   const payload = {
     capability: task.capability,
     input: task.input,
-    deliverable: typeof deliverable === 'string' ? deliverable : output,
+    deliverable: image ? '(the attached image)' : typeof deliverable === 'string' ? deliverable : output,
     rubric,
     ...(context?.dispute ? { dispute: context.dispute } : {}),
   };
+  const content = image
+    ? [{ type: 'image', source: { type: 'base64', media_type: image.media_type, data: image.bytes.toString('base64') } }, { type: 'text', text: JSON.stringify(payload) }]
+    : JSON.stringify(payload);
 
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), cfg.graderTimeoutMs ?? 30000);
@@ -49,7 +61,7 @@ export async function claudeGrade(task, output, rubric, graderIdx, cfg, context 
         model: cfg.graderModel,
         max_tokens: 16,
         system: `${PERSONAS[graderIdx % PERSONAS.length]} ${VERDICT_RULES}`,
-        messages: [{ role: 'user', content: JSON.stringify(payload) }],
+        messages: [{ role: 'user', content }],
       }),
     });
     if (!res.ok) { note(`grader API ${await describeApiError(res)}`); return false; }

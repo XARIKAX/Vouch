@@ -35,6 +35,11 @@ export function createEngine(cfg = {}) {
     // deadline is at least this: a model answer plus a cold start takes far
     // longer than the sandbox simulator's seed SLAs. Not applied in fast mode.
     modelSlaMs: Number(process.env.VOUCH_MODEL_SLA_MS) || 20000,
+    // Image generation: a URL-based image API (keyless by default), on
+    // whenever real model execution is on, unless switched off.
+    imageProvider: process.env.VOUCH_IMAGE_PROVIDER || (process.env.ANTHROPIC_API_KEY ? 'pollinations' : 'none'),
+    imageBaseUrl: process.env.VOUCH_IMAGE_BASE_URL || 'https://image.pollinations.ai',
+    imageModel: process.env.VOUCH_IMAGE_MODEL || 'flux',
     persistPath: null,
     store: null,           // injected store (serverless); overrides persistPath
     recoveryGraceMs: 0,    // boot recovery skips in-flight work younger than this
