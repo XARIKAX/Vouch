@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEngine } from '../src/engine.js';
+import { matchLabel } from '../src/execute-claude.js';
 
 const waitTerminal = async (engine, id) => {
   await engine.drain();
@@ -40,6 +41,20 @@ test('model-backed quotes are floored at modelSlaMs; math stays fast; every task
   const math = engine.state.tasks[m.task.id];
   assert.equal(math.status, 'settled');
   assert.equal(math.execution.mode, 'simulated');
+});
+
+// A strict one_of check must judge the classification, not the model's punctuation.
+test('classify.text: a model reply that clearly names one offered label is returned as the buyer spelled it', () => {
+  const labels = ['positive', 'negative', 'neutral'];
+  assert.equal(matchLabel('positive', labels), 'positive');
+  assert.equal(matchLabel('Positive.', labels), 'positive');
+  assert.equal(matchLabel('**Negative**', labels), 'negative');
+  assert.equal(matchLabel('"neutral"', labels), 'neutral');
+  assert.equal(matchLabel('The label is: positive', labels), 'positive');
+  assert.equal(matchLabel('positive or neutral', labels), 'positive or neutral', 'ambiguous replies are left alone and fail honestly');
+  assert.equal(matchLabel('spam', labels), 'spam');
+  assert.equal(matchLabel('Positive', undefined), 'Positive', 'no labels: untouched');
+  assert.equal(matchLabel('High Priority!', ['High priority', 'Low priority']), 'High priority');
 });
 
 test('without a model configured (sandbox), the floor does not apply', () => {
