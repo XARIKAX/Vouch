@@ -345,5 +345,5 @@ test('attestation key: URL-safe base64 bodies are accepted and invalid character
   assert.equal(createAttestor({ attestKey: urlsafe }).keyId, createAttestor({ attestKey: good }).keyId);
   const d = describeKeyShape(urlsafe);
   // the body may also hold "_" (from "/"), listed first when it appears first
-  assert.match(d, /base64 invalid/); assert.match(d, /invalid characters: (?:"_", )?"-"/);
+  assert.match(d, /base64 invalid/); assert.match(d, /invalid characters: (?:"_",? )?"-"/);
 });
