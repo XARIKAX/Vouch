@@ -331,3 +331,18 @@ test('attestation key: typographic dashes and a plus-turned-space are repaired; 
   assert.match(bad, /body 63 chars \(expect 64\)/);
   assert.match(describeKeyShape(good), /ed25519 PKCS8 header ok/);
 });
+
+test('attestation key: URL-safe base64 bodies are accepted and invalid characters are named', async () => {
+  const { normalizePem, createAttestor, describeKeyShape } = await import('../src/attest.js');
+  const crypto = await import('node:crypto');
+  let good, body;
+  do {
+    good = crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    body = good.split('\n').filter((l) => l && !l.startsWith('-----')).join('');
+  } while (!body.includes('+'));
+  const urlsafe = good.replace(body, body.replace(/\+/g, '-').replace(/\//g, '_'));
+  assert.equal(normalizePem(urlsafe), good);
+  assert.equal(createAttestor({ attestKey: urlsafe }).keyId, createAttestor({ attestKey: good }).keyId);
+  const d = describeKeyShape(urlsafe);
+  assert.match(d, /base64 invalid/); assert.match(d, /invalid characters: "-"/);
+});
