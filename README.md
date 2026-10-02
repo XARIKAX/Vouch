@@ -114,7 +114,10 @@ Verification runs the same way for all three. Rubric grading uses a three-person
 | `GET /v1/attestation/key` | Public key and `key_id` to verify attestations offline (public) |
 | `GET /v1/agents` · `GET /v1/agents/{id}` | Launched agents: token bond, capacity, routed revenue (public) |
 | `POST /v1/agents` | Launch an agent. Requires a bearer key; records `owner_key_id` |
-| `POST /v1/agents/{id}/harvest` · `/price` · `/unbond` | Owner-only writes (owner's bearer key or `X-Admin-Token`); otherwise `403 not_owner` |
+| `POST /v1/agents/{id}/harvest` · `/price` · `/unbond` | Owner-only writes (owner's bearer key or `X-Admin-Token`); otherwise `403 not_owner`. `/price` answers `409 chain_priced` for an agent whose token is live on-chain |
+| `POST /v1/agents` with `launch: { venue: "pons", wallet, pair, creator_tax_bps, description, socials }` | Prepare a real token launch on Pons (Robinhood Chain): the response carries `chain.intent`, the exact `launchToken` transaction for the launcher's wallet to sign. No price until confirmed |
+| `POST /v1/agents/{id}/launch/confirm` `{ tx_hash }` | Owner-only. Verifies the receipt on-chain, records token and curve from the `TokenLaunched` event, prices the bond from the curve. `202` with `pending: true` while the transaction is mining; `409 wrong_wallet` / `not_a_launch` / `launch_reverted` |
+| `GET /v1/launchpad/pons` | Venue config a wallet needs: chain id, RPC, explorer, factory, quote assets, launch fee (public) |
 | `GET /v1/broker/status` · `/account` · `/positions` · `/quote` | Alpaca **paper** broker reads (`503 broker_unconfigured` without keys) |
 | `POST /v1/broker/order` | Place a paper order. Requires `x-broker-token` when `BROKER_ORDER_TOKEN` is set and a `thesis` object that passes verification (`422 thesis_rejected`) |
 | `POST /v1/admin/guardian` | Pause or resume slash execution for launched agents. `X-Admin-Token` required |
@@ -215,6 +218,10 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `VOUCH_IMAGE_PROVIDER` | `pollinations` when `ANTHROPIC_API_KEY` is set, else `none` | Real image generation for `image.generate` through a keyless, URL-based image API. Verification fetches the picture and the vision grader panel judges it against the prompt. `none` returns a labelled placeholder |
 | `VOUCH_IMAGE_BASE_URL` / `VOUCH_IMAGE_MODEL` | `https://image.pollinations.ai` / `flux` | Image API base and model name |
 | `VOUCH_MODEL_SLA_MS` | `20000` | With a real model configured, built-in text providers quote at least this deadline. Set `deadline_ms` at or above it for model-backed tasks |
+| `VOUCH_CHAIN_RPC` | Robinhood Chain mainnet RPC | JSON-RPC endpoint used to verify Pons launches and read bonding curves. Only reads: Vouch holds no wallet |
+| `VOUCH_PONS_FACTORY` / `VOUCH_CHAIN_ID` / `VOUCH_CHAIN_EXPLORER` | Pons V2 on Robinhood Chain (4663) | Override the launch factory, chain id and explorer (another deployment or a fork) |
+| `VOUCH_CREATOR_FEE_RECIPIENT` | unset → the launcher's wallet | Address that receives Pons creator fees for every launch prepared here (the future on-chain bond vault) |
+| `VOUCH_ETH_USD` | unset | Dollar rate used to value ETH-quoted tokens; without it an ETH-paired bond has no USD value and no capacity |
 | `VOUCH_LOCK_SIGNUP` | unset | `1` gates `POST /v1/keys` and `POST /v1/providers` behind `X-Admin-Token` |
 | `VOUCH_ADMIN_TOKEN` | unset | Admin token for locked minting, agent writes and `POST /v1/admin/guardian` |
 | `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` | unset | Alpaca **paper** keys for `/v1/broker/*`; `ALPACA_BASE_URL` must stay on the paper host |

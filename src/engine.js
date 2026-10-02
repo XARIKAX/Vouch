@@ -2,6 +2,8 @@ import { id, txHash, hash01, money, clamp, sha256, sleep } from './util.js';
 import { CAPABILITIES, validateInput } from './catalog.js';
 import { seedProviders, runExecutor } from './providers.js';
 import { modelBacked } from './execute-claude.js';
+import { ponsConfig, buildLaunchIntent, verifyLaunch, readCurve, readCreatorFees, pairFor } from './chain/pons.js';
+import { createRpc } from './chain/rpc.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
 import { createAttestor, canonical } from './attest.js';
@@ -49,6 +51,10 @@ export function createEngine(cfg = {}) {
     cachePriceRate: 0.1,   // cache-hit price as a fraction of the cheapest quote
     attestKey: process.env.VOUCH_ATTEST_KEY || null,
     allowPrivateWebhooks: false, // let webhook_url / acceptance.webhook point at private hosts (tests)
+    // Token launches on Pons (Robinhood Chain). The engine only prepares and
+    // verifies; wallets sign. `chain` carries the RPC, factory, explorer.
+    chain: ponsConfig(),
+    chainRefreshMs: 60 * 1000,   // how often a live agent's price is re-read from its curve
     ...cfg,
   };
 
@@ -1065,7 +1071,12 @@ export function createEngine(cfg = {}) {
         distinct_counterparties: Object.keys(a.counterparties ?? {}).length,
       },
       params: a.params,
+      chain: a.chain ? publicChain(a.chain) : null,
     };
+  }
+  function publicChain(c) {
+    const { intent, ...rest } = c;
+    return { ...rest, intent: intent ? { chain_id: intent.chain_id, network: intent.network, to: intent.to, data: intent.data, value_wei: intent.value_wei, value_note: intent.value_note, launch_fee_selector: intent.launch_fee_selector, params: intent.params, explorer: intent.explorer } : null };
   }
 
   function mustAgent(agentId) {
@@ -1110,12 +1121,83 @@ export function createEngine(cfg = {}) {
       creatorPaid: 0, ownerPaid: 0, buyback: 0, burned: 0, treasuryPaid: 0, bondToppedUp: 0,
       ledger: [], unbonding: null,
     };
+    // A real launch on Pons: prepare the transaction for the launcher's wallet.
+    // The token has no price until the launch is confirmed on-chain.
+    if (body.launch && typeof body.launch === 'object') {
+      if (body.launch.venue && body.launch.venue !== 'pons') throw new ApiError(400, 'invalid_input', 'launch.venue must be "pons"');
+      let intent;
+      try {
+        intent = buildLaunchIntent({ ...body.launch, agent_id: agentId, symbol: agent.token.symbol, name: agent.name ?? body.launch.name, description: body.launch.description ?? body.description, logo: body.launch.logo ?? body.logo }, cfg.chain);
+      } catch (e) { throw new ApiError(400, e.code === 'invalid_input' ? 'invalid_input' : 'launch_error', e.message); }
+      agent.token.twapUsdg = 0; agent.token.poolLiquidityUsdg = 0;
+      agent.chain = { venue: 'pons', network: cfg.chain.network, chain_id: cfg.chain.chainId, status: 'awaiting_signature', created_at: Date.now(), intent, wallet: body.launch.wallet };
+    }
     if (prov) { prov.agentId = agentId; agent.providerId = prov.id; }
     state.accounts[agentId] = newAccount(0, []);
     state.agents[agentId] = agent;
     syncAgentCapacity(agent);
     persist();
     return publicAgent(agent);
+  }
+
+  // The launcher's wallet sent the transaction: verify the receipt, record
+  // the token and curve, start pricing from the curve. Owner-only.
+  async function confirmLaunch(agentId, txHash, actor) {
+    const agent = mustAgent(agentId);
+    assertAgentActor(agent, actor);
+    if (!agent.chain) throw new ApiError(409, 'not_a_chain_launch', 'This agent was not launched on-chain.');
+    if (agent.chain.status === 'live') return publicAgent(agent);
+    const rpc = createRpc(cfg.chain.rpc);
+    let launch;
+    try { launch = await verifyLaunch(rpc, txHash, cfg.chain); }
+    catch (e) { throw new ApiError(e.code === 'invalid_input' ? 400 : e.code ? 409 : 502, e.code ?? 'chain_unreachable', e.message); }
+    if (!launch) { agent.chain.status = 'pending'; agent.chain.tx_hash = txHash; persist(); return { ...publicAgent(agent), pending: true }; }
+    if (agent.chain.wallet && launch.deployer.toLowerCase() !== agent.chain.wallet.toLowerCase()) {
+      throw new ApiError(409, 'wrong_wallet', 'The launch was sent from a different wallet than the one this agent was prepared for.', { expected: agent.chain.wallet, deployer: launch.deployer });
+    }
+    const pair = pairFor(cfg.chain, launch.pair_token);
+    agent.chain = { ...agent.chain, status: 'live', tx_hash: txHash, confirmed_at: Date.now(), ...launch, pair: pair.symbol, creator_fee_recipient: agent.chain.intent?.params?.creator_fee_recipient ?? null };
+    agent.token.address = launch.token;
+    persist();
+    await refreshAgentChain(agentId, { force: true });
+    return publicAgent(agent);
+  }
+
+  // Re-read price, liquidity and creator fees from the curve; swallow RPC
+  // failures (the last good reading stays, with the error noted).
+  async function refreshAgentChain(agentId, { force = false } = {}) {
+    const agent = state.agents[agentId];
+    if (!agent?.chain || agent.chain.status !== 'live') return null;
+    if (!force && agent.chain.refreshed_at && Date.now() - agent.chain.refreshed_at < cfg.chainRefreshMs) return agent.chain.curve_state ?? null;
+    const rpc = createRpc(cfg.chain.rpc);
+    const pair = pairFor(cfg.chain, agent.chain.pair_token);
+    try {
+      const curve = await readCurve(rpc, agent.chain.curve, pair);
+      let fees = null;
+      try { if (agent.chain.creator_fee_recipient) fees = await readCreatorFees(rpc, cfg.chain.factory, agent.chain.creator_fee_recipient, pair); } catch { /* optional */ }
+      const usd = pair.symbol === 'USDG' ? 1 : (pair.symbol === 'ETH' && cfg.chain.ethUsd) ? cfg.chain.ethUsd : null;
+      agent.chain.curve_state = curve;          // `curve` stays the curve contract's address
+      agent.chain.creator_fees = fees;
+      // curve tokens are priced in millionths of a cent: keep significant digits, not 6 decimals
+      agent.chain.price_usd = usd != null ? Number((curve.price_quote * usd).toPrecision(12)) : null;
+      agent.chain.liquidity_usd = usd != null ? money(curve.real_quote_reserve * usd) : null;
+      agent.chain.refreshed_at = Date.now();
+      agent.chain.error = null;
+      // the sandbox bond is valued from the real curve from now on
+      agent.token.twapUsdg = agent.chain.price_usd ?? 0;
+      agent.token.poolLiquidityUsdg = agent.chain.liquidity_usd ?? 0;
+      syncAgentCapacity(agent);
+      persist();
+    } catch (e) {
+      agent.chain.error = String(e.message).slice(0, 200);
+      agent.chain.refreshed_at = Date.now();
+      persist();
+    }
+    return agent.chain.curve_state ?? null;
+  }
+  async function refreshStaleChains() {
+    const live = Object.values(state.agents).filter((a) => a.chain?.status === 'live' && (!a.chain.refreshed_at || Date.now() - a.chain.refreshed_at >= cfg.chainRefreshMs));
+    await Promise.allSettled(live.slice(0, 10).map((a) => refreshAgentChain(a.id)));
   }
 
   // Harvest `feeAmount` of pool fees and split per the agent's snapshot — bond
@@ -1312,6 +1394,7 @@ export function createEngine(cfg = {}) {
   function setAgentPrice(agentId, { twap_usdg, pool_liquidity_usdg } = {}, actor) {
     const agent = mustAgent(agentId);
     assertAgentActor(agent, actor);
+    if (agent.chain?.status === 'live') throw new ApiError(409, 'chain_priced', 'This token is priced from its on-chain curve; the sandbox price feed is disabled for it.');
     if (twap_usdg !== undefined) agent.token.twapUsdg = Math.max(0, Number(twap_usdg) || 0);
     if (pool_liquidity_usdg !== undefined) agent.token.poolLiquidityUsdg = Math.max(0, Number(pool_liquidity_usdg) || 0);
     syncAgentCapacity(agent);
@@ -1736,6 +1819,7 @@ export function createEngine(cfg = {}) {
     listProviders, getProvider, insuranceStats, getAttestation, attestorKey,
     verifyOutput, createWorkflow, getWorkflow,
     launchAgent, harvestFees, requestUnbond, withdrawUnbonded, setAgentPrice, getAgent, listAgents,
+    confirmLaunch, refreshAgentChain, refreshStaleChains,
     guardianStatus, setGuardian, processPendingSlashes,
   };
 }
