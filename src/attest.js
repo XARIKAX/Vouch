@@ -40,7 +40,10 @@ export function normalizePem(raw) {
     // mapping single interior spaces back to '+'.
     let body = m[2].trim().replace(/\r?\n/g, '');
     if (/ /.test(body) && body.replace(/ /g, '+').length === 64) body = body.replace(/ /g, '+');
-    return wrap(m[1], body.replace(/\s+/g, ''));
+    body = body.replace(/\s+/g, '')
+      .replace(/[\uff0b]/g, '+').replace(/[\uff0f]/g, '/')   // fullwidth + and /
+      .replace(/-/g, '+').replace(/_/g, '/');                  // URL-safe base64 → standard
+    return wrap(m[1], body);
   }
   // A bare base64 body (the one line between the markers) is still usable.
   const bare = t.replace(/\s+/g, '');
@@ -68,6 +71,10 @@ export function describeKeyShape(raw) {
       decoded = `${buf.length} bytes` + (buf.subarray(0, 16).toString('hex') === '302e020100300506032b657004220420' ? ', ed25519 PKCS8 header ok' : ', not an ed25519 PKCS8 header');
     }
     parts.push(`body ${body.length} chars (expect 64)`, `base64 ${b64ok ? 'valid' : 'invalid'}`, `decoded ${decoded}`);
+    if (!b64ok) {
+      const bad = [...new Set(body.replace(/[A-Za-z0-9+/=]/g, ''))].map((ch) => JSON.stringify(ch)).join(' ');
+      parts.push(`invalid characters: ${bad}`);
+    }
     if (/^[0-9a-f]{64}$/i.test(body)) parts.push('body looks like a 64-char hex token, not a key');
   }
   return parts.join(', ');
