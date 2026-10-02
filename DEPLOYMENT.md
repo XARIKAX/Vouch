@@ -167,6 +167,10 @@ Before real traffic:
 | `VOUCH_IMAGE_BASE_URL` / `VOUCH_IMAGE_MODEL` | Image API base URL and model name | `https://image.pollinations.ai` / `flux` |
 | `VOUCH_MODEL_SLA_MS` | Minimum deadline the built-in text providers quote when they execute through a real model (a buyer's `deadline_ms` below it gets a 409 with the nearest quote) | `20000` |
 | `VOUCH_GRADER_URL` | Custom webhook grader | unset |
+| `VOUCH_CHAIN_RPC` | JSON-RPC endpoint for verifying Pons launches and reading bonding curves (reads only; Vouch holds no wallet) | Robinhood Chain mainnet RPC |
+| `VOUCH_PONS_FACTORY` / `VOUCH_CHAIN_ID` / `VOUCH_CHAIN_EXPLORER` | Override the Pons launch factory, chain id and explorer | Pons V2 on Robinhood Chain (4663) |
+| `VOUCH_CREATOR_FEE_RECIPIENT` | Address that receives Pons creator fees for launches prepared here (the future on-chain bond vault) | unset → the launcher's wallet |
+| `VOUCH_ETH_USD` | Dollar rate to value ETH-quoted tokens; unset leaves ETH-paired bonds without a USD value | unset |
 | `VOUCH_ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
 | `VOUCH_EPHEMERAL` | `1` = in-memory state (dev only) | unset |
 | `VOUCH_FAST` | `1` = fast timings (dev only) | unset |

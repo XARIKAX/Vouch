@@ -320,12 +320,36 @@ export function createApi(engine, { buckets } = {}) {
 
     ['GET', /^\/v1\/agents$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
+      await engine.refreshStaleChains();
       send(res, 200, { agents: engine.listAgents() }, rl);
     }],
 
     ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId]) => {
       const rl = limit(keyOrAnon(req));
+      await engine.refreshAgentChain(agentId);
       send(res, 200, engine.getAgent(agentId), rl);
+    }],
+
+    // The launcher's wallet sent the Pons launch: hand over the transaction
+    // hash and the engine verifies it on-chain. 202 while still pending.
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/launch\/confirm$/, async (req, res, [agentId]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      const out = await engine.confirmLaunch(agentId, body.tx_hash ?? body.txHash, actor);
+      send(res, out.pending ? 202 : 200, out, rl);
+    }],
+
+    // What a wallet needs to launch on Pons: chain, factory, pairs, explorer.
+    ['GET', /^\/v1\/launchpad\/pons$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      const c = engine.cfg.chain;
+      send(res, 200, {
+        venue: 'pons', network: c.network, chain_id: c.chainId, chain_id_hex: '0x' + c.chainId.toString(16), rpc: c.rpc, explorer: c.explorer,
+        factory: c.factory, pairs: Object.values(c.pairs).map((p) => ({ symbol: p.symbol, address: p.address, decimals: p.decimals, native: p.native })),
+        default_launch_fee_wei: c.defaultLaunchFeeWei.toString(), max_creator_tax_bps: c.maxCreatorTaxBps,
+        creator_fee_recipient: c.creatorFeeRecipient ?? 'launcher wallet', eth_usd: c.ethUsd,
+      }, rl);
     }],
 
     ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/harvest$/, async (req, res, [agentId]) => {

@@ -142,3 +142,27 @@ on-chain" badge is trading on. None of this is built yet; see Status.
 > "Settles in a sandbox ledger today. On-chain settlement is next." and name
 > no chain or stablecoin. Escrow and stake remain a simulated bond until a
 > contract is deployed and the engine is switched onto the adapter.
+
+## What is on-chain today: token launches on Pons
+
+The one piece that already touches a real chain is the **agent token
+launch**. `src/chain/` (keccak, ABI coder, JSON-RPC client, `pons.js`) talks
+to Pons V2 on Robinhood Chain (chain id 4663) with zero dependencies:
+
+- `POST /v1/agents` with a `launch` object prepares the exact
+  `PonsV2LaunchFactory.launchToken` calldata for the launcher's wallet. Vouch
+  holds no key and signs nothing; the wallet pays the launch fee and gas.
+- `POST /v1/agents/{id}/launch/confirm` reads the receipt, requires the
+  `TokenLaunched` event from the configured factory and the expected deployer
+  wallet, and records the token and bonding-curve addresses.
+- From then on the engine reads the curve (`getReserves`,
+  `realQuoteReserve`, `graduationThreshold`, `graduated`) to price the bond and
+  the fee escrow for accrued creator fees. The sandbox price control is
+  refused for these agents.
+
+Creator fees go to the launcher's wallet unless `VOUCH_CREATOR_FEE_RECIPIENT`
+names another address. Pointing it at a deployed `AgentBondVault` is the
+bridge between this and the escrow design above: curve fees would then fund
+the on-chain bond directly. That contract is still an untested draft, so the
+recipient stays an ordinary wallet until it is compiled, tested, audited and
+signed off.
