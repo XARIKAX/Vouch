@@ -69,7 +69,9 @@ export function buildLaunchIntent(input, cfg = ponsConfig()) {
   const pairKey = String(input.pair || 'USDG').toUpperCase();
   const pair = cfg.pairs[pairKey];
   if (!pair) throw Object.assign(new Error(`launch.pair must be one of ${Object.keys(cfg.pairs).join(', ')}`), { code: 'invalid_input' });
-  const tax = Math.round(Number(input.creator_tax_bps ?? 100));
+  // the launcher's share of the curve's trade fee; default to the maximum,
+  // since on Vouch those fees are what bonds the agent
+  const tax = Math.round(Number(input.creator_tax_bps ?? cfg.maxCreatorTaxBps));
   if (!(tax >= 0 && tax <= cfg.maxCreatorTaxBps)) throw Object.assign(new Error(`launch.creator_tax_bps must be between 0 and ${cfg.maxCreatorTaxBps}`), { code: 'invalid_input' });
   const recipient = cfg.creatorFeeRecipient || input.wallet;
   const s = input.socials || {};
