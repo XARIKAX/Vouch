@@ -27,13 +27,15 @@ a sandbox ledger today. On-chain settlement is next.
    repo-root `vercel.json` routes every path to `api/index.js`, bundles the
    HTML pages, and pins region `lhr1`.
 2. **Add Redis** — in the Vercel dashboard: project → **Storage** →
-   **Create Database / Marketplace** → **Upstash Redis** (free tier is fine)
-   → connect it to the project. This auto-injects
-   `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (legacy
-   `KV_REST_API_URL`/`KV_REST_API_TOKEN` names also work). To wire it
-   manually instead, create a database at [upstash.com](https://upstash.com)
-   and set those two env vars under project → Settings → Environment
-   Variables.
+   **Create Database**. Either integration works:
+   - **Redis** (Vercel's native integration, free 30 MB plan): injects
+     `REDIS_URL`. The app speaks the Redis wire protocol itself, no package
+     needed. `rediss://` (TLS) URLs are supported.
+   - **Upstash Redis**: injects `UPSTASH_REDIS_REST_URL` /
+     `UPSTASH_REDIS_REST_TOKEN` (legacy `KV_REST_API_URL` / `KV_REST_API_TOKEN`
+     also work) and the app uses the REST API.
+   Connect the database to the project with the Production environment
+   ticked. If both are present, Upstash REST is used.
 3. Add `VOUCH_ATTEST_KEY` (a PKCS8 ed25519 PEM) so attestation receipts stay
    verifiable across invocations and instances. Without it the engine keeps a
    generated key in its state snapshot, which only holds while the snapshot
@@ -144,7 +146,8 @@ Before real traffic:
 | --- | --- | --- |
 | `VOUCH_PORT` | Listen port (server mode) | `4402` |
 | `VOUCH_STATE` | State file path (server mode) | `data/state.json` (Docker: `/data/state.json`) |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Serverless state store (`KV_REST_API_*` also accepted) | unset → in-memory |
+| `REDIS_URL` | Serverless state store over the Redis protocol (Vercel Redis integration, Redis Cloud; `rediss://` for TLS) | unset |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Serverless state store over Upstash REST (`KV_REST_API_*` also accepted; takes precedence over `REDIS_URL`) | unset → in-memory |
 | `VOUCH_STATE_KEY` | Redis key for the state snapshot | `vouch:state` |
 | `VOUCH_LOCK_SIGNUP` | `1` = gate key/provider minting behind `X-Admin-Token` | unset (open) |
 | `VOUCH_ADMIN_TOKEN` | Admin token for locked minting, launched-agent writes and `POST /v1/admin/guardian` | unset |

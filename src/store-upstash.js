@@ -1,4 +1,5 @@
 import { stateReplacer } from './store.js';
+import { createRedisClient } from './redis-client.js';
 
 // Upstash Redis (REST API) persistence for serverless deployments, where the
 // filesystem is read-only/ephemeral. Zero dependencies — plain fetch against
@@ -14,7 +15,10 @@ import { stateReplacer } from './store.js';
 // Reads env vars from either the Upstash integration or the Vercel KV names:
 //   UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN
 //   KV_REST_API_URL        / KV_REST_API_TOKEN
-// Returns null when neither pair is configured.
+// Returns null when neither pair is configured. The same snapshot + CAS
+// logic also runs over a plain Redis connection (REDIS_URL, as Vercel's own
+// Redis integration and Redis Cloud provide) via createRedisStore(); pick
+// whichever is configured with createRemoteStore().
 
 const COLLECTIONS = ['keys', 'accounts', 'providers', 'tasks', 'disputes', 'workflows', 'agents', 'cache'];
 
@@ -52,12 +56,7 @@ export function createUpstashStore(opts = {}) {
   const token = opts.token ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
   const key = opts.key ?? process.env.VOUCH_STATE_KEY ?? 'vouch:state';
   if (!url || !token) return null;
-  const versionKey = `${key}:version`;
-
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-  let dirty = null;        // latest state reference awaiting flush
-  let loadedVersion = 0;   // version of the snapshot this invocation started from
-
   // One Redis command over REST: POST ["CMD", arg, ...] to the root.
   const command = async (args, what) => {
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(args) });
@@ -66,6 +65,36 @@ export function createUpstashStore(opts = {}) {
     if (body.error) throw new Error(`state store ${what} failed: ${body.error}`);
     return body.result;
   };
+  return snapshotStore({ command, key, path: `${url} (${key})` });
+}
+
+// Plain Redis (RESP over TCP/TLS) using the same snapshot + compare-and-set
+// logic. Configured by REDIS_URL (Vercel Redis integration, Redis Cloud, any
+// Redis 6+). Returns null when REDIS_URL is unset.
+export function createRedisStore(opts = {}) {
+  const url = opts.url ?? process.env.REDIS_URL ?? process.env.KV_URL;
+  const key = opts.key ?? process.env.VOUCH_STATE_KEY ?? 'vouch:state';
+  if (!url) return null;
+  const client = opts.client ?? createRedisClient(url, { timeoutMs: opts.timeoutMs ?? 5000 });
+  const command = async (args, what) => {
+    try { return await client.command(args); }
+    catch (e) { throw new Error(`state store ${what} failed: ${e.message}`); }
+  };
+  const store = snapshotStore({ command, key, path: `${url.replace(/\/\/.*@/, '//***@')} (${key})` });
+  store.close = () => client.close();
+  return store;
+}
+
+// Whichever remote store the environment configures: Upstash REST first,
+// then a plain REDIS_URL. Null means in-memory (demo) mode.
+export function createRemoteStore(opts = {}) {
+  return createUpstashStore(opts) ?? createRedisStore(opts);
+}
+
+function snapshotStore({ command, key, path }) {
+  const versionKey = `${key}:version`;
+  let dirty = null;        // latest state reference awaiting flush
+  let loadedVersion = 0;   // version of the snapshot this invocation started from
 
   const load = async () => {
     const [raw, ver] = await Promise.all([command(['GET', key], 'read'), command(['GET', versionKey], 'read')]);
@@ -102,5 +131,5 @@ export function createUpstashStore(opts = {}) {
     throw new Error('state store write conflict: another invocation kept winning; this invocation\'s writes were not persisted');
   };
 
-  return { load, save, flush, path: `${url} (${key})`, get version() { return loadedVersion; } };
+  return { load, save, flush, path, get version() { return loadedVersion; } };
 }
