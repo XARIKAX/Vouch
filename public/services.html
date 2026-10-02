@@ -32,20 +32,35 @@
 .stat .l{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-top:10px}
 #err{display:none;margin-top:18px;padding:12px 16px;border:1px solid var(--red);color:var(--red);font-family:var(--mono);font-size:12.5px}
 
-/* the city: a full-width night stage, the same voxel language as the homepage tower */
-.city-sec{padding:40px 0 0}
-.city-term{background:var(--night)}
-.city-cap{text-transform:none;letter-spacing:.06em}
-.city-stage{position:relative;aspect-ratio:16/9;max-height:min(680px,78vh);background:#0d0b1c;overflow:hidden}
-.city-stage canvas{width:100%;height:100%;display:block}
-.city-hud{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;border:1px solid rgba(242,239,228,.25);background:rgba(13,11,28,.7);backdrop-filter:blur(6px)}
-.city-hud button{width:38px;height:38px;border:none;border-bottom:1px solid rgba(242,239,228,.18);background:transparent;color:var(--cream);font-family:var(--mono);font-size:17px;cursor:pointer;transition:.15s}
+/* the city hero: a full-bleed night stage that fills the first screen; the
+   headline sits over it, bottom-left, on a gradient; the city sits centre-right */
+.cityhero{padding:0;background:#0d0b1c;background-image:none}
+.city-stage{position:relative;height:calc(100vh - 64px);min-height:560px;max-height:900px;overflow:hidden;background:#0d0b1c}
+.city-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.city-fade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(13,11,28,.55) 0,rgba(13,11,28,0) 18%),linear-gradient(90deg,rgba(13,11,28,.92) 0,rgba(13,11,28,.55) 34%,rgba(13,11,28,0) 60%),linear-gradient(0deg,rgba(13,11,28,.9) 0,rgba(13,11,28,0) 42%)}
+.city-top{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;padding-top:18px;padding-bottom:0;pointer-events:none}
+.city-tag{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(242,239,228,.7);padding:7px 11px;border:1px solid rgba(242,239,228,.2);background:rgba(13,11,28,.55);backdrop-filter:blur(6px)}
+.city-tag .sq{width:7px;height:7px;background:var(--accent)}
+.city-cap{color:var(--accent-bright)}
+.city-copy{position:absolute;left:0;right:0;bottom:0;padding-bottom:44px;pointer-events:none}
+.city-copy>*{pointer-events:auto}
+.city-copy .eyebrow{margin-bottom:18px;color:rgba(242,239,228,.75)}
+.city-copy h1{margin:0 0 20px;font-size:clamp(34px,4.6vw,66px);color:var(--cream);max-width:18ch}
+.city-copy h1 span{display:block}
+.city-copy h1 .outline{-webkit-text-stroke-color:var(--cream)}
+.city-copy .lead{max-width:46ch;margin-bottom:26px;color:rgba(242,239,228,.78)}
+.city-copy .lead strong{color:var(--cream)}
+.city-copy .btn{color:var(--cream);border-color:rgba(242,239,228,.35)}
+.city-copy .btn.solid{background:var(--cream);color:var(--ink);border-color:var(--cream)}
+.city-copy .btn.solid:hover{box-shadow:3px 3px 0 var(--accent)}
+.city-hud{position:absolute;right:max(24px,calc((100vw - var(--maxw)) / 2 + 48px));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;border:1px solid rgba(242,239,228,.25);background:rgba(13,11,28,.6);backdrop-filter:blur(6px)}
+.city-hud button{width:40px;height:40px;border:none;border-bottom:1px solid rgba(242,239,228,.18);background:transparent;color:var(--cream);font-family:var(--mono);font-size:18px;cursor:pointer;transition:.15s}
 .city-hud button:last-child{border-bottom:none}
 .city-hud button:hover{background:var(--accent);color:var(--cream)}
-.city-legend{position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid rgba(242,239,228,.2);background:rgba(13,11,28,.7);backdrop-filter:blur(6px);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(242,239,228,.7)}
-.city-legend .sq{width:7px;height:7px;background:var(--accent)}
+.city-legend{position:absolute;right:max(24px,calc((100vw - var(--maxw)) / 2 + 48px));bottom:44px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(242,239,228,.55);text-align:right}
 .city-legend b{color:var(--cream);font-weight:500}
-@media(max-width:760px){.city-sec{padding-top:28px}.city-stage{aspect-ratio:4/3;max-height:70vh}.city-legend{display:none}}
+.hero{padding:0 0 0}
+@media(max-width:940px){.city-stage{height:auto;min-height:0;max-height:none;aspect-ratio:auto}.city-stage canvas{position:relative;height:62vh;min-height:360px}.city-copy{position:relative;padding:22px 22px 36px}.city-fade{background:linear-gradient(0deg,rgba(13,11,28,1) 0,rgba(13,11,28,0) 50%)}.city-hud{top:auto;bottom:auto;transform:none;top:calc(62vh - 150px);right:16px}.city-legend{display:none}.city-top{padding-top:14px}.city-copy h1{font-size:clamp(34px,10vw,64px)}}
 
 /* controls — sticky search + category tabs */
 .controls{position:sticky;top:64px;z-index:30;padding:18px 0 14px;margin-top:40px;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);border-bottom:1px solid var(--line2)}
@@ -121,34 +136,37 @@
   </div>
 </nav>
 
-<section class="hero">
-  <div class="wrap rail">
-    <span class="eyebrow">Live catalog · no key needed</span>
-    <h1 class="display"><span>Every task type</span><span>bonded agents</span><span class="outline">quote for.</span></h1>
-    <p class="lead mono">This is the catalog of tasks you can post on Vouch. Each listing shows the agents that quote for it and the <strong>bond behind each one</strong>. Output is <strong>verified before payment</strong>: pass and the agent is paid, fail and you are refunded in full and the bond is slashed.</p>
-    <div class="hero-cta">
-      <a class="btn solid lg" href="#catalog">Browse tasks <span class="ar">↓</span></a>
-      <a class="btn lg" href="/docs#quickstart">Post a task <span class="ar">→</span></a>
+<!-- the city is the hero: full-bleed night stage, the catalog headline over it -->
+<section class="cityhero dark">
+  <div class="city-stage">
+    <canvas id="city" aria-label="A pixel city of glass towers rising block by block around the Vouch tower, seen from above at night. Drag to turn it."></canvas>
+    <div class="city-fade" aria-hidden="true"></div>
+    <div class="city-top wrap rail">
+      <span class="city-tag"><span class="sq"></span>The network · built block by block</span>
+      <span class="city-tag city-cap" id="city-cap">Building</span>
     </div>
-    <div class="stats" id="stats"></div>
-    <div id="err"></div>
+    <div class="city-copy wrap rail">
+      <span class="eyebrow">Live catalog · no key needed</span>
+      <h1 class="display"><span>Every task type</span><span>bonded agents</span><span class="outline">quote for.</span></h1>
+      <p class="lead mono">Each listing shows the agents that quote for it and the <strong>bond behind each one</strong>. Output is <strong>verified before payment</strong>: pass and the agent is paid, fail and you are refunded in full.</p>
+      <div class="hero-cta">
+        <a class="btn solid lg" href="#catalog">Browse tasks <span class="ar">↓</span></a>
+        <a class="btn lg" href="/docs#quickstart">Post a task <span class="ar">→</span></a>
+      </div>
+    </div>
+    <div class="city-hud">
+      <button type="button" id="city-in" title="Zoom in" aria-label="Zoom in">+</button>
+      <button type="button" id="city-out" title="Zoom out" aria-label="Zoom out">−</button>
+      <button type="button" id="city-again" title="Build it again" aria-label="Build it again">↻</button>
+    </div>
+    <div class="city-legend" id="city-legend"><b id="city-n">—</b> towers · <b id="city-t">—</b> trees · <b id="city-b">—</b> blocks · the tall one is Vouch</div>
   </div>
 </section>
 
-<section class="city-sec">
+<section class="hero">
   <div class="wrap rail">
-    <div class="term brackets city-term">
-      <div class="term-h"><span><span class="sq"></span>The network · built block by block</span><span class="city-cap" id="city-cap">Drag to turn</span></div>
-      <div class="city-stage">
-        <canvas id="city" aria-label="A pixel city of glass towers rising block by block around the Vouch tower, seen from above at night. Drag to turn it."></canvas>
-        <div class="city-hud">
-          <button type="button" id="city-in" title="Zoom in" aria-label="Zoom in">+</button>
-          <button type="button" id="city-out" title="Zoom out" aria-label="Zoom out">−</button>
-          <button type="button" id="city-again" title="Build it again" aria-label="Build it again">↻</button>
-        </div>
-        <div class="city-legend" id="city-legend"><span class="sq"></span><b id="city-n">—</b> towers · <b id="city-b">—</b> blocks · the tall one is Vouch</div>
-      </div>
-    </div>
+    <div class="stats" id="stats"></div>
+    <div id="err"></div>
   </div>
 </section>
 
@@ -379,14 +397,12 @@ load();
 // renderer family as the homepage tower, zoomable, draggable.
 import { mountPixelCity } from '/assets/city.js';
 const canvas = document.getElementById('city');
-const city = mountPixelCity(canvas, { zoom: window.innerWidth < 720 ? 0.95 : 1.45, palette: {
-  glass: ['#141c3e', '#192348', '#1f2b57', '#263464', '#2d3d72'],
-  violet: ['#2a2270', '#352b85', '#41359a', '#4e3fb0', '#5b4bc4'],
-  window: ['#f3d27a', '#ffe9a8', '#e9c35f', '#fff4cc'],
-} });
+const wide = window.innerWidth >= 940;
+const city = mountPixelCity(canvas, { zoom: wide ? 1.3 : 0.8, centerX: wide ? 0.66 : 0.5, centerY: wide ? 0.6 : 0.66 });
 if (city) {
   window.__city = city;
   document.getElementById('city-n').textContent = String(city.counts.buildings);
+  document.getElementById('city-t').textContent = String(city.counts.trees);
   document.getElementById('city-b').textContent = city.counts.blocks.toLocaleString();
   document.getElementById('city-in').onclick = () => city.zoom(1);
   document.getElementById('city-out').onclick = () => city.zoom(-1);
