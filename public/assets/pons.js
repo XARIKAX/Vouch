@@ -101,6 +101,36 @@ export async function launch({ agent, key, cfg, from, step = () => {} }) {
   return { hash, agent: live, fee };
 }
 
+// Pull accrued creator fees out of the Pons fee escrow. Only the recipient
+// wallet can claim, so the connected wallet must be the recipient. Simulated
+// first; resolves with the transaction hash once the chain has mined it.
+export async function claimFees({ cfg, chain, from, step = () => {} }) {
+  const provider = walletProvider();
+  const escrow = chain.creator_fees?.escrow;
+  const recipient = chain.creator_fee_recipient;
+  if (!escrow) throw err('no_escrow', 'The fee escrow has not been read yet. Reload the page and try again.');
+  if (recipient && from.toLowerCase() !== String(recipient).toLowerCase()) throw err('not_recipient', `Only the fee recipient (${short(recipient)}) can claim; the wallet is ${short(from)}.`);
+  const pair = (cfg.pairs || []).find((p) => p.symbol === chain.pair);
+  if (!pair) throw err('no_pair', 'Unknown quote asset for this token.');
+  const data = pair.native ? cfg.claim_selectors.claim : cfg.claim_selectors.claim_token + pair.address.slice(2).toLowerCase().padStart(64, '0');
+  step('chain', `Switching the wallet to ${cfg.network}`);
+  await ensureChain(cfg, provider);
+  step('simulate', 'Simulating the claim');
+  try { await provider.request({ method: 'eth_call', params: [{ from, to: escrow, data }, 'latest'] }); }
+  catch (e) { throw err('would_revert', 'The claim would revert: ' + String(e?.data?.message || e?.message || '').replace(/^execution reverted:?\s*/i, '') + '. Nothing was sent.'); }
+  step('sign', 'Waiting for your signature in the wallet');
+  const hash = await provider.request({ method: 'eth_sendTransaction', params: [{ from, to: escrow, data }] });
+  if (!/^0x[0-9a-fA-F]{64}$/.test(String(hash))) throw err('bad_hash', 'The wallet returned no transaction hash.');
+  step('sent', `Sent ${hash}. Waiting for the chain`, { hash });
+  const t0 = Date.now();
+  for (;;) {
+    const r = await provider.request({ method: 'eth_getTransactionReceipt', params: [hash] });
+    if (r) { if (r.status && Number(r.status) !== 1) throw err('claim_reverted', 'The claim transaction reverted.'); return { hash }; }
+    if (Date.now() - t0 > 180000) return { hash, pending: true };
+    await new Promise((res) => setTimeout(res, 4000));
+  }
+}
+
 export const fmtEth = (wei) => { const n = Number(BigInt(wei)) / Number(WEI); return n >= 0.01 ? n.toFixed(4) : n.toPrecision(3).replace(/\.?0+$/, ''); };
 export const explorer = (cfg, kind, value) => `${(cfg.explorer || '').replace(/\/$/, '')}/${kind}/${value}`;
 export const short = (a) => (a ? String(a).slice(0, 6) + '…' + String(a).slice(-4) : '—');

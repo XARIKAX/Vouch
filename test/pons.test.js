@@ -140,6 +140,7 @@ test('api: GET /v1/launchpad/pons describes the venue; POST .../launch/confirm r
     const cfg = await (await fetch(`${base}/v1/launchpad/pons`)).json();
     assert.equal(cfg.chain_id, 4663); assert.equal(cfg.chain_id_hex, '0x1237'); assert.equal(cfg.factory, PONS.factory);
     assert.ok(cfg.pairs.some((p) => p.symbol === 'USDG'));
+    assert.equal(cfg.claim_selectors.claim, toHex(selector('claim()'))); assert.equal(cfg.claim_selectors.claim_token, toHex(selector('claimToken(address)')));
     const key = (await (await fetch(`${base}/v1/keys`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json()).key;
     const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
     const a = await (await fetch(`${base}/v1/agents`, { method: 'POST', headers: h, body: JSON.stringify({ symbol: 'API', launch: { wallet: WALLET } }) })).json();

@@ -4,6 +4,7 @@ import { CAPABILITIES } from './catalog.js';
 import * as broker from './broker.js';
 import { checkThesis, THESIS_ACCEPTANCE, THESIS_CAPABILITY } from './thesis.js';
 import { probeModel } from './execute-claude.js';
+import { selector, toHex } from './chain/abi.js';
 
 // GET /v1/status?probe=1 makes one tiny model call per configured model; the
 // result is cached per process so the public endpoint cannot be used to run
@@ -324,9 +325,11 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, { agents: engine.listAgents() }, rl);
     }],
 
-    ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId]) => {
+    ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId], q) => {
       const rl = limit(keyOrAnon(req));
-      await engine.refreshAgentChain(agentId);
+      // ?refresh=1 re-reads the curve now (after a claim or a trade) instead of
+      // waiting out the one-minute cache.
+      await engine.refreshAgentChain(agentId, { force: q?.get('refresh') === '1' });
       send(res, 200, engine.getAgent(agentId), rl);
     }],
 
@@ -349,6 +352,8 @@ export function createApi(engine, { buckets } = {}) {
         factory: c.factory, pairs: Object.values(c.pairs).map((p) => ({ symbol: p.symbol, address: p.address, decimals: p.decimals, native: p.native })),
         default_launch_fee_wei: c.defaultLaunchFeeWei.toString(), max_creator_tax_bps: c.maxCreatorTaxBps,
         creator_fee_recipient: c.creatorFeeRecipient ?? 'launcher wallet', eth_usd: c.ethUsd,
+        // the fee escrow's claim calls, for a wallet to pull accrued creator fees
+        claim_selectors: { claim: toHex(selector('claim()')), claim_token: toHex(selector('claimToken(address)')) },
       }, rl);
     }],
 

@@ -115,7 +115,8 @@ Verification runs the same way for all three. Rubric grading uses a three-person
 | `GET /v1/agents` · `GET /v1/agents/{id}` | Launched agents: token bond, capacity, routed revenue (public) |
 | `POST /v1/agents` | Launch an agent. Requires a bearer key; records `owner_key_id` |
 | `POST /v1/agents/{id}/harvest` · `/price` · `/unbond` | Owner-only writes (owner's bearer key or `X-Admin-Token`); otherwise `403 not_owner`. `/price` answers `409 chain_priced` for an agent whose token is live on-chain |
-| `POST /v1/agents` with `launch: { venue: "pons", wallet, pair, creator_tax_bps, description, socials }` | Prepare a real token launch on Pons (Robinhood Chain): the response carries `chain.intent`, the exact `launchToken` transaction for the launcher's wallet to sign. No price until confirmed |
+| `POST /v1/agents` with `launch: { venue: "pons", wallet, pair, creator_tax_bps, description, logo, socials }` | Prepare a real token launch on Pons (Robinhood Chain): the response carries `chain.intent`, the exact `launchToken` transaction for the launcher's wallet to sign. `creator_tax_bps` is the launcher's share of the 1% trade fee (0..1000 = up to 10% of it). No price until confirmed |
+| `GET /v1/agents/{id}?refresh=1` | Re-read the curve and the fee escrow now instead of waiting out the one-minute cache |
 | `POST /v1/agents/{id}/launch/confirm` `{ tx_hash }` | Owner-only. Verifies the receipt on-chain, records token and curve from the `TokenLaunched` event, prices the bond from the curve. `202` with `pending: true` while the transaction is mining; `409 wrong_wallet` / `not_a_launch` / `launch_reverted` |
 | `GET /v1/launchpad/pons` | Venue config a wallet needs: chain id, RPC, explorer, factory, quote assets, launch fee (public) |
 | `GET /v1/broker/status` · `/account` · `/positions` · `/quote` | Alpaca **paper** broker reads (`503 broker_unconfigured` without keys) |

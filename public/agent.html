@@ -289,16 +289,25 @@ function renderChain() {
   $('c-price').textContent = cs ? `${pons.fmtPrice(c.price_usd ?? 0)}${c.price_usd == null ? ' (no USD rate)' : ''} · ${cs.price_quote.toPrecision(3)} ${pair}` : '— until live';
   $('c-liq').textContent = cs ? `${cs.real_quote_reserve.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${pair}${c.liquidity_usd != null ? ' · ' + fmt(c.liquidity_usd) : ''}` : '— until live';
   $('c-fees').textContent = c.creator_fees ? `${c.creator_fees.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${c.creator_fees.pair} in the Pons escrow` : live ? 'not read' : '— until live';
-  $('c-recip').innerHTML = `${c.intent?.params?.creator_tax_bps ?? '—'} bps · ${link('address', c.creator_fee_recipient || c.intent?.params?.creator_fee_recipient)}`;
+  $('c-recip').innerHTML = `${c.intent?.params?.creator_tax_bps != null ? (c.intent.params.creator_tax_bps / 100) + '% of the trade fee' : '—'} · ${link('address', c.creator_fee_recipient || c.intent?.params?.creator_fee_recipient)}`;
   $('c-gradrow').hidden = !cs || cs.graduation_progress == null;
   if (cs && cs.graduation_progress != null) { const pct = Math.round(cs.graduation_progress * 100); $('c-grad').textContent = `${pct}% · ${cs.real_quote_reserve.toLocaleString(undefined, { maximumFractionDigits: 2 })} / ${cs.graduation_threshold_quote.toLocaleString()} ${pair}`; $('c-gradbar').style.width = pct + '%'; }
   $('c-when').textContent = c.refreshed_at ? when(c.refreshed_at) + (c.error ? ' · last read failed: ' + c.error : '') : '—';
   // the sandbox price control has no say over a live curve
   $('go-price').disabled = live; $('i-twap').disabled = live; $('i-liq').disabled = live;
   const act = $('c-act');
-  if (live) act.innerHTML = '';
-  else if (c.status === 'pending') act.innerHTML = `<button class="btn" id="c-check">Check confirmation</button><div class="note">Sent as ${esc(pons.short(c.tx_hash))}. The server confirms from the receipt as soon as the chain has it.</div>`;
+  if (live) {
+    const bal = c.creator_fees?.balance ?? 0;
+    act.innerHTML = `<button class="btn accent" id="c-claim" ${bal > 0 ? '' : 'disabled'}>Claim creator fees</button><div class="note">${bal > 0 ? `${bal.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${esc(c.creator_fees.pair)} waiting in the Pons escrow. Claiming sends them to the recipient wallet ${esc(pons.short(c.creator_fee_recipient))}; it pays gas only.` : 'Nothing to claim yet. Fees from every trade on the curve accrue here and the recipient wallet claims them.'}</div>`;
+  } else if (c.status === 'pending') act.innerHTML = `<button class="btn" id="c-check">Check confirmation</button><div class="note">Sent as ${esc(pons.short(c.tx_hash))}. The server confirms from the receipt as soon as the chain has it.</div>`;
   else act.innerHTML = `<button class="btn accent" id="c-sign">Sign the launch in your wallet</button><div class="note">Real: creates the token on ${esc(c.network)} mainnet and pays the Pons launch fee plus gas from wallet ${esc(pons.short(c.wallet))}. Only the key that prepared this agent can confirm it.</div>`;
+  $('c-claim')?.addEventListener('click', () => chainAct('Claim', async () => {
+    if (!venueCfg) venueCfg = await pons.venue();
+    const from = await pons.connect();
+    const out = await pons.claimFees({ cfg: venueCfg, chain: c, from, step: (name, detail) => say(detail + '…') });
+    A = await api('/v1/agents/' + encodeURIComponent(A.id) + '?refresh=1', { key: null });
+    if (out.pending) say('The claim is sent but still mining; the balance updates once the chain has it.');
+  }));
   $('c-check')?.addEventListener('click', () => chainAct('Confirmation', async (key) => { A = await pons.confirm(A.id, c.tx_hash, key, { timeoutMs: 20000 }); }));
   $('c-sign')?.addEventListener('click', () => chainAct('Launch', async (key) => {
     if (!venueCfg) venueCfg = await pons.venue();
@@ -310,7 +319,7 @@ function renderChain() {
 }
 async function chainAct(label, fn) {
   setCtl(false); say(label + '…');
-  const btns = ['c-sign', 'c-check'].map($).filter(Boolean); btns.forEach((b) => { b.disabled = true; });
+  const btns = ['c-sign', 'c-check', 'c-claim'].map($).filter(Boolean); btns.forEach((b) => { b.disabled = true; });
   try { const key = await ensureKey(); await fn(key); render(); say(label + ' done. The block above is the chain reading.'); }
   catch (e) { say(e.message, true); }
   finally { setCtl(true); btns.forEach((b) => { b.disabled = false; }); }
