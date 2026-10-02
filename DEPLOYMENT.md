@@ -44,6 +44,10 @@ a sandbox ledger today. On-chain settlement is next.
 5. **Redeploy** (Deployments → ⋯ → Redeploy) so the new env vars apply.
 6. Verify `https://<domain>/health` returns `{"ok":true,...}` and `/`,
    `/docs`, `/services`, `/dashboard` render. `/mcp` answers JSON-RPC.
+   `https://<domain>/v1/status` reports what is configured without exposing
+   secrets: `execution: "model"` and `grading: "model"` mean the key and
+   model variables were picked up; `attestation_key: "configured"` means
+   `VOUCH_ATTEST_KEY` is set; `store: "remote"` means Redis is connected.
 7. First boot against an empty store mints the **bootstrap key** and prints
    it once to the function logs (project → Logs, look for
    `vouch: bootstrap key`). Store it safely.

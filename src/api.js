@@ -392,6 +392,24 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, engine.getWorkflow(key, wfId), rl);
     }],
 
+    // Deployment status: what is configured, never the secrets themselves.
+    ['GET', /^\/v1\/status$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      const c = engine.cfg;
+      send(res, 200, {
+        execution: c.anthropicKey && (c.execModel || c.graderModel) ? 'model' : 'simulator',
+        exec_model: c.anthropicKey ? (c.execModel || c.graderModel || null) : null,
+        grading: c.anthropicKey && c.graderModel ? 'model' : (c.graderUrl ? 'webhook' : 'heuristic'),
+        grader_model: c.anthropicKey && c.graderModel ? c.graderModel : null,
+        attestation_key: c.attestKey ? 'configured' : 'generated',
+        store: c.store ? 'remote' : (c.persistPath ? 'file' : 'memory'),
+        admin_token: !!adminToken(),
+        signup_locked: !!engine.cfg.lockSignup || process.env.VOUCH_LOCK_SIGNUP === '1',
+        broker: broker.brokerStatus().configured ? 'alpaca-paper' : 'simulated',
+        fast: !!c.fast,
+      }, rl);
+    }],
+
     ['GET', /^\/v1\/capabilities$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
       const capabilities = Object.entries(CAPABILITIES).map(([id, c]) => ({
