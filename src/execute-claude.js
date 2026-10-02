@@ -44,11 +44,30 @@ const SPECS = {
   },
   'classify.text': {
     max_tokens: 32,
-    system: 'Classify the text into exactly one of the given labels. Reply with only the chosen label, verbatim.',
+    system: 'Classify the text into exactly one of the given labels. Reply with only the chosen label, verbatim: no punctuation, no quotes, no explanation.',
     user: (input) => `Labels: ${JSON.stringify(input?.labels ?? [])}\n\nText:\n${String(input?.text ?? '')}`,
-    wrap: (text) => ({ label: text.trim() }),
+    wrap: (text, input) => ({ label: matchLabel(text, input?.labels) }),
   },
 };
+
+// A model asked for a verbatim label still answers "Positive." or
+// "**positive**" now and then. When the reply clearly names exactly one of the
+// offered labels, return that label as the buyer spelled it, so a strict
+// one_of check judges the classification and not the punctuation. Anything
+// ambiguous is returned as-is and fails verification honestly.
+export function matchLabel(text, labels) {
+  const raw = String(text).trim();
+  if (!Array.isArray(labels) || !labels.length) return raw;
+  const fold = (s) => String(s).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const exact = labels.find((l) => String(l) === raw);
+  if (exact !== undefined) return String(exact);
+  const folded = fold(raw);
+  const loose = labels.find((l) => fold(l) === folded);
+  if (loose !== undefined) return String(loose);
+  const named = labels.filter((l) => fold(l) && ` ${folded} `.includes(` ${fold(l)} `));
+  if (named.length === 1) return String(named[0]);
+  return raw;
+}
 
 // Capabilities a native provider serves through the model when one is configured.
 export const MODEL_CAPABILITIES = new Set(Object.keys(SPECS));
@@ -92,7 +111,7 @@ export async function claudeExecute(task, cfg) {
       .map((b) => b.text)
       .join('')
       .trim();
-    return text ? spec.wrap(text) : null;
+    return text ? spec.wrap(text, task.input) : null;
   } catch {
     return null; // fall back to the simulator on any error/timeout
   } finally {
