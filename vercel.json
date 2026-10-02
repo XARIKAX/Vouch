@@ -1,14 +1,25 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "regions": ["lhr1"],
+  "regions": [
+    "lhr1"
+  ],
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
   ],
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
       "includeFiles": "**/*.{html,png,css,js,svg,woff2}"
+    }
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "claude/hello-teyig7": false
     }
   }
 }
