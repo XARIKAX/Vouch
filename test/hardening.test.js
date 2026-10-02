@@ -277,3 +277,21 @@ test('signup lock gates the faucet; provider endpoint_url is admin-only; stake i
     assert.equal((await call('POST', `/v1/keys/sub/${sub.id}/freeze`, { key: KEY, body: { frozen: false } })).body.frozen, false);
   } finally { server.close(); }
 });
+
+test('attestation key: flattened or literal-\\n PEM pastes are accepted; garbage falls back and is reported', async () => {
+  const { normalizePem, createAttestor } = await import('../src/attest.js');
+  const crypto = await import('node:crypto');
+  const good = crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  assert.equal(normalizePem(good.replace(/\n/g, ' ')), good, 'single-line paste rebuilt');
+  assert.equal(normalizePem(good.replace(/\n/g, '\\n')), good, 'literal \\n paste rebuilt');
+  const a = createAttestor({ attestKey: good.replace(/\n/g, ' ') });
+  assert.equal(a.source, 'configured');
+  assert.equal(a.keyId, createAttestor({ attestKey: good }).keyId, 'same key either way');
+  const origError = console.error; const logged = []; console.error = (m) => logged.push(m);
+  try { assert.equal(createAttestor({ attestKey: 'not a key' }).source, 'invalid'); } finally { console.error = origError; }
+  assert.ok(logged.some((l) => /VOUCH_ATTEST_KEY is not a valid/.test(l)));
+  const { createEngine } = await import('../src/engine.js');
+  assert.equal(createEngine({ fast: true, attestKey: good }).cfg.attestSource, 'configured');
+  assert.equal(createEngine({ fast: true, attestKey: 'bad' }).cfg.attestSource, 'invalid');
+  assert.equal(createEngine({ fast: true }).cfg.attestSource, 'generated');
+});

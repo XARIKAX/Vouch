@@ -189,3 +189,35 @@ test('vercel handler: serves requests and persists state across invocations', as
     delete process.env.VOUCH_FAST;
   }
 });
+
+// A Redis that cannot be reached must not take the site down: the handler
+// answers from the in-memory app and names the reason on /v1/status.
+test('vercel handler: unreachable REDIS_URL falls back to memory and reports store-error on /v1/status', async () => {
+  const saved = { ...process.env };
+  delete process.env.UPSTASH_REDIS_REST_URL; delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete process.env.KV_REST_API_URL; delete process.env.KV_REST_API_TOKEN; delete process.env.KV_URL;
+  process.env.REDIS_URL = 'redis://default:secret@127.0.0.1:1'; // nothing listens on port 1
+  process.env.VOUCH_FAST = '1';
+  const errors = [];
+  const origError = console.error; console.error = (...a) => errors.push(a.join(' '));
+  try {
+    const { default: handler } = await import('../api/index.js');
+    const invoke = async (method, path) => {
+      const req = new EventEmitter(); Object.assign(req, { method, url: path, headers: {} });
+      const res = { headers: {}, status: 0, chunks: [], writeHead(s, h) { this.status = s; Object.assign(this.headers, h); }, write(c) { this.chunks.push(c); }, end(c) { if (c) this.chunks.push(c); }, on() {} };
+      await handler(req, res); return res;
+    };
+    const status = await invoke('GET', '/v1/status');
+    assert.equal(status.status, 200, 'the site still answers');
+    const j = JSON.parse(status.chunks.join(''));
+    assert.equal(j.store, 'remote-error');
+    assert.match(j.store_error, /ECONNREFUSED|failed/);
+    assert.ok(!j.store_error.includes('secret'), 'no password in the reported reason');
+    assert.ok(errors.some((l) => l.includes('remote state store unavailable')), 'logged for the operator');
+    assert.ok(!errors.join('\n').includes('secret'), 'no password in the logs');
+  } finally {
+    console.error = origError;
+    for (const k of Object.keys(process.env)) if (!(k in saved)) delete process.env[k];
+    Object.assign(process.env, saved);
+  }
+});

@@ -51,7 +51,21 @@ export default async function vercelHandler(req, res) {
       return;
     }
 
-    const snapshot = await remote.load();
+    // A Redis that cannot be reached must not take the whole site down: fall
+    // back to the in-memory app for this invocation and say so on /v1/status.
+    let snapshot;
+    try {
+      snapshot = await remote.load();
+    } catch (e) {
+      remote.close?.();
+      const reason = String(e.message).replace(/\/\/[^@\s]*@/g, '//***@');
+      console.error(`vouch: remote state store unavailable (${remote.path}): ${reason}`);
+      localApp ??= createApp({ persistPath: null, limiterBuckets });
+      localApp.engine.cfg.storeError = reason;
+      await localApp.handler(req, res);
+      await localApp.engine.drain();
+      return;
+    }
     const { engine, handler } = createApp({
       store: { load: () => snapshot, save: remote.save },
       recoveryGraceMs: RECOVERY_GRACE_MS,
