@@ -70,6 +70,7 @@ export function createEngine(cfg = {}) {
   const attestor = createAttestor({ ...cfg, attestKey: cfg.attestKey || state.attest.private_key_pem || null });
   // 'configured' (env key), 'invalid' (env key rejected, generated used), or 'generated' / 'state'.
   cfg.attestSource = cfg.attestKey ? attestor.source : (state.attest.private_key_pem ? 'state' : 'generated');
+  cfg.attestDetail = attestor.detail ?? null;
   if (!cfg.attestKey || attestor.source === 'invalid') state.attest.private_key_pem = attestor.privateKeyPem;
   state.attest.public_keys ??= {};
   state.attest.public_keys[attestor.keyId] = attestor.publicKeyPem;

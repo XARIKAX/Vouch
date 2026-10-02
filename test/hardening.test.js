@@ -295,3 +295,18 @@ test('attestation key: flattened or literal-\\n PEM pastes are accepted; garbage
   assert.equal(createEngine({ fast: true, attestKey: 'bad' }).cfg.attestSource, 'invalid');
   assert.equal(createEngine({ fast: true }).cfg.attestSource, 'generated');
 });
+
+test('attestation key: a bare base64 body or a KEY= prefix still parses; an invalid value is described without leaking it', async () => {
+  const { normalizePem, createAttestor, describeKeyShape } = await import('../src/attest.js');
+  const crypto = await import('node:crypto');
+  const good = crypto.generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const body = good.split('\n').filter((l) => l && !l.startsWith('-----')).join('');
+  assert.equal(normalizePem(body), good, 'bare body rebuilt');
+  assert.equal(normalizePem('VOUCH_ATTEST_KEY=' + good), good, 'env-style prefix stripped');
+  const origError = console.error; console.error = () => {};
+  let a; try { a = createAttestor({ attestKey: 'MC4CAQAwBQYDK2VwBCIEIBPW' }); } finally { console.error = origError; }
+  assert.equal(a.source, 'invalid');
+  assert.match(a.detail, /chars, 1 line, BEGIN missing/);
+  assert.ok(!a.detail.includes('MC4CAQAw'), 'the value itself is not echoed');
+  assert.equal(describeKeyShape(''), 'empty');
+});
