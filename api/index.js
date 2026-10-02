@@ -2,11 +2,13 @@
 // app's own router (server.js) sees the original URL and dispatches as usual.
 //
 // Serverless differences from `node server.js`:
-//   - State lives in Upstash Redis (REST, zero-dep) instead of a local file.
+//   - State lives in Redis instead of a local file: Upstash over REST, or any
+//     Redis via REDIS_URL (Vercel's Redis integration), both zero-dep.
 //     Each invocation loads a fresh snapshot, runs the request plus all
 //     background work it spawned (engine.drain()), then flushes one
 //     compare-and-set write (see store-upstash.js for the conflict path).
-//   - Without UPSTASH_REDIS_REST_URL/_TOKEN (or KV_REST_API_*) the app is
+//   - Without a Redis configured (UPSTASH_REDIS_REST_URL/_TOKEN, KV_REST_API_*,
+//     or REDIS_URL) the app is
 //     created ONCE at module scope and kept for the life of the instance:
 //     state is in-memory and lost on a cold start — demo only.
 //   - The rate limiter's buckets live at module scope either way, so limits
@@ -34,14 +36,14 @@ export default async function vercelHandler(req, res) {
       import('../server.js'),
       import('../src/store-upstash.js'),
     ]);
-    const [{ createApp }, { createUpstashStore }] = modules;
+    const [{ createApp }, { createRemoteStore }] = modules;
 
-    const remote = createUpstashStore();
+    const remote = createRemoteStore();
     if (!remote) {
       if (!warnedEphemeral) {
         warnedEphemeral = true;
         console.warn('vouch: no Redis configured — state is in-memory and lost on every cold start. '
-          + 'Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or add the Upstash integration).');
+          + 'Add a Redis integration (REDIS_URL) or set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.');
       }
       localApp ??= createApp({ persistPath: null, limiterBuckets });
       await localApp.handler(req, res);
@@ -69,6 +71,7 @@ export default async function vercelHandler(req, res) {
     // A failed flush loses this invocation's writes but must not turn an
     // already-sent response into a crash.
     await remote.flush().catch((e) => console.error(`vouch: state flush failed: ${e.message}`));
+    remote.close?.();
   } catch (err) {
     modules = null; // retry module load on the next invocation
     const errorId = crypto.randomUUID();

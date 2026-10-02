@@ -206,6 +206,7 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 |---|---|---|
 | `VOUCH_PORT` | `4402` | HTTP port (server mode) |
 | `VOUCH_STATE` | `data/state.json` | State snapshot path (`VOUCH_EPHEMERAL=1` for in-memory) |
+| `REDIS_URL` | Serverless state over the Redis protocol (Vercel Redis integration); `rediss://` for TLS |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | unset | Serverless state store (`KV_REST_API_*` also accepted); `VOUCH_STATE_KEY` names the key |
 | `VOUCH_ATTEST_KEY` | unset | PKCS8 ed25519 PEM so receipts stay verifiable across restarts and instances. Unset: a generated key is kept in state |
 | `ANTHROPIC_API_KEY` | unset | Real execution for the built-in text providers and the three-persona rubric panel. Unset: simulator + heuristic grader |
