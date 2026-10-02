@@ -221,3 +221,37 @@ test('vercel handler: unreachable REDIS_URL falls back to memory and reports sto
     Object.assign(process.env, saved);
   }
 });
+
+// The request's own changes must reach Redis before the background work runs,
+// so another instance polling for a new task finds it immediately.
+test('vercel handler: a task is persisted before execution and again after settlement (two flushes)', async () => {
+  process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.test';
+  process.env.UPSTASH_REDIS_REST_TOKEN = 't';
+  process.env.VOUCH_FAST = '1';
+  const { kv, writes, restore } = fakeRedis();
+  try {
+    const { default: handler } = await import('../api/index.js');
+    const invoke = async (method, path, body, headers = {}) => {
+      const req = new EventEmitter(); Object.assign(req, { method, url: path, headers });
+      if (body !== undefined) req.body = body;
+      const res = { headers: {}, status: 0, chunks: [], writeHead(s, h) { this.status = s; Object.assign(this.headers, h); }, write(c) { this.chunks.push(c); }, end(c) { if (c) this.chunks.push(c); }, on() {} };
+      await handler(req, res); return res;
+    };
+    const token = JSON.parse((await invoke('POST', '/v1/keys', { name: 'flush' })).chunks.join('')).key;
+    const before = writes();
+    const posted = await invoke('POST', '/v1/tasks', {
+      capability: 'math.eval', input: { expression: '6*7' },
+      acceptance: { checks: [{ assert: 'equals', path: 'result', value: 42 }] }, budget: 0.01, deadline_ms: 5000,
+    }, { authorization: `Bearer ${token}` });
+    assert.equal(posted.status, 201);
+    const id = JSON.parse(posted.chunks.join('')).id;
+    assert.equal(writes() - before, 2, 'one flush right after the response, one after the work finished');
+    const stored = JSON.parse(kv.get('vouch:state'));
+    assert.equal(stored.tasks[id].status, 'settled', 'the final flush carries the outcome');
+    const got = await invoke('GET', `/v1/tasks/${id}`, undefined, { authorization: `Bearer ${token}` });
+    assert.equal(got.status, 200);
+  } finally {
+    restore();
+    delete process.env.UPSTASH_REDIS_REST_URL; delete process.env.UPSTASH_REDIS_REST_TOKEN; delete process.env.VOUCH_FAST;
+  }
+});

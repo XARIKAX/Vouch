@@ -81,10 +81,16 @@ export default async function vercelHandler(req, res) {
     }
 
     await handler(req, res);
+    // Persist what the request itself changed BEFORE the background work
+    // (execution, grading) runs: another instance polling for the new task
+    // must find it even while this one is still working on it. A second
+    // flush after drain() persists the outcome. A failed flush loses this
+    // invocation's writes but must not turn an already-sent response into a
+    // crash.
+    const flush = () => remote.flush().catch((e) => console.error(`vouch: state flush failed: ${e.message}`));
+    await flush();
     await engine.drain();
-    // A failed flush loses this invocation's writes but must not turn an
-    // already-sent response into a crash.
-    await remote.flush().catch((e) => console.error(`vouch: state flush failed: ${e.message}`));
+    await flush();
     remote.close?.();
   } catch (err) {
     modules = null; // retry module load on the next invocation
