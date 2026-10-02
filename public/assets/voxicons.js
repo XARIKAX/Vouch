@@ -27,14 +27,19 @@ function model(kind) {
   const put = (x, y, z, c) => occ.set(key(x, y, z), { x, y, z, c });
   if (kind === 'coin') {
     // a thick disc, the Vouch check inlaid on the face in violet, a square dot at its tip
-    const R = 7.2;
-    for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) if (Math.hypot(x, z) <= R) for (let y = 0; y < 3; y++) put(x, y, z, Math.hypot(x, z) > R - 1.3 ? 'goldDark' : 'gold');
-    // the check, inlaid in the top layer: a short arm down, a long arm up, two voxels thick
+    // a thick coin with a reeded edge, the check raised on the face
+    const R = 6.6;
+    for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) {
+      const d = Math.hypot(x, z); if (d > R) continue;
+      const rim = d > R - 1.2, reed = Math.floor((Math.atan2(z, x) + Math.PI) / (Math.PI / 10)) % 2 === 0;
+      for (let y = 0; y < 5; y++) put(x, y, z, rim ? (reed ? 'goldDark' : 'gold') : 'gold');
+    }
+    for (let x = -7; x <= 7; x++) for (let z = -7; z <= 7; z++) if (Math.hypot(x, z) <= R - 1.6) put(x, 4, z, 'goldDark');   // recessed face
     const cells = [];
-    for (let t = 0; t < 4; t++) cells.push([-5 + t, -1 + t]);
-    for (let t = 0; t < 7; t++) cells.push([-2 + t, 2 - t]);
-    for (const [x, z] of cells) { put(x, 2, z, 'violet'); put(x + 1, 2, z, 'violet'); }
-    put(5, 2, -5, 'violetBright'); put(6, 2, -5, 'violetBright'); put(5, 2, -6, 'violetBright');
+    for (let t = 0; t < 4; t++) cells.push([-4 + t, -1 + t]);
+    for (let t = 0; t < 6; t++) cells.push([-1 + t, 2 - t]);
+    for (const [x, z] of cells) for (const y of [4, 5]) { put(x, y, z, 'violet'); put(x + 1, y, z, 'violet'); }
+    put(5, 5, -5, 'violetBright'); put(5, 4, -5, 'violetBright');
   } else if (kind === 'vault') {
     // a cube safe with a ring door on the front and a lock dot
     for (let x = -5; x <= 5; x++) for (let y = 0; y < 11; y++) for (let z = -5; z <= 5; z++) {
@@ -80,7 +85,8 @@ export function mountVoxIcon(canvas, kind, opts = {}) {
   const P = { ...PAL, ...(opts.palette || {}) };
   const C = {};
   for (const [k, v] of Object.entries(P)) C[k] = Array.isArray(v) ? v.map(hex) : hex(v);
-  const colFor = (name, i) => Array.isArray(C[name]) ? C[name][i % C[name].length] : C[name] || C.steel[0];
+  // a palette entry is either one colour ([r,g,b]) or a list of shades ([[r,g,b], ...])
+  const colFor = (name, i) => { const c = C[name] || C.steel; return Array.isArray(c[0]) ? c[i % c.length] : c; };
   const m = model(kind);
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const lo = document.createElement('canvas'); lo.width = LW; lo.height = LH; const g = lo.getContext('2d');
