@@ -136,9 +136,9 @@ async function runCheck(check, task, output, cfg) {
 //   3. deterministic heuristic — offline fallback so the stack runs anywhere
 // `context` carries dispute material (reason + evidence) on a re-review; every
 // grader backend receives it.
-async function gradeOnce(task, output, rubric, graderIdx, cfg, context = null) {
+async function gradeOnce(task, output, rubric, graderIdx, cfg, context = null, diag = null) {
   if (!cfg.graderUrl && cfg.anthropicKey && cfg.graderModel) {
-    return claudeGrade(task, output, rubric, graderIdx, cfg, context);
+    return claudeGrade(task, output, rubric, graderIdx, cfg, context, diag);
   }
   if (cfg.graderUrl) {
     try {
@@ -149,7 +149,8 @@ async function gradeOnce(task, output, rubric, graderIdx, cfg, context = null) {
       }, cfg.graderTimeoutMs ?? OUTBOUND_TIMEOUT_MS);
       const body = await res.json();
       return !!body.pass;
-    } catch {
+    } catch (e) {
+      diag?.errors?.push(`grader webhook: ${e.message}`);
       return false; // an unreachable grader must not release funds
     }
   }
@@ -167,11 +168,15 @@ async function gradeOnce(task, output, rubric, graderIdx, cfg, context = null) {
   return hash01(task.id + 'grader' + graderIdx) > 0.005;
 }
 
+// `errors` lists why grader seats could not vote (API errors, timeouts), so a
+// refund caused by an unreachable judge says so instead of looking like a
+// quality verdict.
 export async function gradeRubric(task, output, rubric, cfg, seedOffset = 0, context = null) {
   const votes = [];
-  for (let g = 0; g < 3; g++) votes.push(await gradeOnce(task, output, rubric, (g + seedOffset) % 3, cfg, context));
+  const diag = { errors: [] };
+  for (let g = 0; g < 3; g++) votes.push(await gradeOnce(task, output, rubric, (g + seedOffset) % 3, cfg, context, diag));
   const passes = votes.filter(Boolean).length;
-  return { pass: passes >= 2, passes };
+  return { pass: passes >= 2, passes, errors: [...new Set(diag.errors)] };
 }
 
 export async function verify(task, output, cfg, context = null) {
@@ -203,11 +208,12 @@ export async function verify(task, output, cfg, context = null) {
   if (task.acceptance?.checks?.length) verifiedBy.push('checks');
 
   if (task.acceptance?.rubric) {
-    const { pass, passes } = await gradeRubric(task, output, task.acceptance.rubric, cfg, 0, context);
+    const { pass, passes, errors } = await gradeRubric(task, output, task.acceptance.rubric, cfg, 0, context);
     if (!pass) {
+      const why = errors?.length ? `; grader errors: ${errors.join('; ')}` : '';
       return {
         pass: false, verified_by: verifiedBy,
-        failed: { validator: 'rubric', detail: `graders voted ${passes}/3 against the rubric` },
+        failed: { validator: 'rubric', detail: `graders voted ${passes}/3 against the rubric${why}` },
       };
     }
     verifiedBy.push(`rubric:${passes}/3`);

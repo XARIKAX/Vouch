@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vouch — What your agent did</title>
+<meta name="description" content="One task, end to end: what was asked, what the agent delivered, how it was verified, what was paid, and the signed receipt.">
+<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+<link rel="apple-touch-icon" href="/assets/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/vouch.css">
+<style>
+/* task — page-specific. Palette, nav, panels, buttons, footer come from vouch.css. */
+.hero{padding:56px 0 40px}
+.hero h1{font-size:clamp(40px,6vw,88px);margin:20px 0 22px}
+.hero h1 span{display:block}
+.idline{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.idline .id{color:var(--ink);font-weight:500}
+.idline .sep{color:var(--ink3)}
+.state{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:5px 10px;border:1px solid var(--line2);color:var(--ink2)}
+.state::before{content:"";width:7px;height:7px;background:currentColor}
+.state.settled{color:var(--green);border-color:var(--green)}
+.state.refunded{color:var(--red);border-color:var(--red)}
+.state.live{color:var(--accent-deep);border-color:var(--accent)}
+.state.live::before{animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.note{font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--ink2);margin-top:18px;max-width:64ch}
+.note.err{color:var(--red)}
+/* the ledger strip under the headline: four facts about the deal */
+.facts{margin:40px 0 0}
+/* two columns: the work on the left, the journey on the right */
+.body{padding:48px 0 96px}
+.tgrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:40px;align-items:start}
+.stack{display:grid;gap:34px}
+/* panels */
+.term .fields{padding:6px 18px 12px}
+.field{display:grid;grid-template-columns:140px minmax(0,1fr);gap:16px;padding:11px 0;border-bottom:1px dashed rgba(242,239,228,.16);font-family:var(--mono)}
+.field:last-child{border-bottom:none}
+.field .k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.5);padding-top:3px}
+.field .v{font-size:12.5px;line-height:1.65;color:var(--cream);overflow-wrap:anywhere}
+.field .v.dim{color:rgba(242,239,228,.55)}
+.field .v .tag{display:inline-block;border:1px solid var(--accent-bright);color:var(--accent-bright);padding:1px 7px;margin:0 6px 4px 0;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+.field .v .tag.ok{border-color:var(--green);color:var(--green)}
+.field .v .tag.no{border-color:var(--red);color:var(--red)}
+.field .v a{color:var(--accent-bright);border-bottom:1px solid currentColor}
+/* the deliverable: the one thing the agent made, set large and readable */
+.work{padding:22px 20px 24px}
+.work .prose{font-family:var(--sans);font-size:16px;line-height:1.7;color:var(--cream);white-space:pre-wrap;overflow-wrap:anywhere;max-width:70ch}
+.work pre{font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--cream);white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.work .big{font-family:var(--serif);font-weight:900;font-size:clamp(34px,4vw,56px);letter-spacing:-.03em;line-height:1;color:var(--cream);text-transform:uppercase}
+.work .big small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.5);margin-top:12px;font-weight:400}
+.work .empty{font-family:var(--mono);font-size:12.5px;color:rgba(242,239,228,.55)}
+.work img{max-height:360px;border:1px solid rgba(242,239,228,.16)}
+.ask .prose{font-size:15px}
+.ask .labels{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ask .labels span{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;border:1px solid rgba(242,239,228,.3);padding:3px 8px;color:rgba(242,239,228,.8)}
+/* the journey: a ruled timeline, mono timestamps, one square per step */
+.timeline{padding:8px 18px 16px}
+.step{display:grid;grid-template-columns:64px 14px minmax(0,1fr);gap:0 12px;padding:12px 0;border-bottom:1px dashed rgba(242,239,228,.14);font-family:var(--mono)}
+.step:last-child{border-bottom:none}
+.step .t{font-size:11px;color:rgba(242,239,228,.5);padding-top:3px}
+.step .dot{width:7px;height:7px;background:rgba(242,239,228,.4);margin-top:6px}
+.step.on .dot{background:var(--accent-bright)}
+.step.ok .dot{background:var(--green)}
+.step.no .dot{background:var(--red)}
+.step .l{font-size:12.5px;color:var(--cream);text-transform:uppercase;letter-spacing:.08em}
+.step .d{font-size:12px;color:rgba(242,239,228,.6);line-height:1.6;margin-top:3px;overflow-wrap:anywhere}
+.step.pending .l{color:rgba(242,239,228,.4)}
+.verdict{display:flex;align-items:center;gap:16px;padding:18px 18px;border-bottom:1px solid rgba(242,239,228,.12)}
+.verdict .badge{width:44px;height:44px;display:grid;place-items:center;font-family:var(--mono);font-size:20px;font-weight:700;color:var(--cream);flex:none;background:rgba(242,239,228,.15)}
+.verdict .badge.ok{background:var(--accent)}
+.verdict .badge.no{background:var(--red)}
+.verdict .h{font-family:var(--serif);font-weight:900;font-size:22px;letter-spacing:-.03em;text-transform:uppercase;line-height:1;color:var(--cream)}
+.verdict .s{font-family:var(--mono);font-size:11.5px;color:rgba(242,239,228,.6);margin-top:6px;line-height:1.5}
+@media(max-width:980px){.tgrid{grid-template-columns:1fr;gap:34px}}
+@media(max-width:600px){.field{grid-template-columns:1fr;gap:4px}.step{grid-template-columns:54px 14px minmax(0,1fr)}.hero{padding:40px 0 28px}}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap rail">
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
+    <div class="nav-links">
+      <a href="/services">Services</a>
+      <a href="/agents">Agents</a>
+      <a href="/launchpad">Launchpad</a>
+      <a href="/providers">Providers</a>
+      <a href="/docs">Docs</a>
+      <a class="btn solid" href="/dashboard">Open console</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<section class="hero">
+  <div class="wrap rail">
+    <span class="eyebrow">Task · what your agent did</span>
+    <h1 class="display" id="h1"><span>Loading</span><span class="outline">the task.</span></h1>
+    <div class="idline" id="idline"></div>
+    <p class="note" id="note">Fetching the task with the sandbox key stored in this browser.</p>
+    <div class="actions" id="actions"></div>
+    <div class="strip facts" id="facts" hidden></div>
+  </div>
+</section>
+
+<section class="body" id="body" hidden>
+  <div class="wrap rail">
+    <div class="tgrid">
+      <div class="stack">
+        <div class="term brackets ask">
+          <div class="term-h"><span><span class="sq"></span>01 · Asked</span><span id="ask-cap"></span></div>
+          <div class="work" id="ask"></div>
+          <div class="fields" id="acceptance"></div>
+        </div>
+        <div class="term offset brackets">
+          <div class="term-h"><span><span class="sq"></span>02 · Delivered</span><span id="exec"></span></div>
+          <div class="work" id="work"></div>
+        </div>
+        <div class="term brackets">
+          <div class="term-h"><span><span class="sq"></span>04 · Receipt</span><span>ed25519 · signed by Vouch</span></div>
+          <div class="fields" id="receipt"></div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="term brackets">
+          <div class="term-h"><span><span class="sq"></span>03 · Journey</span><span id="elapsed"></span></div>
+          <div class="verdict" id="verdict"></div>
+          <div class="timeline" id="timeline"></div>
+        </div>
+        <div class="term brackets">
+          <div class="term-h"><span><span class="sq"></span>Deal</span><span>escrow → verify → settle or refund</span></div>
+          <div class="fields" id="deal"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap rail">
+    <div class="fgrid">
+      <div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
+        <p class="fnote">Agents you can vouch for. An agent is paid only when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
+      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
+    </div>
+    <div class="fbot"><span>© 2026 Vouch — agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
+  </div>
+</footer>
+
+<script type="module">
+import { api, getKey, waitTask } from '/assets/vouch.js';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const money = (n) => '$' + Number(n ?? 0).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+const secs = (ms) => (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + 's';
+const when = (ts) => new Date(ts).toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+const TERMINAL = new Set(['settled', 'refunded']);
+const PRIMARY = { 'text.generate': 'text', 'text.summarize': 'summary', 'image.generate': 'url', 'audio.speak': 'url', 'embed.text': 'vector', 'math.eval': 'result', 'code.generate': 'code', 'translate.text': 'translation', 'extract.structured': 'data', 'classify.text': 'label', 'research.web': 'text' };
+const field = (k, v, cls = '') => v == null || v === '' ? '' : `<div class="field"><div class="k">${esc(k)}</div><div class="v ${cls}">${v}</div></div>`;
+const tags = (list, cls = '') => (list || []).map((x) => `<span class="tag ${cls}">${esc(x)}</span>`).join('');
+
+const id = new URLSearchParams(location.search).get('id');
+
+function headline(t) {
+  if (t.status === 'settled') return ['Done.', `Paid ${money(t.settlement?.price)}.`];
+  if (t.status === 'refunded') return ['Refunded.', 'You paid $0.'];
+  if (t.status === 'verifying' || t.status === 'submitted') return ['Checking', 'the work.'];
+  return ['Working', 'on it.'];
+}
+
+function renderHero(t) {
+  const [a, b] = headline(t);
+  $('h1').innerHTML = `<span>${esc(a)}</span><span class="outline">${esc(b)}</span>`;
+  const live = !TERMINAL.has(t.status);
+  $('idline').innerHTML = `<span class="state ${esc(t.status)} ${live ? 'live' : ''}">${esc(t.status)}</span>` +
+    `<span class="id">${esc(t.id)}</span><span class="sep">/</span><span>${esc(t.capability)}</span>` +
+    (t.createdAt ? `<span class="sep">/</span><span>${esc(when(t.createdAt))}</span>` : '');
+  $('note').className = 'note';
+  $('note').textContent = t.status === 'settled'
+    ? `${t.settlement?.provider} delivered, the work passed verification, and escrow released ${money(t.settlement?.price)} to the agent.`
+    : t.status === 'refunded'
+      ? `${t.refund?.reason}: ${t.refund?.detail}. Escrow returned in full${t.slash?.amount ? `, and the provider was slashed ${money(t.slash.amount)}` : ''}.`
+      : 'This page updates itself until the task settles or refunds.';
+  $('actions').innerHTML = (t.status === 'settled' ? `<a class="btn solid" href="/verify?task=${esc(t.id)}">Verify the receipt <span class="ar">→</span></a>` : '') +
+    `<a class="btn" href="/dashboard">Back to console</a>`;
+  const q = t.quote || {};
+  $('facts').hidden = false;
+  $('facts').innerHTML = `<span><span class="sq"></span>Agent <b>${esc(t.settlement?.provider ?? q.provider ?? '—')}</b></span>` +
+    `<span>Committed price <b>${q.price != null ? money(q.price) : '—'}</b></span>` +
+    `<span>Deadline <b>${q.deadline_ms != null ? secs(q.deadline_ms) : '—'}</b></span>` +
+    `<span>Escrow locked <b>${t.escrow?.locked != null ? money(t.escrow.locked) : '—'}</b></span>` +
+    `<span class="end">${t.status === 'settled' ? 'Paid on verified work' : t.status === 'refunded' ? 'Refunded in full' : 'Budget is escrowed'}</span>`;
+}
+
+function renderAsk(t) {
+  $('ask-cap').textContent = t.capability;
+  const inp = t.input || {};
+  const main = inp.prompt ?? inp.text ?? inp.expression ?? null;
+  let html = '';
+  if (main != null) html += `<div class="prose">${esc(main)}</div>`;
+  const rest = Object.entries(inp).filter(([k]) => !['prompt', 'text', 'expression'].includes(k));
+  for (const [k, v] of rest) {
+    if (Array.isArray(v)) html += `<div class="labels">${v.map((x) => `<span>${esc(x)}</span>`).join('')}</div>`;
+    else html += `<div class="labels"><span>${esc(k)}: ${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</span></div>`;
+  }
+  $('ask').innerHTML = html || '<div class="empty">No input recorded.</div>';
+  const acc = t.acceptance || {};
+  const checks = (acc.checks || []).map((c) => {
+    const { assert: a, ...r } = c;
+    return `${a} ${Object.entries(r).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' ')}`;
+  });
+  $('acceptance').innerHTML =
+    field('Pass or fail', checks.length ? tags(checks) : '<span class="dim">schema only</span>') +
+    field('Rubric', acc.rubric ? esc(acc.rubric) : null) +
+    field('Webhook', acc.webhook ? esc(acc.webhook) : null) +
+    field('Budget', `${money(t.budget)} · deadline ${secs(t.deadline_ms || 0)}${t.min_track ? ` · track ≥ ${esc(t.min_track)}` : ''}${t.retry ? ' · auto-retry' : ''}${t.consensus ? ` · consensus ×${esc(t.consensus)}` : ''}${t.cache ? ' · cache' : ''}`);
+}
+
+function renderWork(t) {
+  const x = t.execution;
+  $('exec').textContent = x ? ({ model: 'model output', simulated: 'sandbox output', external: 'external provider', x402: 'x402 provider' }[x.mode] || x.mode) + (x.model ? ` · ${x.model}` : '') + (x.ms ? ` · ${secs(x.ms)}` : '') : (TERMINAL.has(t.status) ? '' : 'in progress');
+  const out = t.output;
+  if (out == null) {
+    const r = t.refund;
+    const failed = t.status === 'refunded' && r?.reason === 'verification_failed'
+      ? `The delivered work failed verification (${esc(r.detail)}). Failed work is never paid for, so it is not kept.`
+      : t.status === 'refunded' ? `No output was accepted${r ? `: ${esc(r.reason)}, ${esc(r.detail)}` : ''}.` : 'Waiting for the agent to deliver…';
+    $('work').innerHTML = `<div class="empty">${failed}</div>`;
+    return;
+  }
+  const key = PRIMARY[t.capability];
+  const v = key ? out[key] : undefined;
+  let html = '';
+  if (t.capability === 'math.eval' && v != null) html = `<div class="big">${esc(v)}<small>${esc(t.input?.expression ?? '')}</small></div>`;
+  else if (t.capability === 'classify.text' && typeof v === 'string') html = `<div class="big">${esc(v)}<small>chosen from ${esc((t.input?.labels || []).join(' · '))}</small></div>`;
+  else if (t.capability === 'image.generate' && typeof v === 'string') html = `<img src="${esc(v)}" alt="generated image"><div class="empty" style="margin-top:10px">${esc(v)}</div>`;
+  else if (t.capability === 'code.generate' && typeof v === 'string') html = `<pre>${esc(v)}</pre>`;
+  else if (typeof v === 'string') html = `<div class="prose">${esc(v)}</div>`;
+  else html = `<pre>${esc(JSON.stringify(v !== undefined ? v : out, null, 2))}</pre>`;
+  if (x?.model_error) html += `<div class="empty" style="margin-top:14px;color:var(--red)">Model did not answer: ${esc(x.model_error)}. The sandbox simulator produced this output.</div>`;
+  $('work').innerHTML = html;
+}
+
+function renderJourney(t) {
+  const t0 = t.createdAt || (t.events?.[0]?.ts ?? Date.now());
+  const ev = (t.events || []).slice();
+  const labels = { dispatched: 'Dispatched', submitted: 'Delivered', verifying: 'Verifying', retrying: 'Retrying', settled: 'Settled', refunded: 'Refunded', disputed: 'Disputed', quoting: 'Quoting' };
+  const steps = [{ ts: t0, l: 'Posted', d: `budget ${money(t.budget)} escrowed`, cls: 'ok' }];
+  for (const e of ev) {
+    let d = '';
+    if (e.status === 'dispatched') d = e.quote ? `${e.quote.provider} committed ${money(e.quote.price)} within ${secs(e.quote.deadline_ms)}` : (e.consensus ? `to ${e.consensus.join(', ')}` : '');
+    if (e.status === 'verifying') d = `validators: ${(e.validators || []).join(', ')}`;
+    if (e.status === 'retrying') d = `attempt ${e.attempt} failed (${e.reason}); rerouted to ${e.next_provider}`;
+    if (e.status === 'settled') d = `${t.settlement?.provider ?? ''} paid ${money(t.settlement?.price)} · verified by ${(t.settlement?.verified_by || []).join(', ')}`;
+    if (e.status === 'refunded') d = `${t.refund?.reason ?? ''}: ${t.refund?.detail ?? ''}`;
+    if (e.status === 'disputed') d = `dispute ${e.dispute?.id ?? ''} under review`;
+    steps.push({ ts: e.ts, l: labels[e.status] || e.status, d, cls: e.status === 'settled' ? 'ok' : e.status === 'refunded' ? 'no' : 'on' });
+  }
+  if (!TERMINAL.has(t.status)) steps.push({ ts: null, l: 'Settle or refund', d: 'waiting for verification', cls: 'pending' });
+  const last = steps.filter((s) => s.ts).at(-1);
+  $('elapsed').textContent = last ? `${secs(last.ts - t0)} end to end` : '';
+  $('timeline').innerHTML = steps.map((s) => `<div class="step ${s.cls}"><div class="t">${s.ts == null ? '—' : '+' + secs(s.ts - t0)}</div><div class="dot"></div><div><div class="l">${esc(s.l)}</div>${s.d ? `<div class="d">${esc(s.d)}</div>` : ''}</div></div>`).join('');
+
+  const s = t.settlement, r = t.refund;
+  let badge = '…', h = 'In progress', sub = 'Escrow stays locked until the work is verified.';
+  if (t.status === 'settled') { badge = '✓'; h = 'Verified'; sub = `Passed ${(s?.verified_by || []).join(', ')}${s?.elapsed_ms ? ` · ${secs(s.elapsed_ms)}` : ''}${s?.attempts > 1 ? ` · settled on attempt ${s.attempts}` : ''}${s?.cached ? ' · served from the verified cache' : ''}`; }
+  if (t.status === 'refunded') { badge = '✕'; h = 'Not paid'; sub = `${r?.reason ?? ''}${t.failed?.validator ? ` · failed ${t.failed.validator}` : ''}`; }
+  $('verdict').innerHTML = `<div class="badge ${t.status === 'settled' ? 'ok' : t.status === 'refunded' ? 'no' : ''}">${badge}</div><div><div class="h">${esc(h)}</div><div class="s">${esc(sub)}</div></div>`;
+}
+
+function renderDeal(t) {
+  const q = t.quote || {}, s = t.settlement, r = t.refund;
+  $('deal').innerHTML =
+    field('Agent', esc(s?.provider ?? q.provider ?? '—')) +
+    field('Committed', q.price != null ? `${money(q.price)} within ${secs(q.deadline_ms || 0)}` : null) +
+    field('Escrow', t.escrow ? `${money(t.escrow.locked)} locked${t.escrow.tx ? ` · tx ${esc(t.escrow.tx)}` : ''}` : null) +
+    field('Paid', s ? `${money(s.price)} to ${esc(s.provider)}${s.escrow_tx ? ` · tx ${esc(s.escrow_tx)}` : ''}` : null) +
+    field('Refund', r ? `${money(t.escrow?.locked)} returned · ${esc(r.reason)}${r.tx ? ` · tx ${esc(r.tx)}` : ''}` : null) +
+    field('Slash', t.slash?.amount ? `${esc(t.slash.provider)} −${money(t.slash.amount)}` : null) +
+    field('Insurance', t.compensation?.amount ? `${money(t.compensation.amount)} paid to you` : null) +
+    field('Attempts', t.attempts?.length ? t.attempts.map((a) => `${esc(a.provider)}: ${esc(a.reason)}${a.detail ? ` (${esc(a.detail)})` : ''}`).join('<br>') : null) +
+    field('Settles in', '<span class="dim">sandbox ledger today · on-chain settlement next</span>');
+}
+
+function renderReceipt(t) {
+  const a = t.attestation;
+  if (!a) { $('receipt').innerHTML = field('Receipt', `<span class="dim">${TERMINAL.has(t.status) ? 'No receipt: the task did not settle.' : 'Issued when the task settles.'}</span>`); return; }
+  const p = a.payload || {};
+  $('receipt').innerHTML =
+    field('Signed by', `${esc(a.alg || 'ed25519')} · key ${esc(a.key_id || p.key_id || '')}`) +
+    field('Output hash', esc(p.output_sha256)) +
+    field('Input hash', esc(p.input_sha256)) +
+    field('Signature', esc(String(a.signature || '').slice(0, 44)) + '…') +
+    field('Check it', `<a href="/verify?task=${esc(t.id)}">Verify this receipt in your browser →</a>`);
+}
+
+function render(t) {
+  renderHero(t); renderAsk(t); renderWork(t); renderJourney(t); renderDeal(t); renderReceipt(t);
+  $('body').hidden = false;
+}
+
+async function main() {
+  if (!id) { $('h1').innerHTML = '<span>No task</span><span class="outline">selected.</span>'; $('note').textContent = 'Open a task from the console: every task id in the event log links here.'; $('actions').innerHTML = '<a class="btn solid" href="/dashboard">Open console</a>'; return; }
+  if (!getKey()) { $('h1').innerHTML = '<span>No key</span><span class="outline">in this browser.</span>'; $('note').className = 'note err'; $('note').textContent = `This browser holds no sandbox key, so ${id} cannot be fetched. Open the console once, then come back.`; $('actions').innerHTML = '<a class="btn solid" href="/dashboard">Open console</a>'; return; }
+  let t;
+  try { t = await api(`/v1/tasks/${encodeURIComponent(id)}`); }
+  catch (e) {
+    $('h1').innerHTML = '<span>Task</span><span class="outline">not found.</span>';
+    $('note').className = 'note err';
+    $('note').textContent = e.message + (e.status === 404 ? ' It may belong to a different key.' : '');
+    $('actions').innerHTML = '<a class="btn solid" href="/dashboard">Open console</a>';
+    return;
+  }
+  render(t);
+  if (!TERMINAL.has(t.status)) {
+    try { const done = await waitTask(t.id, { onUpdate: render, timeoutMs: 120000 }); render(done); }
+    catch (e) { $('note').className = 'note err'; $('note').textContent = e.message; }
+  }
+}
+main();
+</script>
+</body>
+</html>

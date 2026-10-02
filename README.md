@@ -92,7 +92,7 @@ Verification runs the same way for all three. Rubric grading uses a three-person
 | Endpoint | Does |
 |---|---|
 | `POST /v1/keys` | Mint a sandbox key with $5 faucet credit (open unless `VOUCH_LOCK_SIGNUP=1`) |
-| `GET /v1/status` | Configuration summary (execution, grading, store, attestation key), no secrets |
+| `GET /v1/status` | Configuration summary (execution, grading, store, attestation key), no secrets. `?probe=1` adds one live call per configured model and reports whether the key and model id work |
 | `GET /v1/me` | The key behind the bearer token: `{ key_id, name, tier, owner }` |
 | `GET /v1/capabilities` | The capability registry with schemas (public) |
 | `GET /v1/offers` | Standing offers: committed ceilings, SLAs, stake, track (public) |

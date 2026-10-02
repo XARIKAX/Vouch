@@ -176,14 +176,18 @@ async function execute(provider, task, cfg) {
   const t0 = Date.now();
   let mode = 'simulated';
   let model = null;
+  const diag = {};
   try {
-    return await executeInner(provider, task, cfg, (m, name = null) => { mode = m; model = name; });
+    return await executeInner(provider, task, cfg, (m, name = null) => { mode = m; model = name; }, diag);
   } finally {
-    task.execution = { mode, ...(model ? { model } : {}), ms: Date.now() - t0 };
+    task.execution = {
+      mode, ...(model ? { model } : {}), ms: Date.now() - t0,
+      ...(diag.error ? { model_error: diag.error } : {}),
+    };
   }
 }
 
-async function executeInner(provider, task, cfg, setMode) {
+async function executeInner(provider, task, cfg, setMode, diag) {
   if (provider.protocol === 'x402') { setMode('x402'); return executeX402(provider, task, cfg); }
   if (provider.endpoint_url) { setMode('external'); return executeExternal(provider, task); }
   const cap = task.capability;
@@ -194,7 +198,7 @@ async function executeInner(provider, task, cfg, setMode) {
   // stays simulated so slashing remains demonstrable, and math.eval is
   // computed for real below.
   if (honest && cfg.anthropicKey && (cfg.execModel || cfg.graderModel)) {
-    const real = await claudeExecute(task, cfg);
+    const real = await claudeExecute(task, cfg, diag);
     if (real) { setMode('model', cfg.execModel || cfg.graderModel); return real; }
   }
 

@@ -53,6 +53,12 @@ a sandbox ledger today. On-chain settlement is next.
    secrets: `execution: "model"` and `grading: "model"` mean the key and
    model variables were picked up; `attestation_key: "configured"` means
    `VOUCH_ATTEST_KEY` is set; `store: "remote"` means Redis is connected.
+   `https://<domain>/v1/status?probe=1` goes one step further: it makes one
+   minimal call per configured model and reports `model_probe.exec.ok` and
+   `model_probe.grader.ok`, with the API's own error text when a key is
+   rejected or a model id does not exist. Every task also carries an
+   `execution` record (`mode: "model"` or `"simulated"`, plus `model_error`)
+   so a silent fallback to the sandbox simulator is visible per task.
 7. First boot against an empty store mints the **bootstrap key** and prints
    it once to the function logs (project → Logs, look for
    `vouch: bootstrap key`). Store it safely.

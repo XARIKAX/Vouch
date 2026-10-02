@@ -1,4 +1,5 @@
 import { primaryValue } from './catalog.js';
+import { describeApiError } from './execute-claude.js';
 
 // Model-backed rubric grader. Active when ANTHROPIC_API_KEY and a grader model
 // (VOUCH_GRADER_MODEL) are set; the heuristic in verification.js remains the
@@ -21,8 +22,9 @@ const VERDICT_RULES =
 
 // `context` carries dispute material ({ dispute: { reason, evidence } }) when
 // the panel sits as a re-review.
-export async function claudeGrade(task, output, rubric, graderIdx, cfg, context = null) {
+export async function claudeGrade(task, output, rubric, graderIdx, cfg, context = null, diag = null) {
   if (!cfg.graderModel) return false;
+  const note = (why) => { if (diag && Array.isArray(diag.errors)) diag.errors.push(why); };
   const deliverable = primaryValue(task.capability, output);
   const payload = {
     capability: task.capability,
@@ -50,9 +52,9 @@ export async function claudeGrade(task, output, rubric, graderIdx, cfg, context 
         messages: [{ role: 'user', content: JSON.stringify(payload) }],
       }),
     });
-    if (!res.ok) return false;
+    if (!res.ok) { note(`grader API ${await describeApiError(res)}`); return false; }
     const body = await res.json();
-    if (body.stop_reason === 'refusal') return false;
+    if (body.stop_reason === 'refusal') { note('grader refused'); return false; }
     const text = (body.content ?? [])
       .filter((b) => b.type === 'text')
       .map((b) => b.text)
@@ -60,7 +62,8 @@ export async function claudeGrade(task, output, rubric, graderIdx, cfg, context 
       .trim()
       .toUpperCase();
     return text.includes('PASS') && !text.includes('FAIL');
-  } catch {
+  } catch (e) {
+    note(e.name === 'AbortError' ? 'grader call timed out' : `grader API unreachable: ${e.message}`);
     return false;
   } finally {
     clearTimeout(timeout);
