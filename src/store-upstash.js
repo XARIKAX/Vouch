@@ -20,7 +20,7 @@ import { createRedisClient } from './redis-client.js';
 // Redis integration and Redis Cloud provide) via createRedisStore(); pick
 // whichever is configured with createRemoteStore().
 
-const COLLECTIONS = ['keys', 'accounts', 'providers', 'tasks', 'disputes', 'workflows', 'agents', 'cache'];
+const COLLECTIONS = ['keys', 'accounts', 'providers', 'tasks', 'disputes', 'workflows', 'agents', 'cache', 'wallets', 'nonces', 'deposits', 'withdrawals'];
 // How many times a flush re-loads, merges and retries after a lost compare-and-set.
 const CAS_ATTEMPTS = 4;
 

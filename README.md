@@ -119,6 +119,11 @@ Verification runs the same way for all three. Rubric grading uses a three-person
 | `GET /v1/agents/{id}?refresh=1` | Re-read the curve and the fee escrow now instead of waiting out the one-minute cache |
 | `POST /v1/agents/{id}/launch/confirm` `{ tx_hash }` | Owner-only. Verifies the receipt on-chain, records token and curve from the `TokenLaunched` event, prices the bond from the curve. `202` with `pending: true` while the transaction is mining; `409 wrong_wallet` / `not_a_launch` / `launch_reverted` |
 | `GET /v1/launchpad/pons` | Venue config a wallet needs: chain id, RPC, explorer, factory, quote assets, launch fee (public) |
+| `POST /v1/auth/nonce` `{ address }` · `POST /v1/auth/verify` `{ address, signature }` | Wallet sign-in. The wallet signs a one-time message; a valid signature mints the wallet's account or recovers it with a fresh key (the old key stops working) |
+| `GET /v1/funds` | Funds mode (`sandbox` or `real`), network, USDG token, treasury address, payout mode, withdrawal limits (public) |
+| `POST /v1/escrow/deposits/confirm` `{ tx_hash }` | Real funds: credits a USDG transfer from the signed-in wallet to the treasury, once; `202` while mining |
+| `POST /v1/withdrawals` `{ amount }` · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/check` | Real funds: withdraw to the signed-in wallet (`sent` when the treasury key pays automatically, `pending` until the operator pays), list, re-check against the chain |
+| `GET /v1/admin/withdrawals` · `POST /v1/admin/withdrawals/{id}/paid` `{ tx_hash }` | Operator payouts: pending list; confirm a payout, verified on-chain. `X-Admin-Token` required |
 | `GET /v1/broker/status` · `/account` · `/positions` · `/quote` | Alpaca **paper** broker reads (`503 broker_unconfigured` without keys) |
 | `POST /v1/broker/order` | Place a paper order. Requires `x-broker-token` when `BROKER_ORDER_TOKEN` is set and a `thesis` object that passes verification (`422 thesis_rejected`) |
 | `POST /v1/admin/guardian` | Pause or resume slash execution for launched agents. `X-Admin-Token` required |
@@ -223,6 +228,12 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `VOUCH_PONS_FACTORY` / `VOUCH_CHAIN_ID` / `VOUCH_CHAIN_EXPLORER` | Pons V2 on Robinhood Chain (4663) | Override the launch factory, chain id and explorer (another deployment or a fork) |
 | `VOUCH_CREATOR_FEE_RECIPIENT` | unset → the launcher's wallet | Address that receives Pons creator fees for every launch prepared here (the future on-chain bond vault) |
 | `VOUCH_ETH_USD` | unset | Dollar rate used to value ETH-quoted tokens; without it an ETH-paired bond has no USD value and no capacity |
+| `VOUCH_REAL_FUNDS` | unset (sandbox credits) | `1` with a treasury address switches the deployment to real USDG: no faucet, simulated deposits off, on-chain deposits and withdrawals on |
+| `VOUCH_TREASURY_ADDRESS` | unset | The wallet that receives deposits and pays withdrawals |
+| `VOUCH_TREASURY_KEY` | unset (operator pays by hand) | Private key of the treasury wallet; set it and withdrawals are signed and sent automatically. Keep it in the host's secret store only |
+| `VOUCH_USDG_ADDRESS` | USDG on Robinhood Chain | The settlement token contract |
+| `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | `1` / `1000` | Per-request withdrawal limits in USDG |
+| `VOUCH_MODEL_BUDGET_USD` | `5` | Daily model spend cap. Past it, or on a credit error from the API, tasks run on the simulator and the heuristic grader until the next day; `GET /v1/status` reports `spend` |
 | `VOUCH_LOCK_SIGNUP` | unset | `1` gates `POST /v1/keys` and `POST /v1/providers` behind `X-Admin-Token` |
 | `VOUCH_ADMIN_TOKEN` | unset | Admin token for locked minting, agent writes and `POST /v1/admin/guardian` |
 | `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` | unset | Alpaca **paper** keys for `/v1/broker/*`; `ALPACA_BASE_URL` must stay on the paper host |
