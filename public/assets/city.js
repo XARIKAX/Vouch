@@ -180,6 +180,12 @@ export function mountPixelCity(canvas, opts = {}) {
   const stars = Array.from({ length: 110 }, (_, i) => ({ x: Math.floor(h1(i * 3.1) * LW), y: Math.floor(h1(i * 7.7) * LH * 0.85), a: 0.15 + h1(i) * 0.5, s: 0.4 + h1(i * 2.2) * 1.2 }));
   const vignette = (() => { const c = document.createElement('canvas'); c.width = LW; c.height = LH; const vg = c.getContext('2d'); const gr = vg.createRadialGradient(LW * 0.55, LH * 0.6, LH * 0.35, LW * 0.55, LH * 0.6, LW * 0.72); gr.addColorStop(0, 'rgba(5,4,17,0)'); gr.addColorStop(1, 'rgba(5,4,17,0.75)'); vg.fillStyle = gr; vg.fillRect(0, 0, LW, LH); return c; })();
 
+  // bare: no backdrop, slab, streets, shadows or sprites. Just the buildings
+  // and trees over a transparent canvas, outlined in ink so they read on paper.
+  const bare = !!opts.bare;
+  const inkC = bare ? (() => { const c = document.createElement('canvas'); c.width = LW; c.height = LH; return c; })() : null;
+  const outC = bare ? (() => { const c = document.createElement('canvas'); c.width = LW; c.height = LH; return c; })() : null;
+  const INK = [18, 18, 22];
   let yaw = -0.62, pitch = 0.58, vyaw = 0, vpitch = 0, dragging = false, lastX = 0, lastY = 0, lastT = 0, idleSince = 0;
   let zoom = opts.zoom || 1, S = 2.6 * zoom;
   let W = 0, H = 0, DPR = 1, scale = 1, ox = 0, oy = 0;
@@ -227,13 +233,16 @@ export function mountPixelCity(canvas, opts = {}) {
     const fog = (d) => 1 - 0.22 * clamp((dmax - d) / (2 * dmax), 0, 1); // far columns a touch darker
 
     // --- night backdrop ---
+    if (bare) g.clearRect(0, 0, LW, LH); else {
     g.fillStyle = css(C.ground); g.fillRect(0, 0, LW, LH);
     for (const s of stars) { const tw = 0.6 + 0.4 * Math.sin(tm / 700 + s.x); g.fillStyle = css(C.star, 1, s.a * tw); g.fillRect(s.x, s.y, s.s > 1.3 ? 2 : 1, 1); }
     const ga = clamp(now / 0.3, 0, 1);
     [[220, .05], [150, .07], [90, .10], [46, .12]].forEach(([r, a]) => { g.fillStyle = css(C.glow, 1, a * ga); g.beginPath(); g.ellipse(CX, CY, r, r * 0.5, 0, 0, Math.PI * 2); g.fill(); });
+    }
 
     // --- the slab: rounded square, rim, streets, lane marks, plaza ---
     const pa = clamp(now / 0.08, 0, 1);
+    if (!bare) {
     const n = 32, top = [], bot = [];
     for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; const sq = (v) => Math.sign(v) * Math.pow(Math.abs(v), 0.55) * (R + 2); top.push(proj(sq(Math.cos(a)), 0, sq(Math.sin(a)))); bot.push(proj(sq(Math.cos(a)), -3, sq(Math.sin(a)))); }
     g.fillStyle = css(C.shadow, 1, .6 * pa); g.beginPath(); top.forEach((q, i) => i ? g.lineTo(Math.round(q.sx + 5), Math.round(q.sy + 11)) : g.moveTo(Math.round(q.sx + 5), Math.round(q.sy + 11))); g.closePath(); g.fill();
@@ -273,11 +282,12 @@ export function mountPixelCity(canvas, opts = {}) {
       poly([proj(x0 - .5, 0.01, z0 - .5), proj(x1 - .5, 0.01, z0 - .5), proj(x1 - .5 + dx, 0.01, z0 - .5 + dz), proj(x1 - .5 + dx, 0.01, z1 - .5 + dz), proj(x0 - .5 + dx, 0.01, z1 - .5 + dz), proj(x0 - .5, 0.01, z1 - .5)], g.fillStyle);
     }
     { const k = clamp((now - 0.22) / 0.6, 0, 1); if (k > 0) { const hb = city.CORE_H * k, dx = shadowDir[0] * hb, dz = shadowDir[1] * hb; poly([proj(-5, .01, -5), proj(5, .01, -5), proj(5 + dx, .01, -5 + dz), proj(5 + dx, .01, 5 + dz), proj(-5 + dx, .01, 5 + dz), proj(-5, .01, 5)], css(C.castShadow, 1, .55)); } }
+    }
 
     // --- ground sprites (lamps with pools, cars) merged into the column pass by depth ---
     const sprites = [];
-    for (const l of city.lamps) if (now >= l.t0) sprites.push({ d: depth(l.x, l.z), kind: 'lamp', x: l.x, z: l.z });
-    if (now > 0.5) for (const car of city.cars) {
+    if (!bare) for (const l of city.lamps) if (now >= l.t0) sprites.push({ d: depth(l.x, l.z), kind: 'lamp', x: l.x, z: l.z });
+    if (!bare && now > 0.5) for (const car of city.cars) {
       const u = car.u, st = car.st; const x = st.axis === 'x' ? u : st.at + car.lane, z = st.axis === 'x' ? st.at + car.lane : u;
       if (Math.hypot(x, z) > R - 1 || Math.hypot(x, z) < city.PLAZA) continue;
       sprites.push({ d: depth(x, z), kind: 'car', x, z, axis: st.axis, dir: Math.sign(car.v) });
@@ -357,12 +367,22 @@ export function mountPixelCity(canvas, opts = {}) {
     const blink = Math.floor(tm / 650) % 2 === 0;
     if (done || now > 0.85) for (const v of city.beacons) { if (now < v.t0 + 0.05) continue; const q = proj(v.x, v.y + 1, v.z); px(q.sx, q.sy, css(C.beacon, 1, blink ? .95 : .25)); }
     if (now >= 0.98) { const k = clamp((now - .98) / .02, 0, 1); const q = proj(0, city.tipY + 0.5, 0); px(q.sx, q.sy, css(C.spireTip, 1, k)); g.fillStyle = css(C.spireTip, 1, .35 * k); g.fillRect(Math.round(q.sx) - 1, Math.round(q.sy) - 1, 3, 3); if (blink) px(q.sx, q.sy - 1, css(C.beacon, 1, .9)); }
-    if (now > 0.97) { const k = clamp((now - .97) / .03, 0, 1) * (done ? .75 + .25 * Math.sin(tm / 1400) : 1); const q = proj(0, city.CORE_H - 5, 0); [[26, .03], [16, .05], [9, .08]].forEach(([r, a]) => { g.fillStyle = css(C.window[1], 1, a * k); g.beginPath(); g.ellipse(q.sx, q.sy, r, r * 1.5, 0, 0, Math.PI * 2); g.fill(); }); }
+    if (!bare && now > 0.97) { const k = clamp((now - .97) / .03, 0, 1) * (done ? .75 + .25 * Math.sin(tm / 1400) : 1); const q = proj(0, city.CORE_H - 5, 0); [[26, .03], [16, .05], [9, .08]].forEach(([r, a]) => { g.fillStyle = css(C.window[1], 1, a * k); g.beginPath(); g.ellipse(q.sx, q.sy, r, r * 1.5, 0, 0, Math.PI * 2); g.fill(); }); }
     if (done && detail !== 'lite') for (let i = 0; i < 5; i++) { const v = list[Math.floor(h2(Math.floor(tm / 90), i) * list.length)]; if (v) { const q = proj(v.x, v.y, v.z); px(q.sx, q.sy - S + 1, css(C.glassEdge, 1, .35)); } }
 
-    g.drawImage(vignette, 0, 0);
+    let src = lo;
+    if (bare) {
+      // ink silhouette a pixel each way, then the city on top
+      const gi = inkC.getContext('2d'), go = outC.getContext('2d');
+      gi.globalCompositeOperation = 'source-over'; gi.clearRect(0, 0, LW, LH); gi.drawImage(lo, 0, 0);
+      gi.globalCompositeOperation = 'source-in'; gi.fillStyle = css(INK); gi.fillRect(0, 0, LW, LH);
+      go.clearRect(0, 0, LW, LH);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) go.drawImage(inkC, dx, dy);
+      go.drawImage(lo, 0, 0);
+      src = outC;
+    } else g.drawImage(vignette, 0, 0);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(lo, Math.round(ox), Math.round(oy), LW * scale, LH * scale);
+    ctx.drawImage(src, Math.round(ox), Math.round(oy), LW * scale, LH * scale);
   }
 
   let slowFrames = 0, lastFrame = 0, degraded = false;
