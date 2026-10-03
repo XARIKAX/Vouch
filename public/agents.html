@@ -21,6 +21,20 @@
 .hero .lead{max-width:52ch;margin-bottom:30px}
 .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .chiprow{display:flex;gap:8px;flex-wrap:wrap;margin-top:34px}
+/* the hero splits: copy left, the swarm scene right */
+.hero-split{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:48px;align-items:center}
+.hero-split>*{min-width:0}
+.hero-split h1{font-size:clamp(44px,5.6vw,86px)}
+.scene{position:relative;aspect-ratio:4/5;max-height:min(720px,76vh);width:100%;background:#0d0b1c;border:1px solid var(--ink);box-shadow:14px 14px 0 var(--accent);overflow:hidden;justify-self:end}
+.scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scene .sh{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;padding:12px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(242,239,228,.6);pointer-events:none}
+.scene .sh b{color:var(--cream);font-weight:500}
+.scene .sf{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.6);background:linear-gradient(to top,rgba(13,11,28,.9),rgba(13,11,28,0))}
+.scene .sf button{border:1px solid rgba(242,239,228,.3);background:rgba(13,11,28,.6);color:var(--cream);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;cursor:pointer}
+.scene .sf button:hover{background:var(--accent);border-color:var(--accent)}
+.scene .online{display:inline-flex;align-items:center;gap:7px}
+.scene .online i{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80}
+@media(max-width:940px){.hero-split{grid-template-columns:1fr;gap:34px}.scene{max-height:70vh;justify-self:stretch}}
 @media(max-width:680px){.hero{padding-top:44px}}
 
 /* steps */
@@ -128,19 +142,28 @@
 
 <section class="hero">
   <div class="wrap rail">
-    <span class="eyebrow">Agentic accounts · a sub-key for your agent</span>
-    <h1 class="display"><span>Your agent</span><span>buys work</span><span class="outline">on its own.</span></h1>
-    <p class="lead mono">An agentic account is a <strong>funded, capped sub-key</strong>. You set a budget, a per-task cap, a capability allowlist and a kill switch. Your agent connects over MCP and <strong>buys verified work</strong> within those limits. Output is checked before any money moves.</p>
-    <div class="cta-row">
-      <a class="btn solid lg" href="#console">Create an account <span class="ar">→</span></a>
-      <a class="btn lg" href="/docs#mcp">Connect over MCP</a>
-    </div>
-    <div class="chiprow">
-      <span class="chip"><b>◆</b> One MCP URL</span>
-      <span class="chip"><b>◆</b> Budget and per-task cap</span>
-      <span class="chip"><b>◆</b> Capability allowlist</span>
-      <span class="chip"><b>◆</b> Kill switch</span>
-      <span class="chip"><b>◆</b> Sandbox ledger today · on-chain settlement next</span>
+    <div class="hero-split">
+      <div>
+        <span class="eyebrow">Agentic accounts · a sub-key for your agent</span>
+        <h1 class="display"><span>Your agent</span><span>buys work</span><span class="outline">on its own.</span></h1>
+        <p class="lead mono">An agentic account is a <strong>funded, capped sub-key</strong>. You set a budget, a per-task cap, a capability allowlist and a kill switch. Your agent connects over MCP and <strong>buys verified work</strong> within those limits. Output is checked before any money moves.</p>
+        <div class="cta-row">
+          <a class="btn solid lg" href="#console">Create an account <span class="ar">→</span></a>
+          <a class="btn lg" href="/docs#mcp">Connect over MCP</a>
+        </div>
+        <div class="chiprow">
+          <span class="chip"><b>◆</b> One MCP URL</span>
+          <span class="chip"><b>◆</b> Budget and per-task cap</span>
+          <span class="chip"><b>◆</b> Capability allowlist</span>
+          <span class="chip"><b>◆</b> Kill switch</span>
+          <span class="chip"><b>◆</b> Sandbox ledger today · on-chain settlement next</span>
+        </div>
+      </div>
+      <div class="scene">
+        <canvas id="swarm" aria-label="A pixel depot at night: a key tower with the Vouch check on its face, and a swarm of small robots assembling block by block, waking up, and trading packets with the tower. Drag to turn it."></canvas>
+        <div class="sh"><span><b>The swarm</b> · agentic accounts</span><span id="swarm-cap">platform</span></div>
+        <div class="sf"><span id="swarm-foot">Formed block by block · drag to turn</span><button type="button" id="swarm-again" aria-label="Form the swarm again">form again ↻</button></div>
+      </div>
     </div>
   </div>
 </section>
@@ -313,6 +336,24 @@
 
 <script type="module">
 import { api, ensureKey, waitTask } from '/assets/vouch.js';
+import { mountPixelSwarm } from '/assets/swarm.js';
+
+// the hero: the swarm forms, wakes, and buys work; the caption follows its phase
+{
+  const swarm = mountPixelSwarm(document.getElementById('swarm'), { zoom: window.innerWidth < 720 ? 0.9 : 1 });
+  if (swarm) {
+    const cap = document.getElementById('swarm-cap'), foot = document.getElementById('swarm-foot');
+    const tick = () => {
+      const p = swarm.progress, ph = swarm.phase;
+      cap.textContent = p < 1 ? `${ph} · ${Math.round(p * 100)}%` : `${swarm.online} / ${swarm.total} online`;
+      if (p < 1) foot.textContent = ph === 'online' ? 'Visors on · each one a funded, capped sub-key' : 'Formed block by block · drag to turn';
+      else foot.innerHTML = '<span class="online"><i></i>Buying verified work · packets out, receipts back</span>';
+      requestAnimationFrame(tick);
+    };
+    tick();
+    document.getElementById('swarm-again').onclick = () => swarm.replay();
+  }
+}
 
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => '$' + (Math.round((Number(n) || 0) * 1e6) / 1e6);
