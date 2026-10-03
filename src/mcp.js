@@ -36,7 +36,7 @@ const TOOLS = [
             webhook: { type: 'string' },
           },
         },
-        budget: { type: 'number', description: 'Maximum spend in USDC' },
+        budget: { type: 'number', description: 'Maximum spend in USDG' },
         deadline_ms: { type: 'integer' },
         min_track: { type: 'number' },
         idempotency_key: { type: 'string' },
@@ -88,9 +88,9 @@ const TOOLS = [
     inputSchema: {
       type: 'object', required: ['fund'],
       properties: {
-        fund: { type: 'number', description: 'USDC to transfer from the parent to the account (its dedicated budget)' },
+        fund: { type: 'number', description: 'USDG to transfer from the parent to the account (its dedicated budget)' },
         allow: { type: 'array', items: { type: 'string' }, description: 'Capability allowlist: exact ids or prefixes such as "text.*"' },
-        per_task_cap: { type: 'number', description: 'Maximum USDC any single task may spend' },
+        per_task_cap: { type: 'number', description: 'Maximum USDG any single task may spend' },
         name: { type: 'string' },
       },
     },

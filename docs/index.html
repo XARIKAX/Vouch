@@ -1278,7 +1278,7 @@ POST /v1/keys/sub/{id}/revoke  → { "id": "key_…", "revoked": true, "refunded
     <li><b>v2</b>: an M-of-N attestation set. The rubric panel becomes independent signers.</li>
     <li><b>v3</b>: optimistic settlement with a challenge window.</li>
   </ol>
-  <p>Going live needs a chain, a funded deployer key, a compiled and audited contract, a JSON-RPC backend in place of the mock, and the engine's ledger calls pointed at the adapter. None of that is in this sandbox. See <span class="inline">ONCHAIN.md</span> in the repo.</p>
+  <p>The target chain is Robinhood Chain (chain id 4663), the chain agent tokens already <a href="#launchpad-api">launch on</a>, with USDG as the settlement asset. Going live still needs a funded deployer key, a compiled and audited contract, a JSON-RPC backend in place of the mock, and the engine's ledger calls pointed at the adapter. None of that is in this sandbox. See <span class="inline">ONCHAIN.md</span> in the repo.</p>
 </article>
 
 <!-- Launchpad: concepts -->

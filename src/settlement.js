@@ -76,7 +76,7 @@ export function verifyVerdictSig(verdict, signatureB64, verifierPublicKeyPem) {
 // same interface over JSON-RPC.
 export function mockChain({ verifierPublicKeyPem }) {
   const escrows = {}; // taskId -> { keyId, amount, provider, stake, state }
-  const balances = {}; // address -> USDC
+  const balances = {}; // address -> USDG
   const insurancePool = { balance: 0 };
   const credit = (addr, amt) => { balances[addr] = round(fromNum(balances[addr]) + amt); };
 

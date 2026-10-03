@@ -199,13 +199,13 @@ export function createEngine(cfg = {}) {
     if (parent.parent) throw new ApiError(403, 'forbidden', 'Sub-keys cannot mint their own sub-keys.');
     if (!body || typeof body !== 'object') throw new ApiError(400, 'invalid_input', 'body must be a JSON object');
     const fund = Number(body.fund) || 0;
-    if (!(fund > 0)) throw new ApiError(400, 'invalid_input', 'fund must be a positive USDC amount to transfer to the sub-key');
+    if (!(fund > 0)) throw new ApiError(400, 'invalid_input', 'fund must be a positive USDG amount to transfer to the sub-key');
     const allow = normalizeAllow(body.allow);
     let perTaskCap = null;
     if (body.per_task_cap !== undefined && body.per_task_cap !== null) {
       const cap = Number(body.per_task_cap);
       if (!(typeof body.per_task_cap === 'number' || typeof body.per_task_cap === 'string') || !Number.isFinite(cap) || cap <= 0) {
-        throw new ApiError(400, 'invalid_input', 'per_task_cap must be a positive USDC amount');
+        throw new ApiError(400, 'invalid_input', 'per_task_cap must be a positive USDG amount');
       }
       perTaskCap = money(cap);
     }
@@ -890,7 +890,7 @@ export function createEngine(cfg = {}) {
     if (!inputCheck.ok) throw new ApiError(400, 'invalid_input', inputCheck.detail);
     const acceptCheck = validateAcceptance(acceptance, cfg);
     if (!acceptCheck.ok) throw new ApiError(400, 'invalid_acceptance', acceptCheck.detail);
-    if (!(typeof budget === 'number' && Number.isFinite(budget) && budget > 0)) throw new ApiError(400, 'invalid_input', 'budget must be a positive USDC amount');
+    if (!(typeof budget === 'number' && Number.isFinite(budget) && budget > 0)) throw new ApiError(400, 'invalid_input', 'budget must be a positive USDG amount');
     if (!Number.isInteger(deadline_ms) || deadline_ms <= 0) {
       throw new ApiError(400, 'invalid_input', 'deadline_ms must be a positive integer');
     }
@@ -1535,7 +1535,7 @@ export function createEngine(cfg = {}) {
     for (const [cap, o] of Object.entries(offered)) {
       if (!CAPABILITIES[cap]) throw new ApiError(404, 'unknown_capability', `No capability "${cap}" in the catalog.`);
       if (!(typeof o?.price_ceiling === 'number' && o.price_ceiling > 0 && Number.isFinite(o.price_ceiling))) {
-        throw new ApiError(400, 'invalid_input', `offers.${cap}.price_ceiling must be a positive USDC amount`);
+        throw new ApiError(400, 'invalid_input', `offers.${cap}.price_ceiling must be a positive USDG amount`);
       }
       if (!Number.isInteger(o?.sla_deadline_ms) || o.sla_deadline_ms <= 0) {
         throw new ApiError(400, 'invalid_input', `offers.${cap}.sla_deadline_ms must be a positive integer`);
@@ -1546,7 +1546,7 @@ export function createEngine(cfg = {}) {
     let bonded = 1;
     if (stake !== undefined && stake !== null) {
       if (typeof stake !== 'number' || !Number.isFinite(stake) || stake < 0) {
-        throw new ApiError(400, 'invalid_input', 'stake must be a non-negative USDC amount');
+        throw new ApiError(400, 'invalid_input', 'stake must be a non-negative USDG amount');
       }
       bonded = Math.min(Math.max(stake, 1), 1000);
     }

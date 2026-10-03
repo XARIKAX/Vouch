@@ -24,21 +24,22 @@ and move only the *custody and settlement of funds* on-chain.
 ```
  agent ──POST /v1/tasks──▶  Vouch engine (coordinator + verifier)
    │                              │
-   │  1. approve USDC             │  3. runs auction, picks committed quote
+   │  1. approve USDG             │  3. runs auction, picks committed quote
    │  2. depositEscrow(task)      │  4. runs verification (schema/checks/rubric)
    ▼                              ▼
  ┌────────────────────────┐   5. submitVerdict(taskId, pass|fail, receiptHash)
- │  VouchEscrow (Base)     │◀─────────────┘   (signed by the verifier key /
- │  - holds USDC per task  │                   attestation set)
+ │  VouchEscrow (RH chain) │◀─────────────┘   (signed by the verifier key /
+ │  - holds USDG per task  │                   attestation set)
  │  - holds provider stake │
  │  - release() / refund() │──▶ pass: pay provider, unlock stake
  │  - slash()              │──▶ fail: refund agent, slash stake to insurance
  └────────────────────────┘
 ```
 
-- **Custody moves on-chain.** A `VouchEscrow` contract on a cheap EVM chain
-  with a native stablecoin holds the task's escrow and the provider's reserved
-  stake for the lifetime of the task. The engine never touches funds. It only
+- **Custody moves on-chain.** A `VouchEscrow` contract on Robinhood Chain
+  (chain id 4663, the chain agent tokens already launch on) holds the task's
+  escrow in USDG and the provider's reserved stake for the lifetime of the
+  task. The engine never touches funds. It only
   *instructs*.
 - **The engine becomes the verifier oracle.** Verification stays off-chain
   (schema, deterministic checks, the Claude rubric panel — none of that can or
@@ -52,7 +53,7 @@ and move only the *custody and settlement of funds* on-chain.
 
 ```solidity
 interface IVouchEscrow {
-  // agent locks the quoted price in USDC for a task
+  // agent locks the quoted price in USDG for a task
   function depositEscrow(bytes32 taskId, uint256 amount) external;
   // provider bonds/reserves stake against the same task
   function reserveStake(bytes32 taskId, address provider, uint256 amount) external;
@@ -99,11 +100,11 @@ Small, contained — the state machine is already correct:
   `slashProvider` calls for calls to a `settlement` adapter. The adapter is
   in-memory today (current behavior) or on-chain (new). The lifecycle,
   verification, and slash logic are untouched.
-- A new `src/settlement-base.js` holds the viem/ethers client, the verifier
+- A new `src/settlement-chain.js` holds the viem/ethers client, the verifier
   signer, and the `IVouchEscrow` calls. Still no npm deps in core if we use a
   thin JSON-RPC fetch client; the signer is the only real dependency.
 - Env: `VOUCH_CHAIN_RPC`, `VOUCH_ESCROW_ADDRESS`, `VOUCH_VERIFIER_KEY`,
-  `VOUCH_USDC_ADDRESS`. Absent → current simulated mode (unchanged).
+  `VOUCH_USDG_ADDRESS`. Absent → current simulated mode (unchanged).
 
 ## Why this wins the comparison
 
