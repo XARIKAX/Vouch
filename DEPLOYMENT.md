@@ -171,6 +171,12 @@ Before real traffic:
 | `VOUCH_PONS_FACTORY` / `VOUCH_CHAIN_ID` / `VOUCH_CHAIN_EXPLORER` | Override the Pons launch factory, chain id and explorer | Pons V2 on Robinhood Chain (4663) |
 | `VOUCH_CREATOR_FEE_RECIPIENT` | Address that receives Pons creator fees for launches prepared here (the future on-chain bond vault) | unset → the launcher's wallet |
 | `VOUCH_ETH_USD` | Dollar rate to value ETH-quoted tokens; unset leaves ETH-paired bonds without a USD value | unset |
+| `VOUCH_REAL_FUNDS` | `1` with a treasury address switches the deployment to real USDG: no faucet, simulated deposits off, on-chain deposits and withdrawals on | unset (sandbox credits) |
+| `VOUCH_TREASURY_ADDRESS` | The wallet that receives deposits and pays withdrawals | unset |
+| `VOUCH_TREASURY_KEY` | Private key of the treasury wallet for automatic payouts; without it withdrawals wait for an operator payout confirmed through `/v1/admin/withdrawals` | unset |
+| `VOUCH_USDG_ADDRESS` | The settlement token contract | USDG on Robinhood Chain |
+| `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | Per-request withdrawal limits in USDG | `1` / `1000` |
+| `VOUCH_MODEL_BUDGET_USD` | Daily model spend cap; past it, or on a credit error, model calls pause until the next day and tasks run on the simulator and heuristic grader | `5` |
 | `VOUCH_ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
 | `VOUCH_EPHEMERAL` | `1` = in-memory state (dev only) | unset |
 | `VOUCH_FAST` | `1` = fast timings (dev only) | unset |
@@ -184,3 +190,30 @@ Before real traffic:
 1. Create a free Alpaca account and generate **paper** API keys (no real money, no funding needed).
 2. Set `ALPACA_KEY_ID` and `ALPACA_SECRET_KEY` in your host's env vars, and (recommended) a `BROKER_ORDER_TOKEN`.
 3. Redeploy. The **Alpaca (paper)** data source on `/trade` unlocks itself; the agent then trades real market data with real paper orders, still gated by a verified thesis. Every `POST /v1/broker/order` must carry a `thesis` object that passes the server's checks (`json_parseable`, a regex on `direction` and `confidence`, `length_between` 120); otherwise it is rejected with `422 thesis_rejected` before the broker is called. Leave `ALPACA_BASE_URL` on the paper host: the adapter refuses to run against the live (real-money) endpoint. Vouch is not a broker-dealer; live real-money trading is out of scope here.
+
+## Going to production: real funds, accounts, capacity
+
+The sandbox and production are the same code with three switches.
+
+### 1. Real USDG in and out
+
+1. Create a treasury wallet on Robinhood Chain and fund it with a little ETH for gas.
+2. Set `VOUCH_REAL_FUNDS=1` and `VOUCH_TREASURY_ADDRESS=<that wallet>`. From then on new keys get no faucet credit, `POST /v1/escrow/deposit` is refused, and the console shows **Deposit USDG** and **Withdraw** instead of the sandbox faucet.
+3. Deposits: the account's wallet sends USDG to the treasury (the console does this through the wallet), then `POST /v1/escrow/deposits/confirm { tx_hash }`. The server reads the receipt, checks it is a USDG `Transfer` from the signed-in wallet to the treasury, and credits the ledger once.
+4. Withdrawals: `POST /v1/withdrawals { amount }` debits the ledger and goes back to the signed-in wallet.
+   - With `VOUCH_TREASURY_KEY` set, the server signs and sends the transfer itself (EIP-1559, zero dependencies) and the request is `sent`, then `paid` once the receipt is checked. If the send fails, the balance is returned and the request is `failed`.
+   - Without it, the request is `pending`. An operator lists `GET /v1/admin/withdrawals`, pays from the treasury wallet, and posts the hash to `POST /v1/admin/withdrawals/{id}/paid`; the server verifies the transfer on-chain before marking it paid.
+5. Only wallet-signed-in accounts can deposit or withdraw: a deposit is credited to the wallet that sent it, and a withdrawal goes only to that wallet. Anonymous sandbox keys cannot move real money.
+
+Start a real-funds deployment from an empty state (a new `VOUCH_STATE_KEY`): sandbox balances must never become withdrawable.
+
+### 2. Accounts
+
+Wallet sign-in works in both modes. `POST /v1/auth/nonce` returns a message, the wallet signs it (`personal_sign`, no transaction, no cost), and `POST /v1/auth/verify` returns the account's key: a new account the first time, and a fresh key for the same account afterwards, which is how a lost key is recovered. The console's **Sign in with wallet** button does the whole exchange. Set `VOUCH_LOCK_SIGNUP=1` on a production deployment so anonymous keys can no longer be minted and every account is a wallet.
+
+### 3. Capacity
+
+- **Model spend.** `VOUCH_MODEL_BUDGET_USD` caps model spend per UTC day. Past the cap, or when the API reports the account is out of credit, model calls pause and tasks run on the simulator and the heuristic grader instead of timing out and refunding. `GET /v1/status` reports `spend` (today's dollars, calls, tokens, whether calls are paused and why) and the console shows a banner. Top up the model account and raise the budget as volume grows.
+- **Hosting.** The hobby plan limits functions to 60 seconds and deployments to a daily cap. Move to Vercel Pro before real traffic: longer functions (raise `maxDuration` in `vercel.json`), no deployment cap, and usage alerts.
+- **State.** One Redis key with compare-and-set merging is fine for a sandbox. For real traffic put the state on a Redis instance with persistence and backups enabled, keep `VOUCH_STATE_KEY` per environment, and watch the `store` field in `/v1/status` for merge errors.
+- **Secrets.** `VOUCH_TREASURY_KEY`, `VOUCH_ADMIN_TOKEN`, `VOUCH_ATTEST_KEY` and `ANTHROPIC_API_KEY` live in the host's encrypted environment only. Rotate the treasury key by moving the treasury: set a new address and key, and sweep the old wallet.

@@ -92,6 +92,8 @@ export async function claudeExecute(task, cfg, diag = {}) {
   if (!spec || !cfg.anthropicKey || !model) return null;
   const prompt = spec.user(task.input);
   if (!prompt) return null;
+  const blocked = cfg.spend?.blocked?.();
+  if (blocked) { diag.error = blocked; return null; }
 
   // Never wait longer than the quote the provider committed to.
   const budget = Math.min(cfg.execTimeoutMs ?? 60000, Number(task.quote?.deadline_ms) || 60000);
@@ -113,8 +115,9 @@ export async function claudeExecute(task, cfg, diag = {}) {
         messages: [{ role: 'user', content: prompt }],
       }),
     });
-    if (!res.ok) { diag.error = `model API ${await describeApiError(res)}`; return null; }
+    if (!res.ok) { const why = await describeApiError(res); cfg.spend?.fail?.(res.status, why); diag.error = `model API ${why}`; return null; }
     const body = await res.json();
+    cfg.spend?.record?.(model, body.usage);
     if (body.stop_reason === 'refusal') { diag.error = 'model refused the request'; return null; }
     const text = (body.content ?? [])
       .filter((b) => b.type === 'text')

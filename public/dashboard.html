@@ -194,6 +194,12 @@
             <button id="deposit" class="btn">Deposit $2</button>
             <button id="sample" class="btn">Quick sample</button>
           </div>
+          <div class="keyrow" id="walletrow" style="padding-top:0">
+            <button id="signin" class="btn">Sign in with wallet</button>
+            <button id="dep-usdg" class="btn" hidden>Deposit USDG</button>
+            <button id="withdraw" class="btn" hidden>Withdraw</button>
+            <span id="wallet-note" class="mono" style="flex:1 1 200px;font-size:11px;color:rgba(242,239,228,.6);align-self:center;overflow-wrap:anywhere"></span>
+          </div>
           <div class="term-f"><div id="msg"></div></div>
         </div>
       </div>
@@ -326,12 +332,12 @@
    ledger from GET /v1/balance + GET /v1/insurance. No money is computed
    in the browser; every number on this page came back from the server.
    ========================================================================= */
-import { api, ensureKey, getKey, waitTask } from '/assets/vouch.js';
+import { api, ensureKey, getKey, waitTask, signInWithWallet, depositUsdg, getWallet } from '/assets/vouch.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = (n) => '$' + String(Math.round((Number(n) || 0) * 1e6) / 1e6);
-const say = (el) => (t, cls) => { const m = $(el); m.textContent = t; m.className = cls || ''; };
+const say = (el) => (t, cls, html = false) => { const m = $(el); if (html) m.innerHTML = t; else m.textContent = t; m.className = cls || ''; };
 const note = say('msg');     // session terminal footer
 const cnote = say('c-msg');  // composer footer
 const TERMINAL = new Set(['settled', 'refunded']);
@@ -704,6 +710,58 @@ async function session() {
   const [bal] = await Promise.all([refreshLedger(), refreshTasks()]);
   return bal;
 }
+
+/* ---------- wallet sign-in, real funds, spend guard ---------- */
+let FUNDS = null;
+const short = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
+async function fundsMode() {
+  try { FUNDS = await api('/v1/funds', { key: null }); } catch { FUNDS = null; }
+  const real = !!FUNDS?.enabled;
+  $('deposit').hidden = real; $('dep-usdg').hidden = !real; $('withdraw').hidden = !real; $('mint').hidden = real;
+  if (real) { const eb = document.querySelector('.hero-copy .eyebrow'); if (eb) eb.textContent = `Console · real ${FUNDS.token.symbol} · wallet sign-in`; $('key').placeholder = 'no key yet, sign in with your wallet →'; }
+  let me = null; if (getKey()) { try { me = await api('/v1/me'); } catch { me = null; } }
+  const w = me?.wallet || null;
+  $('wallet-note').textContent = w ? `Signed in as ${short(w)} · ${real ? `real ${FUNDS.token.symbol} on ${FUNDS.network}` : 'sandbox credits'}` : real ? `Real funds: sign in with your wallet to deposit ${FUNDS.token.symbol} and withdraw` : 'Optional: sign in with a wallet to keep this account recoverable';
+  $('signin').textContent = w ? 'Switch wallet' : 'Sign in with wallet';
+  try {
+    const st = await api('/v1/status', { key: null });
+    if (st.spend?.degraded) note(`Model calls are paused (${st.spend.reason}). Tasks run on the simulator and the heuristic grader until they resume.`, 'err');
+  } catch { /* status is optional */ }
+}
+$('signin').onclick = async () => {
+  $('signin').disabled = true;
+  try {
+    const out = await signInWithWallet();
+    await session(); await fundsMode();
+    note(out.recovered ? `Welcome back. A fresh key for the account of ${short(out.wallet)} is stored in this browser; the old key no longer works.` : `Account created for ${short(out.wallet)}. The key is stored in this browser; sign in with the same wallet on any device to recover it.`, 'ok');
+  } catch (e) { note(reason(e), 'err'); }
+  finally { $('signin').disabled = false; }
+};
+$('dep-usdg').onclick = async () => {
+  if (!getKey()) return note('Sign in with your wallet first.', 'err');
+  const amount = Number(prompt(`Amount of ${FUNDS?.token?.symbol || 'USDG'} to deposit`, '10'));
+  if (!(amount > 0)) return;
+  $('dep-usdg').disabled = true;
+  try {
+    const out = await depositUsdg(amount, { onStep: (s) => note(s + '…', 'ok') });
+    note(`Deposited ${money(out.amount)}. Balance ${money(out.balance)}. <a href="${out.explorer}" target="_blank" rel="noopener">transaction</a>`, 'ok', true);
+    await refreshLedger();
+  } catch (e) { note(reason(e), 'err'); }
+  finally { $('dep-usdg').disabled = false; }
+};
+$('withdraw').onclick = async () => {
+  if (!getKey()) return note('Sign in with your wallet first.', 'err');
+  const amount = Number(prompt(`Amount of ${FUNDS?.token?.symbol || 'USDG'} to withdraw to ${short(getWallet() || 'your wallet')}`, '5'));
+  if (!(amount > 0)) return;
+  $('withdraw').disabled = true;
+  try {
+    const w = await api('/v1/withdrawals', { method: 'POST', body: { amount } });
+    note(w.status === 'sent' ? `Withdrawal sent. <a href="${w.explorer}" target="_blank" rel="noopener">transaction</a>. Balance ${money(w.balance)}.` : `Withdrawal ${w.id} requested for ${money(w.amount)}; it is paid by the operator and shows in /v1/withdrawals. Balance ${money(w.balance)}.`, 'ok', true);
+    await refreshLedger();
+  } catch (e) { note(reason(e), 'err'); }
+  finally { $('withdraw').disabled = false; }
+};
+fundsMode();
 
 $('mint').onclick = async () => {
   const had = getKey();

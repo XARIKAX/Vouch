@@ -26,6 +26,8 @@ const VERDICT_RULES =
 export async function claudeGrade(task, output, rubric, graderIdx, cfg, context = null, diag = null) {
   if (!cfg.graderModel) return false;
   const note = (why) => { if (diag && Array.isArray(diag.errors)) diag.errors.push(why); };
+  const blocked = cfg.spend?.blocked?.();
+  if (blocked) { note(`grader off: ${blocked}`); return false; }
   const deliverable = primaryValue(task.capability, output);
   // An image task is judged on the picture: verification passes the fetched
   // bytes in context.image; a re-review (dispute) fetches them again.
@@ -64,8 +66,9 @@ export async function claudeGrade(task, output, rubric, graderIdx, cfg, context 
         messages: [{ role: 'user', content }],
       }),
     });
-    if (!res.ok) { note(`grader API ${await describeApiError(res)}`); return false; }
+    if (!res.ok) { const why = await describeApiError(res); cfg.spend?.fail?.(res.status, why); note(`grader API ${why}`); return false; }
     const body = await res.json();
+    cfg.spend?.record?.(cfg.graderModel, body.usage);
     if (body.stop_reason === 'refusal') { note('grader refused'); return false; }
     const text = (body.content ?? [])
       .filter((b) => b.type === 'text')

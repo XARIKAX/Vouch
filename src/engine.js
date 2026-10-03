@@ -4,6 +4,9 @@ import { seedProviders, runExecutor } from './providers.js';
 import { modelBacked } from './execute-claude.js';
 import { ponsConfig, buildLaunchIntent, verifyLaunch, readCurve, readCreatorFees, pairFor } from './chain/pons.js';
 import { createRpc } from './chain/rpc.js';
+import { fundsConfig, verifyDeposit, verifyPayout, sendToken, toUnits, fromUnits } from './chain/funds.js';
+import { recoverAddress, personalHash } from './chain/secp256k1.js';
+import { createSpend } from './spend.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
 import { createAttestor, canonical } from './attest.js';
@@ -55,6 +58,11 @@ export function createEngine(cfg = {}) {
     // verifies; wallets sign. `chain` carries the RPC, factory, explorer.
     chain: ponsConfig(),
     chainRefreshMs: 60 * 1000,   // how often a live agent's price is re-read from its curve
+    // Real funds: USDG deposits to the treasury and withdrawals back to the
+    // account's wallet. Off (sandbox credits) until VOUCH_REAL_FUNDS=1 and a
+    // treasury address are set.
+    funds: fundsConfig(),
+    modelBudgetUsd: Number(process.env.VOUCH_MODEL_BUDGET_USD) || 5,
     ...cfg,
   };
 
@@ -78,6 +86,13 @@ export function createEngine(cfg = {}) {
   state.launchpad ??= { paused: false, pending_slashes: [] }; // guardian + queued token-bond slashes
   state.launchpad.pending_slashes ??= [];
   state.attest ??= {};   // attestation key material: generated key persisted here, plus every public key ever used
+  state.wallets ??= {};  // wallet address (lower case) -> keyId, for sign-in and recovery
+  state.nonces ??= {};   // wallet address -> { nonce, issued_at }, one-time sign-in challenges
+  state.deposits ??= {}; // tx hash -> credited deposit (never credited twice)
+  state.withdrawals ??= {}; // withdrawalId -> { keyId, to, amount, status, tx }
+  // model spend: priced per call, capped per day, degraded on a credit error
+  const spend = createSpend(state, { budgetUsd: cfg.modelBudgetUsd, persist: () => persist() });
+  cfg.spend = spend;
 
   // Attestation key: the configured PEM wins; otherwise the key generated on
   // first boot is persisted in state so receipts keep verifying across
@@ -153,10 +168,149 @@ export function createEngine(cfg = {}) {
     // Optional owner wallet: lets the launchpad detect self-dealing (a buyer and
     // a launched agent funded by the same owner earn that agent zero reputation).
     if (opts.owner) key.owner = String(opts.owner);
+    if (opts.wallet) key.wallet = String(opts.wallet).toLowerCase();
     state.keys[key.id] = key;
-    state.accounts[key.id] = newAccount(cfg.faucet, [{ ts: Date.now(), kind: 'faucet', amount: cfg.faucet, tx: txHash() }]);
+    // real-funds deployments have no faucet: balances come from deposits only
+    const faucet = cfg.funds.enabled ? 0 : cfg.faucet;
+    state.accounts[key.id] = newAccount(faucet, faucet > 0 ? [{ ts: Date.now(), kind: 'faucet', amount: faucet, tx: txHash() }] : []);
     persist();
     return { ...key, token }; // the plaintext token exists only in this return value
+  }
+  // A new secret for an existing key (recovery through its wallet). The old
+  // token stops working at once; the account, balance and history stay.
+  function rotateKey(keyId) {
+    const key = state.keys[keyId];
+    if (!key) throw new ApiError(404, 'not_found', `No key ${keyId}.`);
+    const token = id('vch');
+    key.tokenHash = sha256(token); key.rotatedAt = Date.now();
+    persist();
+    return { ...key, token };
+  }
+
+  // ---- wallet sign-in ----------------------------------------------------
+  // The wallet signs a one-time message; a valid signature either mints the
+  // wallet's account (first time) or hands back a fresh token for the account
+  // it already owns (recovery). Vouch never sees a private key.
+  const isAddress = (a) => /^0x[0-9a-fA-F]{40}$/.test(String(a || ''));
+  const signInMessage = (address, nonce, issued) => `Vouch sign-in\n\nWallet: ${address}\nNonce: ${nonce}\nIssued: ${issued}\n\nSigning proves you control this wallet. It costs nothing and sends no transaction.`;
+  function authNonce(address) {
+    if (!isAddress(address)) throw new ApiError(400, 'invalid_input', 'address must be a wallet address');
+    const addr = String(address).toLowerCase();
+    const nonce = id('nonce'), issued = new Date().toISOString();
+    state.nonces[addr] = { nonce, issued, ts: Date.now() };
+    persist();
+    return { address: addr, nonce, message: signInMessage(address, nonce, issued), expires_in_s: 600 };
+  }
+  function authVerify(address, signature) {
+    if (!isAddress(address)) throw new ApiError(400, 'invalid_input', 'address must be a wallet address');
+    const addr = String(address).toLowerCase();
+    const ch = state.nonces[addr];
+    if (!ch || Date.now() - ch.ts > 600 * 1000) throw new ApiError(400, 'nonce_expired', 'Request a new sign-in message first.');
+    let signer;
+    try { signer = recoverAddress(personalHash(signInMessage(address, ch.nonce, ch.issued)), signature); }
+    catch (e) { throw new ApiError(400, 'bad_signature', `The signature could not be verified: ${e.message}`); }
+    if (signer.toLowerCase() !== addr) throw new ApiError(401, 'wrong_signer', 'The signature was not made by this wallet.');
+    delete state.nonces[addr];                                      // one use
+    const existing = state.wallets[addr] && state.keys[state.wallets[addr]];
+    if (existing && !existing.revoked) {
+      const k = rotateKey(existing.id);
+      return { id: k.id, key: k.token, tier: k.tier, wallet: addr, recovered: true, note: 'A new key for your existing account. The previous key no longer works.' };
+    }
+    const k = createKey(`wallet ${addr.slice(0, 6)}…${addr.slice(-4)}`, { owner: addr, wallet: addr });
+    state.wallets[addr] = k.id;
+    persist();
+    return { id: k.id, key: k.token, tier: k.tier, wallet: addr, recovered: false, note: 'Store this key; sign in with the same wallet to get a new one at any time.' };
+  }
+
+  // ---- real funds --------------------------------------------------------
+  const fundsRpc = () => createRpc(cfg.chain.rpc);
+  function fundsInfo() {
+    const f = cfg.funds;
+    return {
+      mode: f.enabled ? 'real' : 'sandbox', enabled: f.enabled, network: cfg.chain.network, chain_id: cfg.chain.chainId, chain_id_hex: '0x' + cfg.chain.chainId.toString(16), rpc: cfg.chain.rpc, explorer: cfg.chain.explorer,
+      token: f.token, treasury: f.treasury, payouts: f.treasuryKey ? 'automatic' : 'operator', min_withdrawal: f.minWithdrawal, max_withdrawal: f.maxWithdrawal,
+      transfer_selector: '0xa9059cbb',
+    };
+  }
+  const requireFunds = () => { if (!cfg.funds.enabled) throw new ApiError(409, 'sandbox_mode', 'This deployment runs on sandbox credits. Real deposits and withdrawals are off until VOUCH_REAL_FUNDS=1 and a treasury address are configured.'); };
+  const requireWallet = (key) => { if (!key.wallet) throw new ApiError(403, 'wallet_required', 'Sign in with a wallet first; deposits are credited to the wallet that sent them and withdrawals go back to it.'); return key.wallet; };
+
+  // The wallet sent USDG to the treasury: verify the receipt, credit once.
+  async function confirmDeposit(key, txHash_) {
+    requireFunds();
+    const wallet = requireWallet(key);
+    if (key.parent) throw new ApiError(403, 'forbidden', 'Sub-keys are funded by their parent.');
+    const tx = String(txHash_ || '').toLowerCase();
+    if (state.deposits[tx]) return { ...state.deposits[tx], already_credited: true, balance: state.accounts[key.id].balance };
+    let t;
+    try { t = await verifyDeposit(fundsRpc(), tx, cfg.funds); }
+    catch (e) { throw new ApiError(e.code === 'invalid_input' ? 400 : e.code ? 409 : 502, e.code ?? 'chain_unreachable', e.message); }
+    if (!t) return { tx_hash: tx, pending: true, status: 'pending' };
+    if (t.from.toLowerCase() !== wallet) throw new ApiError(409, 'wrong_wallet', 'The deposit came from a different wallet than the one signed in.', { expected: wallet, from: t.from });
+    if (state.deposits[tx]) return { ...state.deposits[tx], already_credited: true, balance: state.accounts[key.id].balance };
+    const acct = state.accounts[key.id];
+    acct.balance = money(acct.balance + t.amount);
+    const entry = { ts: Date.now(), kind: 'deposit', amount: t.amount, tx, chain: cfg.chain.network, token: cfg.funds.token.symbol };
+    acct.history.push(entry);
+    state.deposits[tx] = { tx_hash: tx, key_id: key.id, wallet, amount: t.amount, token: cfg.funds.token.symbol, block_number: t.block_number, credited_at: entry.ts, status: 'credited' };
+    persist();
+    return { ...state.deposits[tx], balance: acct.balance };
+  }
+
+  // Withdraw to the signed-in wallet. The ledger is debited first; the
+  // transfer is sent at once when the treasury key is configured, otherwise
+  // the request waits for an operator payout.
+  async function requestWithdrawal(key, amount) {
+    requireFunds();
+    const wallet = requireWallet(key);
+    if (key.parent) throw new ApiError(403, 'forbidden', 'Sub-keys cannot withdraw; the parent key can.');
+    const amt = money(Number(amount));
+    if (!(amt > 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', 'amount must be a positive number');
+    if (amt < cfg.funds.minWithdrawal) throw new ApiError(400, 'below_minimum', `Minimum withdrawal is ${cfg.funds.minWithdrawal} ${cfg.funds.token.symbol}.`);
+    if (amt > cfg.funds.maxWithdrawal) throw new ApiError(400, 'above_maximum', `Maximum withdrawal per request is ${cfg.funds.maxWithdrawal} ${cfg.funds.token.symbol}.`);
+    const acct = rollDay(state.accounts[key.id]);
+    const available = money(acct.balance - acct.locked);
+    if (amt > available) throw new ApiError(402, 'insufficient_balance', `Available balance is ${available}; ${acct.locked} is locked in open tasks.`, { available, locked: acct.locked });
+    acct.balance = money(acct.balance - amt);
+    const w = { id: id('wd'), key_id: key.id, to: wallet, amount: amt, units: toUnits(amt, cfg.funds.token.decimals).toString(), token: cfg.funds.token.symbol, status: 'pending', requested_at: Date.now(), tx_hash: null, error: null };
+    state.withdrawals[w.id] = w;
+    acct.history.push({ ts: w.requested_at, kind: 'withdrawal', amount: -amt, tx: w.id, status: 'pending' });
+    persist();
+    if (cfg.funds.treasuryKey) {
+      try {
+        w.tx_hash = await sendToken(fundsRpc(), cfg.funds, wallet, BigInt(w.units), { chainId: cfg.chain.chainId });
+        w.status = 'sent'; w.sent_at = Date.now();
+      } catch (e) {
+        // nothing left the treasury: give the balance back and say why
+        acct.balance = money(acct.balance + amt);
+        w.status = 'failed'; w.error = String(e.message).slice(0, 240);
+        acct.history.push({ ts: Date.now(), kind: 'withdrawal_failed', amount: amt, tx: w.id + ':refund' });
+        persist();
+        throw new ApiError(e.code === 'payout_would_fail' ? 409 : 502, e.code ?? 'payout_failed', `The payout could not be sent: ${w.error}. Your balance is unchanged.`);
+      }
+      persist();
+    }
+    return publicWithdrawal(w, acct);
+  }
+  const publicWithdrawal = (w, acct) => ({ id: w.id, to: w.to, amount: w.amount, token: w.token, status: w.status, tx_hash: w.tx_hash, requested_at: w.requested_at, sent_at: w.sent_at ?? null, paid_at: w.paid_at ?? null, error: w.error, explorer: w.tx_hash ? `${cfg.chain.explorer}/tx/${w.tx_hash}` : null, ...(acct ? { balance: acct.balance } : {}) });
+  function listWithdrawals(key) { return Object.values(state.withdrawals).filter((w) => w.key_id === key.id).sort((a, b) => b.requested_at - a.requested_at).map((w) => publicWithdrawal(w)); }
+  function listPendingWithdrawals() { return Object.values(state.withdrawals).filter((w) => w.status === 'pending' || w.status === 'sent').sort((a, b) => a.requested_at - b.requested_at).map((w) => publicWithdrawal(w)); }
+  // An operator paid it by hand (or the automatic send is being confirmed): verify on-chain, then mark paid.
+  async function confirmPayout(withdrawalId, txHash_) {
+    const w = state.withdrawals[withdrawalId];
+    if (!w) throw new ApiError(404, 'not_found', `No withdrawal ${withdrawalId}.`);
+    if (w.status === 'paid') return publicWithdrawal(w);
+    if (w.status === 'failed') throw new ApiError(409, 'withdrawal_failed', 'This withdrawal failed and was refunded; ask for a new one.');
+    const tx = String(txHash_ || w.tx_hash || '').toLowerCase();
+    let t;
+    try { t = await verifyPayout(fundsRpc(), tx, cfg.funds, { to: w.to, units: BigInt(w.units) }); }
+    catch (e) { throw new ApiError(e.code === 'invalid_input' ? 400 : e.code ? 409 : 502, e.code ?? 'chain_unreachable', e.message); }
+    if (!t) { w.tx_hash = tx; w.status = 'sent'; persist(); return { ...publicWithdrawal(w), pending: true }; }
+    w.tx_hash = tx; w.status = 'paid'; w.paid_at = Date.now(); w.block_number = t.block_number;
+    const acct = state.accounts[w.key_id];
+    const h = acct?.history.find((e) => e.tx === w.id); if (h) h.status = 'paid';
+    persist();
+    return publicWithdrawal(w);
   }
 
   function authenticate(token) {
@@ -169,7 +323,7 @@ export function createEngine(cfg = {}) {
   // Who am I: the identity a page or agent needs to compare ownership.
   function me(key) {
     return {
-      key_id: key.id, name: key.name, tier: key.tier, owner: key.owner ?? null,
+      key_id: key.id, name: key.name, tier: key.tier, owner: key.owner ?? null, wallet: key.wallet ?? null, funds: cfg.funds.enabled ? 'real' : 'sandbox',
       parent: key.parent ?? null, frozen: !!key.frozen, allow: key.allow ?? null,
       per_task_cap: key.perTaskCap ?? null, created_at: key.createdAt,
     };
@@ -327,6 +481,7 @@ export function createEngine(cfg = {}) {
   }
 
   function deposit(key, amount) {
+    if (cfg.funds.enabled) throw new ApiError(409, 'sandbox_disabled', 'Simulated deposits are off on a real-funds deployment. Send USDG to the treasury from your signed-in wallet and confirm the transaction.');
     if (key.parent) throw new ApiError(403, 'forbidden', 'Sub-keys are funded by their parent; deposit to the parent key instead.');
     if (!(typeof amount === 'number' && Number.isFinite(amount) && amount > 0)) throw new ApiError(400, 'invalid_input', 'amount must be a positive number');
     const capped = Math.min(amount, 100); // simulated faucet cap
@@ -1812,7 +1967,8 @@ export function createEngine(cfg = {}) {
 
   return {
     cfg, state, drain, flush,
-    createKey, authenticate, me, deposit, balance,
+    createKey, authenticate, me, deposit, balance, rotateKey,
+    authNonce, authVerify, fundsInfo, confirmDeposit, requestWithdrawal, listWithdrawals, listPendingWithdrawals, confirmPayout, spend,
     createSubKey, listSubKeys, revokeSubKey, freezeSubKey,
     offers, createTask, getTask, listTasks, subscribe, publicTask,
     openDispute, getDispute, registerProvider,

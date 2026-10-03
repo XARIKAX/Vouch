@@ -462,6 +462,8 @@ export function createApi(engine, { buckets } = {}) {
         admin_token: !!adminToken(),
         signup_locked: !!engine.cfg.lockSignup || process.env.VOUCH_LOCK_SIGNUP === '1',
         broker: broker.brokerStatus().configured ? 'alpaca-paper' : 'simulated',
+        funds: engine.fundsInfo().mode,
+        spend: engine.spend.summary(),
         fast: !!c.fast,
       }, rl);
     }],
@@ -561,6 +563,63 @@ export function createApi(engine, { buckets } = {}) {
       const rl = limit(key);
       const body = await readBody(req);
       send(res, 200, engine.deposit(key, body.amount), rl);
+    }],
+
+    // Wallet sign-in: a one-time message to sign, then the signature mints
+    // the wallet's account or recovers it with a fresh key.
+    ['POST', /^\/v1\/auth\/nonce$/, async (req, res) => {
+      const rl = limit(anonKey(req));
+      const body = await readBody(req);
+      send(res, 200, engine.authNonce(body.address), rl);
+    }],
+    ['POST', /^\/v1\/auth\/verify$/, async (req, res) => {
+      const rl = limit(anonKey(req));
+      const body = await readBody(req);
+      send(res, 200, engine.authVerify(body.address, body.signature), rl);
+    }],
+
+    // Real funds: what a wallet needs to deposit, confirm a deposit, withdraw.
+    ['GET', /^\/v1\/funds$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, engine.fundsInfo(), rl);
+    }],
+    ['POST', /^\/v1\/escrow\/deposits\/confirm$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      const out = await engine.confirmDeposit(key, body.tx_hash ?? body.txHash);
+      send(res, out.pending ? 202 : 200, out, { ...rl, ...escrowHeader(key) });
+    }],
+    ['POST', /^\/v1\/withdrawals$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      send(res, 201, await engine.requestWithdrawal(key, body.amount), { ...rl, ...escrowHeader(key) });
+    }],
+    ['GET', /^\/v1\/withdrawals$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      send(res, 200, { withdrawals: engine.listWithdrawals(key) }, rl);
+    }],
+    // An operator confirms a payout they sent by hand; also usable to re-check an automatic one.
+    ['GET', /^\/v1\/admin\/withdrawals$/, async (req, res) => {
+      adminOnly(req);
+      send(res, 200, { withdrawals: engine.listPendingWithdrawals() });
+    }],
+    ['POST', /^\/v1\/admin\/withdrawals\/([a-z0-9_]+)\/paid$/, async (req, res, [wid]) => {
+      adminOnly(req);
+      const body = await readBody(req);
+      const out = await engine.confirmPayout(wid, body.tx_hash ?? body.txHash);
+      send(res, out.pending ? 202 : 200, out);
+    }],
+    // the account's own withdrawal, re-checked against the chain
+    ['POST', /^\/v1\/withdrawals\/([a-z0-9_]+)\/check$/, async (req, res, [wid]) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const mine = engine.listWithdrawals(key).find((w) => w.id === wid);
+      if (!mine) throw new ApiError(404, 'not_found', `No withdrawal ${wid}.`);
+      const out = await engine.confirmPayout(wid, mine.tx_hash);
+      send(res, out.pending ? 202 : 200, out, rl);
     }],
   ];
 
