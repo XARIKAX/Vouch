@@ -19,6 +19,18 @@
 .hero h1{margin:22px 0 26px}
 .hero h1 span{display:block}
 .hero .lead{max-width:52ch;margin-bottom:30px}
+/* the hero splits: copy left, the workshop scene right, floating on the page */
+.hero-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center}
+.hero-split>*{min-width:0}
+.hero-split h1{font-size:clamp(44px,5.4vw,84px)}
+.shop{position:relative;width:100%;justify-self:end}
+.shop canvas{display:block;width:100%;aspect-ratio:11/10;max-height:min(640px,72vh)}
+.shop .sf{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.shop .sf b{color:var(--ink);font-weight:500}
+.shop .sf button{border:1px solid var(--line2);background:transparent;color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;cursor:pointer;white-space:nowrap;flex:none}
+.shop .sf button:hover{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.shop .ok{color:#15803d}.shop .no{color:var(--red)}
+@media(max-width:940px){.hero-split{grid-template-columns:1fr;gap:24px}.shop canvas{max-height:60vh}}
 .hero-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 @media(max-width:760px){.hero{padding-top:44px}}
 
@@ -115,12 +127,20 @@
 
 <section class="hero">
   <div class="wrap rail">
-    <span class="eyebrow">For providers</span>
-    <h1 class="display"><span>Paid when</span><span>the work</span><span class="outline">passes.</span></h1>
-    <p class="lead mono">Register an endpoint, bond a stake, quote for tasks. You are paid when your output <strong>passes verification</strong>, slashed when it fails. Every provider's stake is public, so reputation is <strong>collateral, not a claim</strong>.</p>
-    <div class="hero-cta">
-      <a class="btn solid lg" href="/dashboard">Open console <span class="ar">→</span></a>
-      <a class="btn lg" href="/docs">Read the docs <span class="ar">→</span></a>
+    <div class="hero-split">
+      <div>
+        <span class="eyebrow">For providers</span>
+        <h1 class="display"><span>Paid when</span><span>the work</span><span class="outline">passes.</span></h1>
+        <p class="lead mono">Register an endpoint, bond a stake, quote for tasks. You are paid when your output <strong>passes verification</strong>, slashed when it fails. Every provider's stake is public, so reputation is <strong>collateral, not a claim</strong>.</p>
+        <div class="hero-cta">
+          <a class="btn solid lg" href="/dashboard">Open console <span class="ar">→</span></a>
+          <a class="btn lg" href="/docs">Read the docs <span class="ar">→</span></a>
+        </div>
+      </div>
+      <div class="shop">
+        <canvas id="shop" aria-label="A pixel robot at a workbench: tasks drop from a chute, the robot works them and slides the output into a scanner with the Vouch check. A pass earns a coin onto its bond; a fail shreds the output and chips a coin off the bond. Drag to turn."></canvas>
+        <div class="sf"><span><b>The workshop</b> · <span id="shop-cap">setting up</span></span><button type="button" id="shop-again" aria-label="Start the workshop again">start again ↻</button></div>
+      </div>
     </div>
   </div>
 </section>
@@ -219,6 +239,22 @@
 
 <script type="module">
 import { api, ensureKey } from '/assets/vouch.js';
+import { mountWorkshop } from '/assets/workshop.js';
+
+// the hero: the workshop sets up, then works tasks; the caption keeps score
+{
+  const shop = mountWorkshop(document.getElementById('shop'), { zoom: window.innerWidth < 720 ? 0.85 : 1 });
+  if (shop) {
+    const cap = document.getElementById('shop-cap');
+    const tick = () => {
+      const p = shop.progress, s = shop.stats;
+      cap.innerHTML = p < 1 ? `setting up · ${Math.round(p * 100)}%` : `<span class="ok">${s.settled} passed · $${s.earned.toFixed(3)} earned</span> · <span class="no">${s.slashed} slashed</span> · bond ${s.bond} coins · drag to turn`;
+      requestAnimationFrame(tick);
+    };
+    tick();
+    document.getElementById('shop-again').onclick = () => shop.replay();
+  }
+}
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const money = (n) => '$' + (Math.round(n * 1e6) / 1e6);
