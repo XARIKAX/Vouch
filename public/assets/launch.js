@@ -203,7 +203,7 @@ export function mountPixelLaunch(canvas, opts = {}) {
     const riseY = -cp_ * S;
     for (const col of cols) {
       const runs = new Map(), tops = [];
-      const flush = (bit) => { const r = runs.get(bit); if (!r) return; runs.delete(bit); const q = proj(col.x, r.y0 + r.off, col.z), h = r.y1 - r.y0 + 1, o = r.o; face(q.sx, q.sy, [o[0], o[1], [o[1][0], o[1][1] + riseY * (h - 1)], [o[0][0], o[0][1] + riseY * (h - 1)]], css(r.col, r.lm)); };
+      const flush = (bit) => { const r = runs.get(bit); if (!r) return; runs.delete(bit); const q = proj(col.x, r.y0 + r.off, col.z), h = r.y1 - r.y0 + 1, o = r.o; face(q.sx, q.sy, [o[0], o[1], [o[1][0], o[1][1] + riseY * h], [o[0][0], o[0][1] + riseY * h]], css(r.col, r.lm)); };
       const flushAll = () => { for (const [bit] of sides) flush(bit); };
       for (const v of col.vs) {
         if (now < v.t0 || (v.g === 'arm' && armGone(v)) || (gone && v.g === 'rocket')) { flushAll(); continue; }

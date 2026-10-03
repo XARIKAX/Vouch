@@ -222,7 +222,7 @@ export function mountPixelSkyscraper(canvas, opts = {}) {
       const runs = new Map(), tops = [], wins = [];
       const flush = (bit) => { const r = runs.get(bit); if (!r) return; runs.delete(bit);
         const q = proj(col.x, r.y0, col.z), h = r.y1 - r.y0 + 1, o = r.o;
-        const quad = [o[0], o[1], [o[1][0], o[1][1] + riseY * (h - 1)], [o[0][0], o[0][1] + riseY * (h - 1)]];
+        const quad = [o[0], o[1], [o[1][0], o[1][1] + riseY * h], [o[0][0], o[0][1] + riseY * h]];
         face(q.sx, q.sy, quad, css(r.col, r.lm)); };
       const flushAll = () => { for (const [bit] of sides) flush(bit); };
       for (const v of col.vs) {
