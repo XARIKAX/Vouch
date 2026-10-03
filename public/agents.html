@@ -25,16 +25,16 @@
 .hero-split{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:48px;align-items:center}
 .hero-split>*{min-width:0}
 .hero-split h1{font-size:clamp(44px,5.6vw,86px)}
-.scene{position:relative;aspect-ratio:4/5;max-height:min(720px,76vh);width:100%;background:#0d0b1c;border:1px solid var(--ink);box-shadow:14px 14px 0 var(--accent);overflow:hidden;justify-self:end}
-.scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.scene .sh{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;padding:12px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(242,239,228,.6);pointer-events:none}
-.scene .sh b{color:var(--cream);font-weight:500}
-.scene .sf{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.6);background:linear-gradient(to top,rgba(13,11,28,.9),rgba(13,11,28,0))}
-.scene .sf button{border:1px solid rgba(242,239,228,.3);background:rgba(13,11,28,.6);color:var(--cream);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;cursor:pointer}
-.scene .sf button:hover{background:var(--accent);border-color:var(--accent)}
-.scene .online{display:inline-flex;align-items:center;gap:7px}
-.scene .online i{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80}
-@media(max-width:940px){.hero-split{grid-template-columns:1fr;gap:34px}.scene{max-height:70vh;justify-self:stretch}}
+/* the swarm floats over the page: no frame, no background */
+.swarm{position:relative;width:100%;justify-self:end}
+.swarm canvas{display:block;width:100%;aspect-ratio:5/6;max-height:min(680px,74vh)}
+.swarm .sf{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.swarm .sf b{color:var(--ink);font-weight:500}
+.swarm .sf button{border:1px solid var(--line2);background:transparent;color:var(--ink);font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:6px 9px;cursor:pointer;white-space:nowrap;flex:none}
+.swarm .sf button:hover{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.swarm .online{display:inline-flex;align-items:center;gap:7px}
+.swarm .online i{width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+@media(max-width:940px){.hero-split{grid-template-columns:1fr;gap:24px}.swarm canvas{max-height:60vh}}
 @media(max-width:680px){.hero{padding-top:44px}}
 
 /* steps */
@@ -159,10 +159,9 @@
           <span class="chip"><b>◆</b> Sandbox ledger today · on-chain settlement next</span>
         </div>
       </div>
-      <div class="scene">
-        <canvas id="swarm" aria-label="A pixel depot at night: a key tower with the Vouch check on its face, and a swarm of small robots assembling block by block, waking up, and trading packets with the tower. Drag to turn it."></canvas>
-        <div class="sh"><span><b>The swarm</b> · agentic accounts</span><span id="swarm-cap">platform</span></div>
-        <div class="sf"><span id="swarm-foot">Formed block by block · drag to turn</span><button type="button" id="swarm-again" aria-label="Form the swarm again">form again ↻</button></div>
+      <div class="swarm">
+        <canvas id="swarm" aria-label="A swarm of pixel robots hovering: boxy heads with lit visors and antennas, torsos with the Vouch check on the chest, assembling block by block, waking up, and passing packets to each other. Drag to turn them."></canvas>
+        <div class="sf"><span id="swarm-foot"><b>The swarm</b> · <span id="swarm-cap">assembling</span></span><button type="button" id="swarm-again" aria-label="Form the swarm again">form again ↻</button></div>
       </div>
     </div>
   </div>
@@ -342,12 +341,10 @@ import { mountPixelSwarm } from '/assets/swarm.js';
 {
   const swarm = mountPixelSwarm(document.getElementById('swarm'), { zoom: window.innerWidth < 720 ? 0.9 : 1 });
   if (swarm) {
-    const cap = document.getElementById('swarm-cap'), foot = document.getElementById('swarm-foot');
+    const cap = document.getElementById('swarm-cap');
     const tick = () => {
       const p = swarm.progress, ph = swarm.phase;
-      cap.textContent = p < 1 ? `${ph} · ${Math.round(p * 100)}%` : `${swarm.online} / ${swarm.total} online`;
-      if (p < 1) foot.textContent = ph === 'online' ? 'Visors on · each one a funded, capped sub-key' : 'Formed block by block · drag to turn';
-      else foot.innerHTML = '<span class="online"><i></i>Buying verified work · packets out, receipts back</span>';
+      cap.innerHTML = p < 1 ? `${ph} · ${Math.round(p * 100)}% · drag to turn` : `<span class="online"><i></i>${swarm.online} / ${swarm.total} online · each one a funded, capped sub-key · drag to turn</span>`;
       requestAnimationFrame(tick);
     };
     tick();
