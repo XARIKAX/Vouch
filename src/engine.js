@@ -2051,7 +2051,7 @@ export function createEngine(cfg = {}) {
 
   return {
     cfg, state, drain, flush, inference, upstream,
-    syncUpstream: (o) => upstream.sync(o), upstreamInfo: () => upstream.info(), ensureUpstreamFresh: () => upstream.ensureFresh(track),
+    syncUpstream: (o) => upstream.sync(o), upstreamInfo: (o) => upstream.info(o), ensureUpstreamFresh: () => upstream.ensureFresh(track),
     setTopUpRule, createAgentKey, postInferenceOffer, delistInferenceOffer,
     listInferenceOffers: (q) => inference.listOffers(q), priceBook: () => inference.priceBook(), inferenceUsage: (key, q) => inference.usage(key, q), providerInference: (id_) => inference.providerInference(id_),
     createKey, authenticate, me, deposit, balance, rotateKey,

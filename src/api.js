@@ -194,7 +194,7 @@ export function createApi(engine, { buckets } = {}) {
   // is configured; afterwards a stale catalog is refreshed in the background.
   const freshenUpstream = async () => {
     if (!engine.upstream.config.enabled) return;
-    const info = engine.upstreamInfo();
+    const info = engine.upstreamInfo({ admin: true });
     if (!info.synced_at && !info.error) await engine.syncUpstream();
     else engine.ensureUpstreamFresh();
   };
@@ -476,7 +476,7 @@ export function createApi(engine, { buckets } = {}) {
         broker: broker.brokerStatus().configured ? 'alpaca-paper' : 'simulated',
         funds: engine.fundsInfo().mode,
         spend: engine.spend.summary(),
-        upstream: engine.upstreamInfo(),
+        upstream: engine.upstreamInfo({ admin: isAdmin(req) }),
         fast: !!c.fast,
       }, rl);
     }],
@@ -647,16 +647,18 @@ export function createApi(engine, { buckets } = {}) {
       await freshenUpstream();
       send(res, 200, { models: engine.priceBook(), upstream: engine.upstreamInfo() }, rl);
     }],
-    // the house's sourcing: what aggregator, how many models, margin, budget
+    // the house's sourcing: how many models, when the book was read, whether
+    // it is paused; an admin also sees the aggregator, margin, budget, errors
     ['GET', /^\/v1\/inference\/upstream$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
       await freshenUpstream();
-      send(res, 200, engine.upstreamInfo(), rl);
+      send(res, 200, engine.upstreamInfo({ admin: isAdmin(req) }), rl);
     }],
     // admin: re-read the aggregator's catalog now
     ['POST', /^\/v1\/admin\/inference\/upstream\/sync$/, async (req, res) => {
       adminOnly(req);
-      send(res, 200, await engine.syncUpstream({ force: true }));
+      await engine.syncUpstream({ force: true });
+      send(res, 200, engine.upstreamInfo({ admin: true }));
     }],
     ['GET', /^\/v1\/inference\/usage$/, async (req, res, _p, query) => {
       const key = auth(req);

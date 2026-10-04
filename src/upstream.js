@@ -8,7 +8,8 @@
 //
 //   VOUCH_UPSTREAM_URL      https://openrouter.ai/api/v1 (default when OPENROUTER_API_KEY is set)
 //   VOUCH_UPSTREAM_KEY      the aggregator key (OPENROUTER_API_KEY also read)
-//   VOUCH_UPSTREAM_NAME     "OpenRouter"
+//   VOUCH_UPSTREAM_NAME     "OpenRouter" (admin-only; the public never sees the aggregator's name)
+//   VOUCH_UPSTREAM_LABEL    "Vouch sourcing" (the house provider's public name)
 //   VOUCH_UPSTREAM_MARGIN   0.10 (10% over the upstream price)
 //   VOUCH_UPSTREAM_BOND     1000 (house bond, in ledger dollars)
 //   VOUCH_UPSTREAM_BUDGET_USD  5 (what the house may spend upstream per UTC day)
@@ -32,6 +33,7 @@ export function upstreamConfig(env = process.env) {
   return {
     enabled: !!(url && key),
     url, key, name,
+    label: (env.VOUCH_UPSTREAM_LABEL || 'Vouch sourcing').slice(0, 60),
     margin: Math.min(5, Math.max(0, num(env.VOUCH_UPSTREAM_MARGIN, 0.10))),
     bond: Math.max(1, num(env.VOUCH_UPSTREAM_BOND, 1000)),
     budgetUsd: Math.max(0, num(env.VOUCH_UPSTREAM_BUDGET_USD, 5)),
@@ -40,7 +42,6 @@ export function upstreamConfig(env = process.env) {
     minTps: Math.max(0, num(env.VOUCH_UPSTREAM_MIN_TPS, 5)),
     refreshMs: Math.max(60 * 1000, num(env.VOUCH_UPSTREAM_REFRESH_MS, 6 * 60 * 60 * 1000)),
     models,
-    sourceUrl: env.VOUCH_UPSTREAM_SOURCE_URL || (/openrouter/i.test(url) ? 'https://openrouter.ai' : url),
   };
 }
 
@@ -82,14 +83,19 @@ export function createUpstream({ state, cfg, inference, persist, money }) {
   const providerId = () => `prv_house_${sha256(up.url).slice(0, 10)}`;
   const isHouse = (o) => up.enabled && o?.provider === providerId();
   const round = (n) => money ? money(n) : Math.round(n * 1e6) / 1e6;
+  // The public face of the house: its label, never the aggregator. The
+  // declared source is true and generic; the aggregator's name is admin-only.
+  const publicSource = () => ({ type: 'reseller_agreement', name: `${up.label}: upstream capacity at the best price on the net, resold under its terms`, resale_permitted: true });
+  // the offer terms that, when changed, make the posted offers stale
+  const signature = () => sha256([up.label, up.margin, up.retention, up.ttftMs, up.minTps, String(up.models ?? '')].join('|')).slice(0, 12);
 
   function ensureProvider() {
     const pid = providerId();
     let p = state.providers[pid];
     if (!p) {
-      p = { id: pid, name: `Vouch house sourcing (${up.name})`, endpoint_url: up.url, protocol: 'http', offers: {}, stake: up.bond, stakeReserved: 0, earnings: 0, track: 50, settledCount: 0, slashedCount: 0, house: true };
+      p = { id: pid, name: up.label, endpoint_url: up.url, protocol: 'http', offers: {}, stake: up.bond, stakeReserved: 0, earnings: 0, track: 50, settledCount: 0, slashedCount: 0, house: true };
       state.providers[pid] = p;
-    } else { p.stake = Math.max(up.bond, p.stakeReserved); p.house = true; p.endpoint_url = up.url; }
+    } else { p.stake = Math.max(up.bond, p.stakeReserved); p.house = true; p.endpoint_url = up.url; p.name = up.label; }
     return p;
   }
 
@@ -102,13 +108,13 @@ export function createUpstream({ state, cfg, inference, persist, money }) {
     if (!up.enabled) return { enabled: false };
     if (inflight) return inflight;
     const r = rec();
-    if (!force && r.synced_at && Date.now() - r.synced_at < up.refreshMs) return info();
+    if (!force && r.synced_at && r.sig === signature() && Date.now() - r.synced_at < up.refreshMs) return info();
     inflight = (async () => {
       try {
         const catalog = (await fetchCatalog(up)).filter((m) => !up.models || up.models.test(m.id));
         if (!catalog.length) throw new Error(`${up.name} listed no priced text models`);
         const p = ensureProvider();
-        const source = { type: 'vendor_api', name: `${up.name} API, resold under its terms`, resale_permitted: true, url: up.sourceUrl };
+        const source = publicSource();
         const seen = new Set();
         for (const m of catalog) {
           seen.add(m.id);
@@ -127,7 +133,7 @@ export function createUpstream({ state, cfg, inference, persist, money }) {
           if (kept.has(o.model)) { o.status = 'delisted'; o.delist_reason = 'duplicate'; o.updated_at = Date.now(); continue; }
           kept.add(o.model);
         }
-        Object.assign(r, { provider: p.id, synced_at: Date.now(), models: kept.size, error: null });
+        Object.assign(r, { provider: p.id, synced_at: Date.now(), models: kept.size, error: null, sig: signature() });
         persist();
         return info();
       } catch (e) {
@@ -139,7 +145,13 @@ export function createUpstream({ state, cfg, inference, persist, money }) {
     return inflight;
   }
   // true when a sync should run: never run, or older than the refresh interval
-  const due = () => { if (!up.enabled) return false; const r = rec(); const last = Math.max(r.synced_at || 0, r.last_attempt || 0); return Date.now() - last >= (r.synced_at ? up.refreshMs : 60 * 1000) || (!r.synced_at && !r.last_attempt); };
+  const due = () => {
+    if (!up.enabled) return false;
+    const r = rec(); const last = Math.max(r.synced_at || 0, r.last_attempt || 0);
+    if (!r.synced_at && !r.last_attempt) return true;
+    if (r.synced_at && r.sig !== signature() && Date.now() - (r.last_attempt || 0) >= 60 * 1000) return true; // the terms changed: repost
+    return Date.now() - last >= (r.synced_at ? up.refreshMs : 60 * 1000);
+  };
   // kick a sync in the background when one is due; never blocks a request
   function ensureFresh(track = (p) => p) { if (due() && !inflight) track(sync()); }
 
@@ -154,10 +166,15 @@ export function createUpstream({ state, cfg, inference, persist, money }) {
     },
   };
 
-  function info() {
+  // Public: the house exists, how many models it sources, when the book was
+  // last read, whether it is paused. Admin adds the aggregator, the margin,
+  // the budget and the last error.
+  function info({ admin = false } = {}) {
     if (!up.enabled) return { enabled: false };
     const r = rec(); roll(r.spend);
-    return { enabled: true, name: up.name, provider: r.provider, models: r.models, margin: up.margin, retention: up.retention, synced_at: r.synced_at ? new Date(r.synced_at).toISOString() : null, error: r.error, budget: { today_usd: r.spend.usd, budget_usd: up.budgetUsd, calls_today: r.spend.calls, total_usd: r.spend.total_usd ?? 0, blocked: budget.blocked() } };
+    const pub = { enabled: true, label: up.label, provider: r.provider, models: r.models, retention: up.retention, synced_at: r.synced_at ? new Date(r.synced_at).toISOString() : null, paused: !!budget.blocked(), stale: !r.synced_at || !!r.error };
+    if (!admin) return pub;
+    return { ...pub, name: up.name, url: up.url, margin: up.margin, error: r.error, budget: { today_usd: r.spend.usd, budget_usd: up.budgetUsd, calls_today: r.spend.calls, total_usd: r.spend.total_usd ?? 0, blocked: budget.blocked() } };
   }
 
   return { config: up, sync, due, ensureFresh, info, budget, isHouse, providerId };
