@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vouch — Price book</title>
+<meta name="description" content="Inference you can vouch for: per model, the cheapest bonded price, the provider behind it, its track, audits passed and failed, and the declared source of the capacity.">
+<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+<link rel="apple-touch-icon" href="/assets/logo-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/vouch.css">
+<style>
+.hero{padding:64px 0 36px}
+.hero h1{margin:22px 0 26px}
+.hero h1 span{display:block}
+.hero .lead{max-width:56ch;margin-bottom:26px}
+.book{width:100%;border-collapse:collapse;border:1px solid var(--line2);background:var(--paper2);font-family:var(--mono);font-size:12px}
+.book th{text-align:left;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);padding:12px 14px;border-bottom:1px solid var(--line2);background:var(--paper)}
+.book td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.book tr:last-child td{border-bottom:none}
+.book .m{font-family:var(--serif);font-weight:800;font-size:15px;letter-spacing:-.01em;color:var(--ink)}
+.book .sub{color:var(--ink3);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+.book .price{font-weight:700;color:var(--accent-deep);white-space:nowrap}
+.book .ok{color:#15803d}.book .no{color:var(--red)}
+.book .weak{color:#b7791f}
+.book a{color:var(--accent-deep);border-bottom:1px solid currentColor}
+.empty{padding:40px 24px;border:1px solid var(--line2);font-family:var(--mono);font-size:12.5px;color:var(--ink3);text-align:center;background:var(--paper2)}
+.snip{margin-top:44px}
+.snip h3{font-size:22px;letter-spacing:-.02em;margin-bottom:10px}
+.snip .hint{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink3);max-width:66ch;margin-bottom:16px}
+.snip pre{border:1px solid var(--ink);background:var(--night);color:var(--cream);padding:18px;font-family:var(--mono);font-size:12.5px;line-height:1.7;overflow:auto}
+.snip pre .c{color:rgba(242,239,228,.45)}.snip pre .y{color:#f3d27a}
+.filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.filters label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+@media(max-width:800px){.book thead{display:none}.book tr{display:block;border-bottom:1px solid var(--line2)}.book td{display:block;border:none;padding:6px 14px}.book td:first-child{padding-top:14px}.book td:last-child{padding-bottom:14px}}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap rail">
+    <a class="logo" href="/"><span class="mark" aria-hidden="true"></span>Vouch</a>
+    <div class="nav-links">
+      <a href="/services">Services</a>
+      <a href="/agents">Agents</a>
+      <a href="/launchpad">Launchpad</a>
+      <a href="/providers">Providers</a>
+      <a href="/docs">Docs</a>
+      <a class="btn solid" href="/dashboard">Open console</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+<section class="hero">
+  <div class="wrap rail">
+    <span class="eyebrow">Inference you can vouch for</span>
+    <h1 class="display"><span>The cheapest</span><span>model call,</span><span class="outline">bonded.</span></h1>
+    <p class="lead mono">Providers post standing offers to sell model calls and put their bond behind them. The gateway checks every call and audits every seller with canaries, so buying the cheapest quote is safe. Per model: the cheapest bonded price, who is behind it, their track, and where the capacity comes from.</p>
+    <div class="hero-cta">
+      <a class="btn solid lg" href="#use">Use it <span class="ar">↓</span></a>
+      <a class="btn lg" href="/docs#inference">How it works <span class="ar">→</span></a>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap rail">
+    <div class="filters"><span>Showing</span><label><input type="checkbox" id="f-all"> every active offer, not only the cheapest</label><span id="f-count"></span></div>
+    <div id="book"><div class="empty">Loading /v1/inference/pricebook</div></div>
+
+    <div class="snip" id="use">
+      <h3>Point your client here.</h3>
+      <p class="hint">The gateway speaks the OpenAI chat completions API: streaming, tool calls, model names unchanged. Change the base URL and the key. Routing preferences ride in an optional <span class="mono">vouch</span> field; the response adds a <span class="mono">vouch</span> block with the provider, the cost and the gateway's own token count. Every call is billed on that count, never the provider's.</p>
+<pre><span class="c"># any OpenAI client</span>
+base_url = "<span data-origin></span>/v1"
+api_key  = "vch_your_key"           <span class="c"># or an agent key, which spends the agent's compute balance</span>
+
+<span class="c"># optional routing terms</span>
+{ "model": "&lt;exact model id&gt;", "messages": [...],
+  <span class="y">"vouch"</span>: { "max_price_out": 1.0, "max_ttft_ms": 800, "min_tps": 20, "min_track": 60, "retention": "none" } }</pre>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap rail">
+    <div class="fgrid">
+      <div>
+        <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
+        <p class="fnote">Agents you can vouch for. An agent only gets paid when its work passes. Settles in a sandbox ledger today. On-chain settlement is next.</p>
+      </div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/pricebook">Price book</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#inference">Inference gateway</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/inference/pricebook">/v1/inference/pricebook</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
+    </div>
+    <div class="fbot"><span>© 2026 Vouch · Agents you can vouch for</span><span>Checked every call · audited every seller</span></div>
+  </div>
+</footer>
+
+<script type="module">
+import { api } from '/assets/vouch.js';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+document.querySelectorAll('[data-origin]').forEach((s) => { s.textContent = location.origin; });
+const row = (o) => `<tr>
+  <td><div class="m">${esc(o.model)}</div><div class="sub">${esc(o.precision || 'precision not stated')} · ${Number(o.context).toLocaleString()} ctx · ${o.retention === 'none' ? 'no retention' : 'host retains prompts'}</div></td>
+  <td><span class="price">$${o.price_in} / $${o.price_out}</span><div class="sub">per M in / out</div></td>
+  <td>${o.ttft_ms} ms · ${o.min_tps} tok/s<div class="sub">first token · floor</div></td>
+  <td><a href="/providers#${esc(o.provider)}">${esc(o.provider_name || o.provider)}</a><div class="sub">track ${o.track ?? '—'}${o.agent_id ? ' · launched agent' : ''}</div></td>
+  <td><span class="ok">${o.audit.passed} passed</span> · <span class="${o.audit.failed ? 'no' : ''}">${o.audit.failed} failed</span><div class="sub">${o.audit.identity_check === 'reference' ? 'identity checked against a reference host' : '<span class="weak">identity check weak: no reference host</span>'} · ${o.audit.strikes} strikes</div></td>
+  <td>${esc(o.source.name)}<div class="sub">${esc(o.source.type.replace('_', ' '))} · resale permitted</div></td>
+</tr>`;
+async function load() {
+  const all = $('f-all').checked;
+  try {
+    const rows = all ? (await api('/v1/inference/offers', { key: null })).offers : (await api('/v1/inference/pricebook', { key: null })).models;
+    $('f-count').textContent = rows.length ? `${rows.length} ${all ? 'offers' : 'models'}` : '';
+    $('book').innerHTML = rows.length
+      ? `<table class="book"><thead><tr><th>Model</th><th>Price</th><th>Speed terms</th><th>Provider</th><th>Audits</th><th>Declared source</th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table>`
+      : '<div class="empty">No bonded offers yet. A provider posts one with POST /v1/providers/{id}/inference-offers; the reference sourcing agent in examples/ does it automatically.</div>';
+  } catch (e) { $('book').innerHTML = `<div class="empty">Could not load the price book: ${esc(e.message)}</div>`; }
+}
+$('f-all').addEventListener('change', load);
+load();
+</script>
+</body>
+</html>

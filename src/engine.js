@@ -11,7 +11,8 @@ import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
 import { createAttestor, canonical } from './attest.js';
 import { snapshotParams } from './launchpad-config.js';
-import { splitFees, bondValue, bondCapacity, protocolFeeSplit, netPayoutSplit, slashPlan, slashBase, trackWeight } from './launchpad.js';
+import { splitFees, bondValue, bondCapacity, protocolFeeSplit, netPayoutSplit, slashPlan, slashBase, trackWeight, topUpFromRevenue } from './launchpad.js';
+import { createInference } from './inference.js';
 import { ApiError } from './errors.js';
 import { assertPublicUrl, fetchWithTimeout } from './netguard.js';
 
@@ -21,6 +22,7 @@ export { ApiError };
 const TERMINAL = new Set(['settled', 'refunded']);
 const DAY_MS = 24 * 60 * 60 * 1000;
 const utcDay = () => Math.floor(Date.now() / DAY_MS);
+const parseJsonEnv = (v) => { if (!v) return {}; try { const o = JSON.parse(v); return o && typeof o === 'object' ? o : {}; } catch { return {}; } };
 
 export function createEngine(cfg = {}) {
   cfg = {
@@ -63,6 +65,9 @@ export function createEngine(cfg = {}) {
     // treasury address are set.
     funds: fundsConfig(),
     modelBudgetUsd: Number(process.env.VOUCH_MODEL_BUDGET_USD) || 5,
+    // Inference audits compare canaries with a reference host per model:
+    // VOUCH_REFERENCE_HOSTS='{"<model>":{"endpoint_url":"https://…/v1","api_key":"…"}}'
+    inference: { referenceHosts: parseJsonEnv(process.env.VOUCH_REFERENCE_HOSTS) },
     ...cfg,
   };
 
@@ -323,7 +328,7 @@ export function createEngine(cfg = {}) {
   // Who am I: the identity a page or agent needs to compare ownership.
   function me(key) {
     return {
-      key_id: key.id, name: key.name, tier: key.tier, owner: key.owner ?? null, wallet: key.wallet ?? null, funds: cfg.funds.enabled ? 'real' : 'sandbox',
+      key_id: key.id, name: key.name, tier: key.tier, owner: key.owner ?? null, wallet: key.wallet ?? null, funds: cfg.funds.enabled ? 'real' : 'sandbox', agent_id: key.agentId ?? null,
       parent: key.parent ?? null, frozen: !!key.frozen, allow: key.allow ?? null,
       per_task_cap: key.perTaskCap ?? null, created_at: key.createdAt,
     };
@@ -343,7 +348,8 @@ export function createEngine(cfg = {}) {
       throw new ApiError(400, 'invalid_input', 'allow must be an array of capability ids or prefixes like "text.*"');
     }
     for (const a of allow) {
-      const ok = CAPABILITIES[a] || (a.endsWith('.*') && Object.keys(CAPABILITIES).some((c) => c.startsWith(a.slice(0, -1))));
+      // the inference gateway is a capability family of its own: inference.chat
+      const ok = CAPABILITIES[a] || a === 'inference.chat' || a === 'inference.*' || (a.endsWith('.*') && Object.keys(CAPABILITIES).some((c) => c.startsWith(a.slice(0, -1))));
       if (!ok) throw new ApiError(400, 'invalid_input', `allow entry "${a}" matches no capability in the catalog`, { entry: a });
     }
     return [...new Set(allow)];
@@ -494,6 +500,10 @@ export function createEngine(cfg = {}) {
   }
 
   function balance(key) {
+    if (key.agentId) {
+      const acct = state.accounts[key.agentId] ?? { balance: 0, locked: 0, history: [] };
+      return { balance: acct.balance, locked: acct.locked, available: money(acct.balance - acct.locked), agent_id: key.agentId, kind: 'compute', history: acct.history.slice(-50) };
+    }
     const acct = rollDay(state.accounts[key.id]);
     const ceiling = ceilingAccount(key.id);
     return {
@@ -1227,6 +1237,7 @@ export function createEngine(cfg = {}) {
       },
       params: a.params,
       chain: a.chain ? publicChain(a.chain) : null,
+      compute: { balance: state.accounts[a.id]?.balance ?? 0, locked: state.accounts[a.id]?.locked ?? 0, top_up: { ...topUpRule(a), cap: a.params.topUp.shareCap, set_at: a.topUp?.set_at ?? null }, topped_up_total: a.toppedUpCompute ?? 0, inference_revenue: a.ledger.filter((e) => e.kind === 'inference_revenue').reduce((s, e) => money(s + e.net), 0) },
     };
   }
   function publicChain(c) {
@@ -1386,15 +1397,50 @@ export function createEngine(cfg = {}) {
     agent.burned = money(agent.burned + f.burn);
     agent.treasuryPaid = money(agent.treasuryPaid + f.treasury);
     const net = netPayoutSplit(f.net, agent.params);
-    agent.ownerPaid = money(agent.ownerPaid + net.owner);
+    // compute top-up: while the compute balance is low, a share of net moves
+    // into it from the owner's share; buyback and bond are untouched
+    const acct = state.accounts[agent.id];
+    const rule = topUpRule(agent);
+    const tu = topUpFromRevenue({ net: f.net, ownerShare: net.owner, balance: acct?.balance ?? 0 }, rule);
+    if (tu.topUp > 0 && acct) {
+      acct.balance = money(acct.balance + tu.topUp);
+      acct.history.push({ ts: Date.now(), kind: 'top_up', amount: tu.topUp, task: taskId, tx: txHash() });
+      agent.toppedUpCompute = money((agent.toppedUpCompute ?? 0) + tu.topUp);
+    }
+    agent.ownerPaid = money(agent.ownerPaid + tu.owner);
     agent.buyback = money(agent.buyback + net.buyback);
     state.treasury.buyback = money(state.treasury.buyback + net.buyback);
     const twap = agent.token.twapUsdg;
     const bondTokens = twap > 0 ? money(net.bond / twap) : 0;
     agent.bond.tokenQty = money(agent.bond.tokenQty + bondTokens);
     agent.bondToppedUp = money(agent.bondToppedUp + net.bond);
-    agent.ledger.push({ ts: Date.now(), kind: 'revenue', taskId, price: f.price, fee: f.fee, burn: f.burn, treasury: f.treasury, net: f.net, ...net, bondTokens, twap });
+    agent.ledger.push({ ts: Date.now(), kind: 'revenue', taskId, price: f.price, fee: f.fee, burn: f.burn, treasury: f.treasury, net: f.net, owner: tu.owner, buyback: net.buyback, bond: net.bond, top_up: tu.topUp, bondTokens, twap });
     syncAgentCapacity(agent);
+  }
+  // The owner-set top-up rule, within the cap; defaults from the launch snapshot.
+  const topUpRule = (agent) => ({ threshold: agent.topUp?.threshold ?? agent.params.topUp.threshold, share: agent.topUp?.share ?? agent.params.topUp.share });
+  function setTopUpRule(agentId, body = {}, actor) {
+    const agent = mustAgent(agentId);
+    assertAgentActor(agent, actor);
+    const cur = topUpRule(agent);
+    const threshold = body.threshold === undefined ? cur.threshold : Number(body.threshold);
+    const share = body.share === undefined ? cur.share : Number(body.share);
+    if (!(Number.isFinite(threshold) && threshold >= 0)) throw new ApiError(400, 'invalid_input', 'threshold must be a non-negative USDG amount');
+    if (!(Number.isFinite(share) && share >= 0 && share <= agent.params.topUp.shareCap)) throw new ApiError(400, 'invalid_input', `share must be between 0 and ${agent.params.topUp.shareCap} (the cap fixed at launch)`);
+    agent.topUp = { threshold: money(threshold), share: Math.round(share * 1e4) / 1e4, set_at: Date.now() };
+    agent.ledger.push({ ts: Date.now(), kind: 'top_up_rule', threshold: agent.topUp.threshold, share: agent.topUp.share });
+    persist();
+    return publicAgent(agent);
+  }
+  // A key that spends the agent's compute balance on the gateway. Owner-only.
+  function createAgentKey(agentId, body = {}, actor) {
+    const agent = mustAgent(agentId);
+    assertAgentActor(agent, actor);
+    const token = id('vch');
+    const key = { id: id('key'), tokenHash: sha256(token), name: body.name ?? `agent ${agentId}`, tier: 'sandbox', createdAt: Date.now(), agentId, owner: agent.owner, allow: ['inference.*'], perTaskCap: body.per_call_cap != null ? money(Number(body.per_call_cap)) : null };
+    state.keys[key.id] = key;
+    persist();
+    return { id: key.id, key: token, agent_id: agentId, allow: key.allow, per_call_cap: key.perTaskCap, note: 'Store this key; it spends the agent\'s compute balance on the inference gateway and nothing else.' };
   }
 
   // An upheld dispute unwinds the revenue a settled task routed: owner,
@@ -1672,7 +1718,7 @@ export function createEngine(cfg = {}) {
 
   // ---- provider registration ---------------------------------------------
 
-  function registerProvider(body) {
+  function registerProvider(body, ownerKey = null) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ApiError(400, 'invalid_input', 'body must be a JSON object');
     const { name, endpoint_url, offers: offered, stake, protocol = 'http' } = body;
     if (!name || typeof name !== 'string') {
@@ -1711,6 +1757,7 @@ export function createEngine(cfg = {}) {
         [cap, { price_ceiling: money(o.price_ceiling), sla_deadline_ms: o.sla_deadline_ms }])),
       stake: bonded, stakeReserved: 0, earnings: 0,
       track: 50, settledCount: 0, slashedCount: 0,
+      ...(ownerKey ? { ownerKeyId: ownerKey.id } : {}),
     };
     state.providers[provider.id] = provider;
     persist();
@@ -1721,15 +1768,40 @@ export function createEngine(cfg = {}) {
   // endpoint_url is operational detail: it is returned to the registrant and
   // to admins, not in the public listing.
   function publicProvider(p, { admin = false } = {}) {
+    inference.releaseHeld(p);
     const reliability = p.settledCount + p.slashedCount > 0
       ? money(p.settledCount / (p.settledCount + p.slashedCount)) : null;
+    const inf = inference.providerInference(p.id);
     return {
       id: p.id, name: p.name, ...(admin ? { endpoint_url: p.endpoint_url } : {}), protocol: p.protocol ?? 'native',
       track: Math.round(p.track), stake: p.stake, stake_available: money(p.stake - p.stakeReserved),
-      earnings: p.earnings, settled: p.settledCount, slashed: p.slashedCount,
+      earnings: p.earnings, earnings_held: inf?.held ?? 0, settled: p.settledCount, slashed: p.slashedCount,
       reliability, capabilities: Object.keys(p.offers), offers: p.offers,
       ...(p.agentId ? { agent_id: p.agentId } : {}),
+      ...(p.ownerKeyId ? { owner_key_id: p.ownerKeyId } : {}),
+      inference: inf ? { offers: inf.offers.length, active: inf.offers.filter((o) => o.status === 'active').length, calls: inf.calls, strikes: inf.strikes.length, window_revenue: inf.window_revenue, bond_free: inf.bond_free, bond_reserved: inf.bond_reserved } : null,
     };
+  }
+  // Provider writes (inference offers) need the registering key or an admin.
+  function assertProviderActor(p, actor) {
+    if (actor === undefined || actor?.admin) return;
+    if (p.ownerKeyId && actor?.key && actor.key.id === p.ownerKeyId) return;
+    if (!p.ownerKeyId && p.agentId && actor?.key && state.agents[p.agentId]?.ownerKeyId === actor.key.id) return;
+    throw new ApiError(403, 'not_owner', 'Only the key that registered this provider (or an admin) may do that.', { owner_key_id: p.ownerKeyId ?? null });
+  }
+  function postInferenceOffer(providerId, body, actor) {
+    const p = state.providers[providerId];
+    if (!p) throw new ApiError(404, 'not_found', `No provider ${providerId}.`);
+    assertProviderActor(p, actor);
+    return inference.postOffer(providerId, body);
+  }
+  function delistInferenceOffer(providerId, offerId, actor) {
+    const p = state.providers[providerId];
+    if (!p) throw new ApiError(404, 'not_found', `No provider ${providerId}.`);
+    assertProviderActor(p, actor);
+    const o = inference.offers[offerId];
+    if (!o || o.provider !== providerId) throw new ApiError(404, 'not_found', `No offer ${offerId} on this provider.`);
+    return inference.delistOffer(offerId, 'withdrawn');
   }
   function listProviders(opts = {}) {
     return Object.values(state.providers)
@@ -1965,8 +2037,14 @@ export function createEngine(cfg = {}) {
     if (touched) persist();
   }
 
+  // The inference layer: offers, routing, metering, audit. Slashes go through
+  // applySlash (queued and capped for launched agents).
+  const inference = createInference({ state, cfg, persist, money, id, track, applySlash, agentRawBond, syncAgentCapacity, agentOf: (p) => (p?.agentId ? state.agents[p.agentId] : null) });
+
   return {
-    cfg, state, drain, flush,
+    cfg, state, drain, flush, inference,
+    setTopUpRule, createAgentKey, postInferenceOffer, delistInferenceOffer,
+    listInferenceOffers: (q) => inference.listOffers(q), priceBook: () => inference.priceBook(), inferenceUsage: (key, q) => inference.usage(key, q), providerInference: (id_) => inference.providerInference(id_),
     createKey, authenticate, me, deposit, balance, rotateKey,
     authNonce, authVerify, fundsInfo, confirmDeposit, requestWithdrawal, listWithdrawals, listPendingWithdrawals, confirmPayout, spend,
     createSubKey, listSubKeys, revokeSubKey, freezeSubKey,

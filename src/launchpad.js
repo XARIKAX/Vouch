@@ -66,6 +66,43 @@ export function netPayoutSplit(net, p) {
   return { owner, buyback, bond };
 }
 
+// ---- compute top-up from job revenue -----------------------------------
+// While the agent's compute balance is under its threshold, a share of each
+// settled job's net payout moves into it. It comes out of the owner's share
+// only; the buyback and bond shares are untouched.
+// (Worked example: net $190, owner $152, share 10% → top-up $19, owner $133.)
+export function topUpFromRevenue({ net, ownerShare, balance }, rule) {
+  const share = Math.max(0, Math.min(Number(rule?.share) || 0, 1));
+  const threshold = Math.max(0, Number(rule?.threshold) || 0);
+  if (!(share > 0) || !(Number(balance) < threshold)) return { topUp: 0, owner: money(ownerShare) };
+  const topUp = money(Math.min(Math.max(0, Number(net) || 0) * share, Math.max(0, Number(ownerShare) || 0)));
+  return { topUp, owner: money(ownerShare - topUp) };
+}
+
+// ---- inference billing --------------------------------------------------
+// A billed call pays the inference protocol fee (burn / treasury); the net is
+// the provider's payout. (Worked example: $10.00 → fee $0.30, net $9.70.)
+export function inferenceFeeSplit(cost, p) {
+  const price = Math.max(0, Number(cost) || 0);
+  const fee = money(price * p.inferenceFee);
+  const burn = money(fee * p.inferenceFeeUse.burn);
+  const treasury = money(fee - burn);
+  return { price, fee, burn, treasury, net: money(price - fee) };
+}
+// A launched sourcing agent's payout splits on its own thinner rates.
+// (Worked example: $9.70 → owner $9.312, buyback $0.194, bond $0.194.)
+export function inferenceNetSplit(net, p) {
+  const n = Math.max(0, Number(net) || 0);
+  const owner = money(n * p.inferenceNetSplit.owner);
+  const buyback = money(n * p.inferenceNetSplit.buyback);
+  return { owner, buyback, bond: money(n - owner - buyback) };
+}
+// The bond an offer's provider must keep free: a multiple of its inference
+// revenue in the audit window, plus the call at hand.
+export function inferenceReservation(windowRevenue, callCost, p) {
+  return money((Math.max(0, Number(windowRevenue) || 0) + Math.max(0, Number(callCost) || 0)) * p.inference.bondMultiple);
+}
+
 // ---- slashing in token terms --------------------------------------------
 // Slash is sized in USDG; taken in platform token at the TWAP; the per-verdict
 // cap is reservationMultiple * price; a rolling window cap limits total damage.

@@ -158,6 +158,19 @@
         </div>
 
         <div class="sub-head">
+          <h3>Compute</h3>
+          <p class="hint">The agent's compute balance pays for its model calls through the <a href="/pricebook">gateway</a>. It fills from the operating share of trading fees and, while it is low, from a share of job revenue taken out of the owner's share.</p>
+        </div>
+        <div class="routed">
+          <div class="rr"><span><span class="dot"></span>Compute balance</span><b id="cp-bal">$0</b></div>
+          <div class="rr"><span><span class="dot"></span>Locked in calls</span><b id="cp-locked">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Topped up from job revenue</span><b id="cp-topped">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Earned selling inference</span><b id="cp-earned">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Top-up rule</span><b id="cp-rule">—</b></div>
+          <div class="chainact"><div class="row2" style="flex:1"><div class="field" style="margin:0"><label>Threshold (USDG)</label><input id="cp-threshold" value="20"></div><div class="field" style="margin:0"><label>Share of net (max <span id="cp-cap">30</span>%)</label><input id="cp-share" value="10"></div></div><button class="btn" id="cp-set">Set top-up rule</button><button class="btn" id="cp-key">Mint agent key</button></div>
+        </div>
+
+        <div class="sub-head">
           <h3>Where the money went</h3>
           <p class="hint">Lifetime totals. Of a verified payment, 5% goes to the protocol (half burned). Of the rest, 80% to the owner, 10% buys and burns the token, 10% tops up the bond. Slashes are part of the public record.</p>
         </div>
@@ -267,7 +280,24 @@ function render() {
   } else $('unbond-state').textContent = '';
   $('i-twap').value = tk.twap_usdg ?? ''; $('i-liq').value = tk.pool_liquidity_usdg ?? '';
   renderChain();
+  renderCompute();
 }
+function renderCompute() {
+  const c = A.compute; if (!c) return;
+  $('cp-bal').textContent = fmt(c.balance); $('cp-locked').textContent = fmt(c.locked);
+  $('cp-topped').textContent = fmt(c.topped_up_total); $('cp-earned').textContent = fmt(c.inference_revenue);
+  $('cp-rule').textContent = `${Math.round(c.top_up.share * 100)}% of net while under ${fmt(c.top_up.threshold)}`;
+  $('cp-cap').textContent = Math.round(c.top_up.cap * 100);
+  if (document.activeElement !== $('cp-threshold')) $('cp-threshold').value = c.top_up.threshold;
+  if (document.activeElement !== $('cp-share')) $('cp-share').value = Math.round(c.top_up.share * 100);
+}
+$('cp-set').onclick = () => write('Top-up rule', async (key) => {
+  A = await api(`/v1/agents/${encodeURIComponent(ID)}/top-up`, { method: 'POST', body: { threshold: Number($('cp-threshold').value), share: Number($('cp-share').value) / 100 }, key }); render();
+});
+$('cp-key').onclick = () => write('Agent key', async (key) => {
+  const k = await api(`/v1/agents/${encodeURIComponent(ID)}/keys`, { method: 'POST', body: {}, key });
+  prompt('Your agent key. It spends this agent\'s compute balance on the inference gateway and nothing else. Shown once:', k.key);
+});
 
 // The on-chain block: shown only for agents launched on Pons. Explorer links
 // come from the venue config; everything else is the server's reading.
