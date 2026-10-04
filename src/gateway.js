@@ -39,7 +39,7 @@ export function createGateway(engine) {
     const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     const t0 = Date.now();
     try {
-      const res = await fetch(`${o.endpoint_url}/chat/completions`, { method: 'POST', headers: upstreamHeaders(o), body: JSON.stringify({ ...upstream, stream: false }), signal: ctrl.signal });
+      const res = await fetch(`${o.endpoint_url}/chat/completions`, { method: 'POST', headers: upstreamHeaders(o), body: JSON.stringify({ ...upstream, model: o.model, stream: false }), signal: ctrl.signal });
       const ttft_ms = Date.now() - t0;
       if (!res.ok) return { ok: false, reason: `upstream ${res.status}`, ttft_ms };
       const body = await res.json();
@@ -74,7 +74,7 @@ export function createGateway(engine) {
       if (bad) { inf.strike(o, bad, { ttft_ms: a.ttft_ms, tps: a.tps }); failures.push({ offer: o.id, reason: bad }); continue; }
       const billed = inf.bill({ key, payer, offer: o, tokensIn: req.tokensIn, tokensOut: a.tokensOut, reported: a.reported, ttft_ms: a.ttft_ms, tps: a.tps });
       const verdict = inf.evaluate(o);
-      const out = { ...a.body, usage: { prompt_tokens: req.tokensIn, completion_tokens: a.tokensOut, total_tokens: req.tokensIn + a.tokensOut, reported: a.reported ?? null }, vouch: { call_id: billed.id, provider: o.provider, offer: o.id, cost: billed.cost, fee: billed.fee, ttft_ms: a.ttft_ms, tps: billed.tps, retries: failures.length, ...(verdict ? { verdict } : {}) } };
+      const out = { ...a.body, usage: { prompt_tokens: req.tokensIn, completion_tokens: a.tokensOut, total_tokens: req.tokensIn + a.tokensOut, reported: a.reported ?? null }, vouch: { call_id: billed.id, provider: o.provider, offer: o.id, model: o.model, cost: billed.cost, fee: billed.fee, ttft_ms: a.ttft_ms, tps: billed.tps, retries: failures.length, ...(verdict ? { verdict } : {}) } };
       if (payer !== 'treasury' && inf.wantsCanary(o)) inf.track(canary(o)).catch(() => {});
       return { status: 200, body: out };
     }
@@ -100,7 +100,7 @@ export function createGateway(engine) {
       const t0 = Date.now();
       let first = 0, content = '', toolArgs = '', finish = null, reported = null, chunks = 0;
       try {
-        const up = await fetch(`${o.endpoint_url}/chat/completions`, { method: 'POST', headers: upstreamHeaders(o), body: JSON.stringify({ ...req.upstream, stream: true, stream_options: { include_usage: true } }), signal: ctrl.signal });
+        const up = await fetch(`${o.endpoint_url}/chat/completions`, { method: 'POST', headers: upstreamHeaders(o), body: JSON.stringify({ ...req.upstream, model: o.model, stream: true, stream_options: { include_usage: true } }), signal: ctrl.signal });
         if (!up.ok || !up.body) { release(); inf.strike(o, `upstream ${up.status}`); failures.push({ offer: o.id, reason: `upstream ${up.status}` }); continue; }
         const reader = up.body.getReader(), dec = new TextDecoder();
         let buf = '';

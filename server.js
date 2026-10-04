@@ -36,6 +36,9 @@ export function createApp(cfgOverrides = {}) {
   });
   const api = createApi(engine, { buckets: limiterBuckets });
   const mcp = createMcp(engine, { limit: api.limit });
+  // A long-running server reads the house's aggregator catalog at boot; on a
+  // serverless host the first inference request does it instead.
+  if (!process.env.VERCEL) engine.ensureUpstreamFresh();
 
   const staticFile = async (res, rel, type) => {
     try {

@@ -189,6 +189,16 @@ export function createApi(engine, { buckets } = {}) {
     'X-Escrow-Ceiling-Remaining': String(engine.balance(key).ceiling_remaining),
   });
 
+  // The house's catalog: the first request after a cold start waits for the
+  // aggregator's model list so the price book is never empty when an upstream
+  // is configured; afterwards a stale catalog is refreshed in the background.
+  const freshenUpstream = async () => {
+    if (!engine.upstream.config.enabled) return;
+    const info = engine.upstreamInfo();
+    if (!info.synced_at && !info.error) await engine.syncUpstream();
+    else engine.ensureUpstreamFresh();
+  };
+
   const intParam = (query, name, dflt) => {
     const raw = query.get(name);
     if (raw === null) return dflt;
@@ -466,6 +476,7 @@ export function createApi(engine, { buckets } = {}) {
         broker: broker.brokerStatus().configured ? 'alpaca-paper' : 'simulated',
         funds: engine.fundsInfo().mode,
         spend: engine.spend.summary(),
+        upstream: engine.upstreamInfo(),
         fast: !!c.fast,
       }, rl);
     }],
@@ -621,17 +632,30 @@ export function createApi(engine, { buckets } = {}) {
       const key = auth(req);
       const rl = limit(key);
       const body = await readBody(req);
+      await freshenUpstream();
       if (body.stream === true && !process.env.VERCEL) { await gateway.stream(key, body, res); return; }
       const out = await gateway.complete(key, body);
       send(res, out.status, out.body, rl);
     }],
     ['GET', /^\/v1\/inference\/offers$/, async (req, res, _p, query) => {
       const rl = limit(keyOrAnon(req));
+      await freshenUpstream();
       send(res, 200, { offers: engine.listInferenceOffers({ model: query.get('model') ?? undefined, provider: query.get('provider') ?? undefined, include_delisted: query.get('include_delisted') === '1' }) }, rl);
     }],
     ['GET', /^\/v1\/inference\/pricebook$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
-      send(res, 200, { models: engine.priceBook() }, rl);
+      await freshenUpstream();
+      send(res, 200, { models: engine.priceBook(), upstream: engine.upstreamInfo() }, rl);
+    }],
+    // the house's sourcing: what aggregator, how many models, margin, budget
+    ['GET', /^\/v1\/inference\/upstream$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, engine.upstreamInfo(), rl);
+    }],
+    // admin: re-read the aggregator's catalog now
+    ['POST', /^\/v1\/admin\/inference\/upstream\/sync$/, async (req, res) => {
+      adminOnly(req);
+      send(res, 200, await engine.syncUpstream({ force: true }));
     }],
     ['GET', /^\/v1\/inference\/usage$/, async (req, res, _p, query) => {
       const key = auth(req);

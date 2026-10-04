@@ -34,6 +34,11 @@
 .snip pre .c{color:rgba(242,239,228,.45)}.snip pre .y{color:#f3d27a}
 .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
 .filters label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.filters input[type=search]{flex:1 1 260px;min-width:200px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);font:inherit;font-size:12px;letter-spacing:.04em;text-transform:none;padding:9px 12px;outline:none}
+.filters input[type=search]:focus{border-color:var(--accent-deep)}
+.house{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;border:1px solid var(--ink);background:var(--night);color:var(--cream);padding:14px 18px;margin:0 0 16px;font-family:var(--mono);font-size:12px;line-height:1.6}
+.house b{color:#f3d27a;font-weight:700}.house .dim{color:rgba(242,239,228,.55)}
+.book .tag{display:inline-block;margin-left:6px;padding:1px 6px;border:1px solid var(--line2);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);vertical-align:middle}
 @media(max-width:800px){.book thead{display:none}.book tr{display:block;border-bottom:1px solid var(--line2)}.book td{display:block;border:none;padding:6px 14px}.book td:first-child{padding-top:14px}.book td:last-child{padding-bottom:14px}}
 </style>
 </head>
@@ -68,7 +73,8 @@
 
 <section style="padding-top:0">
   <div class="wrap rail">
-    <div class="filters"><span>Showing</span><label><input type="checkbox" id="f-all"> every active offer, not only the cheapest</label><span id="f-count"></span></div>
+    <div class="filters"><input type="search" id="f-q" placeholder="Search models: gpt, llama, claude, deepseek…" autocomplete="off"><label><input type="checkbox" id="f-all"> every active offer, not only the cheapest</label><span id="f-count"></span></div>
+    <div id="house" class="house" hidden></div>
     <div id="book"><div class="empty">Loading /v1/inference/pricebook</div></div>
 
     <div class="snip" id="use">
@@ -107,24 +113,45 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 document.querySelectorAll('[data-origin]').forEach((s) => { s.textContent = location.origin; });
 const row = (o) => `<tr>
-  <td><div class="m">${esc(o.model)}</div><div class="sub">${esc(o.precision || 'precision not stated')} · ${Number(o.context).toLocaleString()} ctx · ${o.retention === 'none' ? 'no retention' : 'host retains prompts'}</div></td>
+  <td><div class="m">${esc(o.model)}${o.house ? '<span class="tag">house</span>' : ''}</div><div class="sub">${esc(o.display_name && o.display_name !== o.model ? o.display_name + ' · ' : '')}${esc(o.precision || 'precision not stated')} · ${Number(o.context).toLocaleString()} ctx · ${o.retention === 'none' ? 'no retention' : 'host retains prompts'}</div></td>
   <td><span class="price">$${o.price_in} / $${o.price_out}</span><div class="sub">per M in / out</div></td>
   <td>${o.ttft_ms} ms · ${o.min_tps} tok/s<div class="sub">first token · floor</div></td>
   <td><a href="/providers#${esc(o.provider)}">${esc(o.provider_name || o.provider)}</a><div class="sub">track ${o.track ?? '—'}${o.agent_id ? ' · launched agent' : ''}</div></td>
   <td><span class="ok">${o.audit.passed} passed</span> · <span class="${o.audit.failed ? 'no' : ''}">${o.audit.failed} failed</span><div class="sub">${o.audit.identity_check === 'reference' ? 'identity checked against a reference host' : '<span class="weak">identity check weak: no reference host</span>'} · ${o.audit.strikes} strikes</div></td>
   <td>${esc(o.source.name)}<div class="sub">${esc(o.source.type.replace('_', ' '))} · resale permitted</div></td>
 </tr>`;
+let rows = [], all = false;
+const fmt = (n) => (n == null ? '—' : `$${Number(n).toFixed(2)}`);
+function houseBanner(u) {
+  const el = $('house');
+  if (!u?.enabled) { el.hidden = true; return; }
+  const b = u.budget || {};
+  el.hidden = false;
+  el.innerHTML = `<span><b>${u.models}</b> models sourced by the house from <b>${esc(u.name)}</b> at a <b>${Math.round(u.margin * 100)}%</b> margin</span>`
+    + `<span class="dim">any model id ${esc(u.name)} lists works here; a bare id such as gpt-4o resolves to its prefixed one</span>`
+    + `<span class="dim">house budget today ${fmt(b.today_usd)} of ${fmt(b.budget_usd)}${b.blocked ? ' · <b>spent: house offers paused until tomorrow</b>' : ''}</span>`
+    + (u.synced_at ? `<span class="dim">catalog read ${new Date(u.synced_at).toLocaleString()}</span>` : '')
+    + (u.error ? `<span class="dim">last read failed: ${esc(u.error)}</span>` : '');
+}
+function render() {
+  const q = $('f-q').value.trim().toLowerCase();
+  const shown = q ? rows.filter((o) => (o.model + ' ' + (o.display_name || '') + ' ' + (o.provider_name || '')).toLowerCase().includes(q)) : rows;
+  $('f-count').textContent = rows.length ? `${shown.length}${shown.length !== rows.length ? ' of ' + rows.length : ''} ${all ? 'offers' : 'models'}` : '';
+  $('book').innerHTML = shown.length
+    ? `<table class="book"><thead><tr><th>Model</th><th>Price</th><th>Speed terms</th><th>Provider</th><th>Audits</th><th>Declared source</th></tr></thead><tbody>${shown.map(row).join('')}</tbody></table>`
+    : rows.length ? `<div class="empty">No model matches “${esc(q)}”.</div>`
+    : '<div class="empty">No bonded offers yet. A provider posts one with POST /v1/providers/{id}/inference-offers; the operator can also source a whole aggregator catalog with one key (see the docs), and the reference sourcing agent in examples/ does it from any list of sources.</div>';
+}
 async function load() {
-  const all = $('f-all').checked;
+  all = $('f-all').checked;
   try {
-    const rows = all ? (await api('/v1/inference/offers', { key: null })).offers : (await api('/v1/inference/pricebook', { key: null })).models;
-    $('f-count').textContent = rows.length ? `${rows.length} ${all ? 'offers' : 'models'}` : '';
-    $('book').innerHTML = rows.length
-      ? `<table class="book"><thead><tr><th>Model</th><th>Price</th><th>Speed terms</th><th>Provider</th><th>Audits</th><th>Declared source</th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table>`
-      : '<div class="empty">No bonded offers yet. A provider posts one with POST /v1/providers/{id}/inference-offers; the reference sourcing agent in examples/ does it automatically.</div>';
+    if (all) rows = (await api('/v1/inference/offers', { key: null })).offers;
+    else { const book = await api('/v1/inference/pricebook', { key: null }); rows = book.models; houseBanner(book.upstream); }
+    render();
   } catch (e) { $('book').innerHTML = `<div class="empty">Could not load the price book: ${esc(e.message)}</div>`; }
 }
 $('f-all').addEventListener('change', load);
+$('f-q').addEventListener('input', render);
 load();
 </script>
 </body>
