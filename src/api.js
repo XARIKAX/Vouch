@@ -650,6 +650,7 @@ export function createApi(engine, { buckets } = {}) {
     // the house's sourcing: what aggregator, how many models, margin, budget
     ['GET', /^\/v1\/inference\/upstream$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
+      await freshenUpstream();
       send(res, 200, engine.upstreamInfo(), rl);
     }],
     // admin: re-read the aggregator's catalog now
