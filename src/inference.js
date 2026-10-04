@@ -59,17 +59,22 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
     const upstream_key = typeof b.upstream_key === 'string' && b.upstream_key ? b.upstream_key : null;
     return { model, precision, price_in: money(price_in), price_out: money(price_out), ttft_ms, min_tps, context, retention, source: { type: src.type, name: src.name.trim().slice(0, 120), resale_permitted: true, ...(src.url ? { url: String(src.url).slice(0, 200) } : {}) }, endpoint_url: String(b.endpoint_url).replace(/\/$/, ''), upstream_key };
   }
-  function postOffer(providerId, body) {
+  // The house (first-party sourcing) attaches after construction: it tells
+  // routing when the operator's upstream budget is spent and meters what the
+  // house pays its aggregator per billed call.
+  let house = null;
+  const attachHouse = (h) => { house = h; };
+  function postOffer(providerId, body, { persist: doPersist = true } = {}) {
     const p = state.providers[providerId];
     if (!p) throw new ApiError(404, 'not_found', `No provider ${providerId}.`);
     const v = validateOffer(body);
     // one offer per provider and model: posting again updates it
     const existing = Object.values(inf.offers).find((o) => o.provider === providerId && o.model === v.model && o.status !== 'delisted');
     const now = Date.now();
-    if (existing) { Object.assign(existing, v, { updated_at: now }); persist(); return publicOffer(existing); }
+    if (existing) { Object.assign(existing, v, { updated_at: now }); if (doPersist) persist(); return publicOffer(existing); }
     const o = { id: id('inf'), provider: providerId, ...v, status: 'active', delist_reason: null, created_at: now, updated_at: now, stats: { calls: 0, billed: 0, strikes: 0, revenue: 0, canaries: 0, canary_fail: 0, window: [], speed: [], canary_log: [] } };
     inf.offers[o.id] = o;
-    persist();
+    if (doPersist) persist();
     return publicOffer(o);
   }
   function delistOffer(offerId, reason = 'withdrawn') {
@@ -89,6 +94,7 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
       id: o.id, provider: o.provider, provider_name: p?.name ?? null, track: p ? Math.round(p.track) : null, agent_id: p?.agentId ?? null,
       model: o.model, precision: o.precision, price_in: o.price_in, price_out: o.price_out, ttft_ms: o.ttft_ms, min_tps: o.min_tps, context: o.context, retention: o.retention,
       source: o.source, status: o.status, delist_reason: o.delist_reason, created_at: o.created_at, updated_at: o.updated_at,
+      ...(o.display_name ? { display_name: o.display_name } : {}), ...(o.house ? { house: true } : {}),
       audit: { calls: o.stats.calls, billed: o.stats.billed, strikes: o.stats.strikes, canaries, passed: canaries - failed, failed, window_revenue: windowRevenue(o), identity_check: cfg.inference?.referenceHosts?.[o.model] ? 'reference' : 'weak' },
       bond: { free: freeBond(o.provider), reserved: inferenceReservation(providerWindowRevenue(o.provider), 0, paramsFor(p)) },
     };
@@ -100,7 +106,16 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
   function priceBook() {
     const byModel = new Map();
     for (const o of listOffers()) { if (!byModel.has(o.model) || (o.price_in + o.price_out) < (byModel.get(o.model).price_in + byModel.get(o.model).price_out)) byModel.set(o.model, o); }
-    return [...byModel.values()].map((o) => ({ model: o.model, precision: o.precision, price_in: o.price_in, price_out: o.price_out, provider: o.provider, provider_name: o.provider_name, track: o.track, offer: o.id, audit: o.audit, source: o.source, retention: o.retention, ttft_ms: o.ttft_ms, min_tps: o.min_tps, context: o.context, offers: listOffers({ model: o.model }).length }));
+    return [...byModel.values()].map((o) => ({ model: o.model, precision: o.precision, price_in: o.price_in, price_out: o.price_out, provider: o.provider, provider_name: o.provider_name, track: o.track, offer: o.id, audit: o.audit, source: o.source, retention: o.retention, ttft_ms: o.ttft_ms, min_tps: o.min_tps, context: o.context, offers: listOffers({ model: o.model }).length, ...(o.display_name ? { display_name: o.display_name } : {}), ...(o.house ? { house: true } : {}) }));
+  }
+  // The offers that serve a requested model id: exact matches first; failing
+  // that, a bare id matches an aggregator-prefixed one ("gpt-4o" → "openai/gpt-4o"),
+  // so a client migrated in one change keeps its model names.
+  function offersFor(model) {
+    const active = Object.values(inf.offers).filter((o) => o.status === 'active');
+    const exact = active.filter((o) => o.model === model);
+    if (exact.length || model.includes('/')) return exact;
+    return active.filter((o) => o.model.slice(o.model.lastIndexOf('/') + 1) === model);
   }
 
   // ---- bond capacity ----------------------------------------------------------
@@ -118,12 +133,12 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
     const retention = prefs.retention === 'any' ? 'any' : P().inference.defaultRetention;
     const rejected = [];
     const ok = [];
-    for (const o of Object.values(inf.offers)) {
-      if (o.status !== 'active') continue;
-      if (o.model !== model) continue;
+    const houseBlocked = house?.budget.blocked() ?? null;
+    for (const o of offersFor(model)) {
       const p = state.providers[o.provider]; if (!p) continue;
       const est = estimateCost(o, tokensIn, maxOut);
       const why = (r) => rejected.push({ offer: o.id, provider: o.provider, reason: r });
+      if (houseBlocked && house.isHouse(o)) { why(houseBlocked); continue; }
       if (prefs.max_price_in != null && o.price_in > prefs.max_price_in) { why('price_in above ceiling'); continue; }
       if (prefs.max_price_out != null && o.price_out > prefs.max_price_out) { why('price_out above ceiling'); continue; }
       if (prefs.max_ttft_ms != null && o.ttft_ms > prefs.max_ttft_ms) { why('time to first token above limit'); continue; }
@@ -223,6 +238,7 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
     } else if (payer !== 'treasury') p.track = Math.min(100, p.track + 0.05);
     o.stats.calls++; o.stats.billed++; o.stats.revenue = money(o.stats.revenue + f.net);
     o.stats.window.push({ ts: now, revenue: f.net });
+    if (house?.isHouse(o)) house.budget.record(o, tokensIn, tokensOut);
     const meta = { id: id('call'), ts: now, account: accountId, agent_id: key?.agentId ?? null, provider: o.provider, offer: o.id, model: o.model, tokens_in: tokensIn, tokens_out: tokensOut, reported_in: reported?.prompt_tokens ?? null, reported_out: reported?.completion_tokens ?? null, cost, fee: f.fee, net: f.net, ttft_ms, tps: tps == null ? null : Math.round(tps * 10) / 10, status: 'billed', canary };
     recordCall(meta);
     persist();
@@ -310,7 +326,7 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
   }
 
   return {
-    postOffer, delistOffer, listOffers, priceBook, publicOffer, route, estimateCost, reserve, inlineCheck, speedMissed, noteSpeed, bill, strike, wantsCanary, recordCanary, evaluate, falseSource, canaryPrompt, referenceFor, similar, usage, providerInference, releaseHeld, accountIdOf, freeBond,
+    postOffer, delistOffer, listOffers, priceBook, publicOffer, offersFor, attachHouse, route, estimateCost, reserve, inlineCheck, speedMissed, noteSpeed, bill, strike, wantsCanary, recordCanary, evaluate, falseSource, canaryPrompt, referenceFor, similar, usage, providerInference, releaseHeld, accountIdOf, freeBond,
     counts: { messages: countMessages, completion: countCompletion, text: countText },
     get offers() { return inf.offers; }, get calls() { return inf.calls; }, track,
   };

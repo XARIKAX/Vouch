@@ -13,6 +13,7 @@ import { createAttestor, canonical } from './attest.js';
 import { snapshotParams } from './launchpad-config.js';
 import { splitFees, bondValue, bondCapacity, protocolFeeSplit, netPayoutSplit, slashPlan, slashBase, trackWeight, topUpFromRevenue } from './launchpad.js';
 import { createInference } from './inference.js';
+import { upstreamConfig, createUpstream } from './upstream.js';
 import { ApiError } from './errors.js';
 import { assertPublicUrl, fetchWithTimeout } from './netguard.js';
 
@@ -68,6 +69,10 @@ export function createEngine(cfg = {}) {
     // Inference audits compare canaries with a reference host per model:
     // VOUCH_REFERENCE_HOSTS='{"<model>":{"endpoint_url":"https://…/v1","api_key":"…"}}'
     inference: { referenceHosts: parseJsonEnv(process.env.VOUCH_REFERENCE_HOSTS) },
+    // First-party sourcing: resell an aggregator's whole catalog through the
+    // gateway. Off until VOUCH_UPSTREAM_URL and VOUCH_UPSTREAM_KEY (or
+    // OPENROUTER_API_KEY) are set.
+    upstream: upstreamConfig(),
     ...cfg,
   };
 
@@ -2040,9 +2045,13 @@ export function createEngine(cfg = {}) {
   // The inference layer: offers, routing, metering, audit. Slashes go through
   // applySlash (queued and capped for launched agents).
   const inference = createInference({ state, cfg, persist, money, id, track, applySlash, agentRawBond, syncAgentCapacity, agentOf: (p) => (p?.agentId ? state.agents[p.agentId] : null) });
+  // The house: the operator's own sourcing from a configured aggregator.
+  const upstream = createUpstream({ state, cfg, inference, persist, money });
+  inference.attachHouse(upstream);
 
   return {
-    cfg, state, drain, flush, inference,
+    cfg, state, drain, flush, inference, upstream,
+    syncUpstream: (o) => upstream.sync(o), upstreamInfo: () => upstream.info(), ensureUpstreamFresh: () => upstream.ensureFresh(track),
     setTopUpRule, createAgentKey, postInferenceOffer, delistInferenceOffer,
     listInferenceOffers: (q) => inference.listOffers(q), priceBook: () => inference.priceBook(), inferenceUsage: (key, q) => inference.usage(key, q), providerInference: (id_) => inference.providerInference(id_),
     createKey, authenticate, me, deposit, balance, rotateKey,

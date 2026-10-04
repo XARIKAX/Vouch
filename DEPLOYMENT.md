@@ -177,6 +177,9 @@ Before real traffic:
 | `VOUCH_USDG_ADDRESS` | The settlement token contract | USDG on Robinhood Chain |
 | `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | Per-request withdrawal limits in USDG | `1` / `1000` |
 | `VOUCH_MODEL_BUDGET_USD` | Daily model spend cap; past it, or on a credit error, model calls pause until the next day and tasks run on the simulator and heuristic grader | `5` |
+| `OPENROUTER_API_KEY` | The house source for the inference gateway: every priced text model OpenRouter lists becomes a bonded offer, proxied with this key. `VOUCH_UPSTREAM_URL` / `VOUCH_UPSTREAM_KEY` / `VOUCH_UPSTREAM_NAME` select another OpenAI-compatible aggregator | unset (no house source) |
+| `VOUCH_UPSTREAM_MARGIN` / `VOUCH_UPSTREAM_BUDGET_USD` | Margin over the upstream price on house offers; what the house may pay upstream per UTC day | `0.10` / `5` |
+| `VOUCH_UPSTREAM_RETENTION` / `VOUCH_UPSTREAM_MODELS` | What the aggregator keeps, declared on every house offer (`none` or `retained`; must match its data policy); an optional regex limiting which model ids are offered | `none` / all |
 | `VOUCH_ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
 | `VOUCH_EPHEMERAL` | `1` = in-memory state (dev only) | unset |
 | `VOUCH_FAST` | `1` = fast timings (dev only) | unset |
@@ -214,6 +217,7 @@ Wallet sign-in works in both modes. `POST /v1/auth/nonce` returns a message, the
 ### 3. Capacity
 
 - **Model spend.** `VOUCH_MODEL_BUDGET_USD` caps model spend per UTC day. Past the cap, or when the API reports the account is out of credit, model calls pause and tasks run on the simulator and the heuristic grader instead of timing out and refunding. `GET /v1/status` reports `spend` (today's dollars, calls, tokens, whether calls are paused and why) and the console shows a banner. Top up the model account and raise the budget as volume grows.
+- **The house source.** With `OPENROUTER_API_KEY` set, the gateway offers every model OpenRouter lists at the upstream price plus `VOUCH_UPSTREAM_MARGIN`. The first inference or price book request after a cold start reads the catalog (a few seconds); after that it is re-read every six hours in the background, or now with `POST /v1/admin/inference/upstream/sync`. Buyers pay the ledger; the house pays OpenRouter from the prepaid balance behind the key, so keep `VOUCH_UPSTREAM_BUDGET_USD` at what you are willing to spend upstream per day. In the sandbox, buyers spend faucet credits against your real balance: keep the budget small until real funds are on. Enable OpenRouter's data policy that excludes providers who retain prompts, or set `VOUCH_UPSTREAM_RETENTION=retained`, so the declaration on house offers is true.
 - **Hosting.** The hobby plan limits functions to 60 seconds and deployments to a daily cap. Move to Vercel Pro before real traffic: longer functions (raise `maxDuration` in `vercel.json`), no deployment cap, and usage alerts.
 - **State.** One Redis key with compare-and-set merging is fine for a sandbox. For real traffic put the state on a Redis instance with persistence and backups enabled, keep `VOUCH_STATE_KEY` per environment, and watch the `store` field in `/v1/status` for merge errors.
 - **Secrets.** `VOUCH_TREASURY_KEY`, `VOUCH_ADMIN_TOKEN`, `VOUCH_ATTEST_KEY` and `ANTHROPIC_API_KEY` live in the host's encrypted environment only. Rotate the treasury key by moving the treasury: set a new address and key, and sweep the old wallet.
