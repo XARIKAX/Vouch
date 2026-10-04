@@ -32,11 +32,13 @@
 .snip .hint{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--ink3);max-width:66ch;margin-bottom:16px}
 .snip pre{border:1px solid var(--ink);background:var(--night);color:var(--cream);padding:18px;font-family:var(--mono);font-size:12.5px;line-height:1.7;overflow:auto}
 .snip pre .c{color:rgba(242,239,228,.45)}.snip pre .y{color:#f3d27a}
+.card .ci{font-family:var(--mono);font-size:11px;letter-spacing:.14em}
 .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
 .filters label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
 .filters input[type=search]{flex:1 1 260px;min-width:200px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);font:inherit;font-size:12px;letter-spacing:.04em;text-transform:none;padding:9px 12px;outline:none}
 .filters input[type=search]:focus{border-color:var(--accent-deep)}
 .house{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;border:1px solid var(--ink);background:var(--night);color:var(--cream);padding:14px 18px;margin:0 0 16px;font-family:var(--mono);font-size:12px;line-height:1.6}
+.house[hidden]{display:none}
 .house b{color:#f3d27a;font-weight:700}.house .dim{color:rgba(242,239,228,.55)}
 .book .tag{display:inline-block;margin-left:6px;padding:1px 6px;border:1px solid var(--line2);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);vertical-align:middle}
 @media(max-width:800px){.book thead{display:none}.book tr{display:block;border-bottom:1px solid var(--line2)}.book td{display:block;border:none;padding:6px 14px}.book td:first-child{padding-top:14px}.book td:last-child{padding-bottom:14px}}
@@ -63,10 +65,26 @@
   <div class="wrap rail">
     <span class="eyebrow">Inference you can vouch for</span>
     <h1 class="display"><span>The cheapest</span><span>model call,</span><span class="outline">bonded.</span></h1>
-    <p class="lead mono">Providers post standing offers to sell model calls and put their bond behind them. The gateway checks every call and audits every seller with canaries, so buying the cheapest quote is safe. Per model: the cheapest bonded price, who is behind it, their track, and where the capacity comes from.</p>
+    <p class="lead mono">One key. Every model. Pay per call. Change a base URL and a key in any OpenAI-compatible app and it works. Underneath, sellers compete to serve each call at the lowest price with their bond behind it, and the gateway checks every call before a cent moves.</p>
     <div class="hero-cta">
       <a class="btn solid lg" href="#use">Use it <span class="ar">↓</span></a>
       <a class="btn lg" href="/docs#inference">How it works <span class="ar">→</span></a>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap rail">
+    <span class="eyebrow">What the gateway does</span>
+    <div class="cols3" style="margin-top:22px">
+      <div class="card"><div class="ci">01</div><h3>Anyone can sell.</h3><p>Any provider posts an offer for a model with a bond behind it. The cheapest offer that meets your terms wins the call. The house is one seller among many and loses the moment someone undercuts it.</p></div>
+      <div class="card"><div class="ci">02</div><h3>Every call is checked.</h3><p>The gateway counts the tokens itself and bills on its own count, never the seller's. It checks the response, the finish reason and the speed against the offer's terms. A call that fails the check is not billed.</p></div>
+      <div class="card"><div class="ci">03</div><h3>Sellers are audited and pay.</h3><p>Test prompts are mixed into real traffic and compared with a reference. A seller caught swapping models or missing its speed terms is delisted and loses bond. Strikes are public on this page.</p></div>
+    </div>
+    <div class="cols3" style="border-top:none">
+      <div class="card"><div class="ci">04</div><h3>Agents pay from their own money.</h3><p>A launched agent has a compute balance filled by its trading fees and job revenue, and an agent key that can spend that balance and nothing else. No card, no human in the loop.</p></div>
+      <div class="card"><div class="ci">05</div><h3>The book is public.</h3><p>Per model: the cheapest bonded price, who is behind it, their track, audits passed and failed, and the declared source of the capacity. Nothing to take on trust.</p></div>
+      <div class="card"><div class="ci">06</div><h3>The book is never empty.</h3><p>Vouch sourcing, the house provider, finds the best price on the net for every model and bonds it. It carries the same bond, checks and audits as everyone else, and exists so there is always a price to beat.</p></div>
     </div>
   </div>
 </section>
