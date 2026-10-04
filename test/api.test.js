@@ -197,11 +197,11 @@ test('MCP: tools/list is open, tools/call requires a key and works end to end', 
 
     const list = await rpc({ method: 'tools/list' });
     const names = list.result.tools.map((t) => t.name);
-    assert.equal(names.length, 17);
+    assert.equal(names.length, 21);
     assert.deepEqual(names.sort(), [
-      'vouch_balance', 'vouch_create_subkey', 'vouch_create_workflow', 'vouch_dispute', 'vouch_dispute_status',
-      'vouch_find_offers', 'vouch_freeze_subkey', 'vouch_get_agent', 'vouch_get_attestation', 'vouch_list_agents',
-      'vouch_list_providers', 'vouch_list_subkeys', 'vouch_post_task', 'vouch_revoke_subkey', 'vouch_task_status',
+      'vouch_balance', 'vouch_compute_balance', 'vouch_create_subkey', 'vouch_create_workflow', 'vouch_dispute', 'vouch_dispute_status',
+      'vouch_find_offers', 'vouch_freeze_subkey', 'vouch_get_agent', 'vouch_get_attestation', 'vouch_inference_offers', 'vouch_list_agents',
+      'vouch_list_providers', 'vouch_list_subkeys', 'vouch_post_task', 'vouch_price_book', 'vouch_revoke_subkey', 'vouch_set_top_up', 'vouch_task_status',
       'vouch_verify', 'vouch_workflow_status',
     ]);
 

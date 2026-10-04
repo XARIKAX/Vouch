@@ -42,6 +42,29 @@ export const LAUNCHPAD_DEFAULTS = deepFreeze({
   maxSlashMultiple: 2.0,             // a single verdict can never slash > 200% of price
   pendingSlashMs: 24 * 60 * 60 * 1000, // token-bond slashes wait 24h before funds move
 
+  // Inference layer (the gateway): the agent's operating balance is its
+  // compute balance; job revenue tops it up from the owner's share while it
+  // is low; billed calls pay a lower protocol fee and, for a launched sourcing
+  // agent, split on thinner rates than task payouts.
+  topUp: { share: 0.10, shareCap: 0.30, threshold: 20 },   // of net job payout, from the owner's share, while balance < threshold
+  inferenceFee: 0.03,                                       // of every billed call
+  inferenceFeeUse: { burn: 0.50, treasury: 0.50 },
+  inferenceNetSplit: { owner: 0.96, buyback: 0.02, bond: 0.02 },
+  inference: {
+    tokenTolerance: 0.05,          // provider's reported counts may differ from the gateway's by this much
+    canaryRate: 0.02,              // share of an offer's calls followed by a canary
+    canaryMinPerDay: 20,
+    substitutionFailRate: 0.20,    // canary failure rate over the window that proves substitution
+    substitutionMinCanaries: 50,
+    speedMissRate: 0.30,           // share of recent calls missing speed terms that delists an offer
+    speedMissSlashShare: 0.25,     // of window revenue
+    substitutionSlashMultiple: 2,  // of window revenue
+    auditWindowMs: 24 * 60 * 60 * 1000,
+    payoutHoldMs: 60 * 60 * 1000,
+    bondMultiple: 2,               // bond (after haircut) must cover this times window revenue
+    defaultRetention: 'none',      // buyers get no-retention hosts unless they say otherwise
+  },
+
   // Platform token — identity is a deploy parameter (address filled per chain).
   platformToken: { symbol: 'VOUCH', address: null, decimals: 18 },
   stablecoin: { symbol: 'USDG', address: null, decimals: 6 },
@@ -55,7 +78,11 @@ const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 // Validate the parameter set: share groups sum to 1 with every share in
 // [0, 1]; risk limits inside their sane ranges. Throws ApiError 400.
 export function validateParams(p) {
-  const groups = { feeSplit: p.feeSplit, protocolFeeUse: p.protocolFeeUse, netSplit: p.netSplit };
+  const groups = { feeSplit: p.feeSplit, protocolFeeUse: p.protocolFeeUse, netSplit: p.netSplit, inferenceFeeUse: p.inferenceFeeUse, inferenceNetSplit: p.inferenceNetSplit };
+  if (!isNum(p.inferenceFee) || p.inferenceFee < 0 || p.inferenceFee > 1) throw bad('inferenceFee must be in [0, 1]');
+  if (!p.topUp || !isNum(p.topUp.share) || !isNum(p.topUp.shareCap) || !isNum(p.topUp.threshold)) throw bad('topUp must have share, shareCap and threshold');
+  if (p.topUp.share < 0 || p.topUp.shareCap < 0 || p.topUp.shareCap > 1 || p.topUp.share > p.topUp.shareCap) throw bad('topUp.share must be within [0, topUp.shareCap] and the cap within [0, 1]');
+  if (p.topUp.threshold < 0) throw bad('topUp.threshold must be non-negative');
   for (const [name, g] of Object.entries(groups)) {
     if (!g || typeof g !== 'object') throw bad(`${name} must be an object of shares`);
     for (const [k, v] of Object.entries(g)) {
@@ -87,6 +114,10 @@ export function snapshotParams(overrides = {}) {
     feeSplit: { ...LAUNCHPAD_DEFAULTS.feeSplit, ...(o.feeSplit || {}) },
     protocolFeeUse: { ...LAUNCHPAD_DEFAULTS.protocolFeeUse, ...(o.protocolFeeUse || {}) },
     netSplit: { ...LAUNCHPAD_DEFAULTS.netSplit, ...(o.netSplit || {}) },
+    topUp: { ...LAUNCHPAD_DEFAULTS.topUp, ...(o.topUp || {}) },
+    inferenceFeeUse: { ...LAUNCHPAD_DEFAULTS.inferenceFeeUse, ...(o.inferenceFeeUse || {}) },
+    inferenceNetSplit: { ...LAUNCHPAD_DEFAULTS.inferenceNetSplit, ...(o.inferenceNetSplit || {}) },
+    inference: { ...LAUNCHPAD_DEFAULTS.inference, ...(o.inference || {}) },
   };
   validateParams(merged);
   return deepFreeze(merged);

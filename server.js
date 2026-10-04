@@ -14,7 +14,7 @@ const PAGES = {
   '/docs': 'docs/index.html', '/docs/': 'docs/index.html',
   '/dashboard': 'public/dashboard.html', '/services': 'public/services.html',
   '/providers': 'public/providers.html', '/agents': 'public/agents.html',
-  '/launchpad': 'public/launchpad.html', '/agent': 'public/agent.html',
+  '/launchpad': 'public/launchpad.html', '/agent': 'public/agent.html', '/pricebook': 'public/pricebook.html',
   '/trade': 'public/trade.html', '/verify': 'public/verify.html', '/metrics': 'public/metrics.html',
   '/task': 'public/task.html',
 };

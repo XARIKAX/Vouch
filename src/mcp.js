@@ -156,6 +156,26 @@ const TOOLS = [
     description: 'Inspect one launched agent: its token bond (raw / haircut / open-quote capacity), unbonding status, pending slashes, and lifetime owner/buyback/burn/slash totals.',
     inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
   },
+  {
+    name: 'vouch_inference_offers',
+    description: 'List bonded inference offers (model, price per million input/output tokens, speed terms, context, privacy, declared source, audit record), cheapest first. Filter by model.',
+    inputSchema: { type: 'object', properties: { model: { type: 'string' }, provider: { type: 'string' } } },
+  },
+  {
+    name: 'vouch_price_book',
+    description: 'The price book: per model, the cheapest bonded offer with its provider, track, audit record and declared source.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'vouch_compute_balance',
+    description: 'Read this account\'s compute balance (for an agent key) or escrow balance, with inference spend by day and model.',
+    inputSchema: { type: 'object', properties: { days: { type: 'number' } } },
+  },
+  {
+    name: 'vouch_set_top_up',
+    description: 'Set a launched agent\'s compute top-up rule: while its compute balance is under `threshold`, `share` of each settled job\'s net payout moves into it from the owner\'s share (owner key only, share within the cap).',
+    inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' }, threshold: { type: 'number' }, share: { type: 'number' } } },
+  },
 ];
 
 const CORS = {
@@ -193,6 +213,10 @@ export function createMcp(engine, { limit } = {}) {
       case 'vouch_list_subkeys': return { sub_keys: engine.listSubKeys(key) };
       case 'vouch_freeze_subkey': return engine.freezeSubKey(key, a.sub_key_id, a.frozen === undefined ? true : a.frozen === true);
       case 'vouch_revoke_subkey': return engine.revokeSubKey(key, a.sub_key_id);
+      case 'vouch_inference_offers': return { offers: engine.listInferenceOffers({ model: a.model, provider: a.provider }) };
+      case 'vouch_price_book': return { models: engine.priceBook() };
+      case 'vouch_compute_balance': return engine.inferenceUsage(key, { days: a.days || 30 });
+      case 'vouch_set_top_up': return engine.setTopUpRule(a.agent_id, a, { key });
       default: throw new ApiError(404, 'unknown_tool', `No tool "${name}".`);
     }
   }

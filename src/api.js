@@ -5,6 +5,7 @@ import * as broker from './broker.js';
 import { checkThesis, THESIS_ACCEPTANCE, THESIS_CAPABILITY } from './thesis.js';
 import { probeModel } from './execute-claude.js';
 import { selector, toHex } from './chain/abi.js';
+import { createGateway } from './gateway.js';
 
 // GET /v1/status?probe=1 makes one tiny model call per configured model; the
 // result is cached per process so the public endpoint cannot be used to run
@@ -120,6 +121,7 @@ const CORS_PREFLIGHT = {
 
 export function createApi(engine, { buckets } = {}) {
   const limit = makeLimiter(engine, buckets);
+  const gateway = createGateway(engine);
 
   const send = (res, status, body, headers = {}) => {
     const payload = JSON.stringify(body, null, 2);
@@ -286,7 +288,7 @@ export function createApi(engine, { buckets } = {}) {
       adminGate(req);
       const rl = limit(keyOrAnon(req));
       const body = await readBody(req);
-      const provider = engine.registerProvider(body);
+      const provider = engine.registerProvider(body, bearer(req) ? auth(req) : null);
       send(res, 201, provider, rl);
     }],
 
@@ -612,6 +614,65 @@ export function createApi(engine, { buckets } = {}) {
       const out = await engine.confirmPayout(wid, body.tx_hash ?? body.txHash);
       send(res, out.pending ? 202 : 200, out);
     }],
+    // ---- the inference gateway ------------------------------------------------
+    // OpenAI-compatible chat completions. Streaming is proxied in server mode;
+    // on a serverless host the completion is returned whole.
+    ['POST', /^\/v1\/(?:inference\/)?chat\/completions$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      if (body.stream === true && !process.env.VERCEL) { await gateway.stream(key, body, res); return; }
+      const out = await gateway.complete(key, body);
+      send(res, out.status, out.body, rl);
+    }],
+    ['GET', /^\/v1\/inference\/offers$/, async (req, res, _p, query) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, { offers: engine.listInferenceOffers({ model: query.get('model') ?? undefined, provider: query.get('provider') ?? undefined, include_delisted: query.get('include_delisted') === '1' }) }, rl);
+    }],
+    ['GET', /^\/v1\/inference\/pricebook$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, { models: engine.priceBook() }, rl);
+    }],
+    ['GET', /^\/v1\/inference\/usage$/, async (req, res, _p, query) => {
+      const key = auth(req);
+      const rl = limit(key);
+      send(res, 200, engine.inferenceUsage(key, { days: intParam(query, 'days', 30) }), rl);
+    }],
+    ['POST', /^\/v1\/providers\/([a-z0-9_]+)\/inference-offers$/, async (req, res, [pid]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      send(res, 201, engine.postInferenceOffer(pid, body, actor), rl);
+    }],
+    ['POST', /^\/v1\/providers\/([a-z0-9_]+)\/inference-offers\/([a-z0-9_]+)\/delist$/, async (req, res, [pid, oid]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      send(res, 200, engine.delistInferenceOffer(pid, oid, actor), rl);
+    }],
+    ['GET', /^\/v1\/providers\/([a-z0-9_]+)\/inference$/, async (req, res, [pid]) => {
+      const rl = limit(keyOrAnon(req));
+      const out = engine.providerInference(pid);
+      if (!out) throw new ApiError(404, 'not_found', `No provider ${pid}.`);
+      send(res, 200, out, rl);
+    }],
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/top-up$/, async (req, res, [agentId]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      send(res, 200, engine.setTopUpRule(agentId, body, actor), rl);
+    }],
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/keys$/, async (req, res, [agentId]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      send(res, 201, engine.createAgentKey(agentId, body, actor), rl);
+    }],
+    ['POST', /^\/v1\/admin\/inference\/offers\/([a-z0-9_]+)\/false-source$/, async (req, res, [oid]) => {
+      adminOnly(req);
+      const body = await readBody(req);
+      send(res, 200, engine.inference.falseSource(oid, body.note));
+    }],
+
     // the account's own withdrawal, re-checked against the chain
     ['POST', /^\/v1\/withdrawals\/([a-z0-9_]+)\/check$/, async (req, res, [wid]) => {
       const key = auth(req);

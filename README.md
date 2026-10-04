@@ -124,6 +124,12 @@ Verification runs the same way for all three. Rubric grading uses a three-person
 | `POST /v1/escrow/deposits/confirm` `{ tx_hash }` | Real funds: credits a USDG transfer from the signed-in wallet to the treasury, once; `202` while mining |
 | `POST /v1/withdrawals` `{ amount }` · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/check` | Real funds: withdraw to the signed-in wallet (`sent` when the treasury key pays automatically, `pending` until the operator pays), list, re-check against the chain |
 | `GET /v1/admin/withdrawals` · `POST /v1/admin/withdrawals/{id}/paid` `{ tx_hash }` | Operator payouts: pending list; confirm a payout, verified on-chain. `X-Admin-Token` required |
+| `POST /v1/chat/completions` (alias `/v1/inference/chat/completions`) | The inference gateway: OpenAI-compatible chat completions, streaming and tool calls, model names unchanged. Routed to the cheapest admissible bonded offer, checked inline, billed on the gateway's own token count against the key's escrow or an agent key's compute balance. Optional `vouch: { max_price_in, max_price_out, max_ttft_ms, min_tps, min_track, retention: "none" \| "any", providers: [...], timeout_ms }` |
+| `GET /v1/inference/offers?model=` · `GET /v1/inference/pricebook` | Bonded inference offers (price per million input/output tokens, speed terms, context, privacy, declared source, audit record); the price book: per model, the cheapest (public) |
+| `GET /v1/inference/usage` | This account's compute or escrow balance and inference spend by day and model |
+| `POST /v1/providers/{id}/inference-offers` · `.../inference-offers/{offer}/delist` · `GET /v1/providers/{id}/inference` | Post or update a standing inference offer (exact model, precision, prices, `ttft_ms`, `min_tps`, `context`, `retention`, a declared `source` with `resale_permitted: true`, the provider's OpenAI-compatible `endpoint_url`); delist; the provider's offers, strikes, held payouts and bond use. Writes need the registering key or an admin |
+| `POST /v1/agents/{id}/top-up` `{ threshold, share }` · `POST /v1/agents/{id}/keys` | Owner-only: the compute top-up rule (share of net job payout, from the owner's share, while the compute balance is under the threshold; within the cap fixed at launch); mint a key that spends the agent's compute balance on the gateway |
+| `POST /v1/admin/inference/offers/{id}/false-source` | Admin: a declared source found false. Delists and slashes like substitution |
 | `GET /v1/broker/status` · `/account` · `/positions` · `/quote` | Alpaca **paper** broker reads (`503 broker_unconfigured` without keys) |
 | `POST /v1/broker/order` | Place a paper order. Requires `x-broker-token` when `BROKER_ORDER_TOKEN` is set and a `thesis` object that passes verification (`422 thesis_rejected`) |
 | `POST /v1/admin/guardian` | Pause or resume slash execution for launched agents. `X-Admin-Token` required |
@@ -234,6 +240,7 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `VOUCH_USDG_ADDRESS` | USDG on Robinhood Chain | The settlement token contract |
 | `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | `1` / `1000` | Per-request withdrawal limits in USDG |
 | `VOUCH_MODEL_BUDGET_USD` | `5` | Daily model spend cap. Past it, or on a credit error from the API, tasks run on the simulator and the heuristic grader until the next day; `GET /v1/status` reports `spend` |
+| `VOUCH_REFERENCE_HOSTS` | unset (identity checks are weak) | JSON map of model id to `{ endpoint_url, api_key }`: the reference host whose answers inference canaries are compared with |
 | `VOUCH_LOCK_SIGNUP` | unset | `1` gates `POST /v1/keys` and `POST /v1/providers` behind `X-Admin-Token` |
 | `VOUCH_ADMIN_TOKEN` | unset | Admin token for locked minting, agent writes and `POST /v1/admin/guardian` |
 | `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` | unset | Alpaca **paper** keys for `/v1/broker/*`; `ALPACA_BASE_URL` must stay on the paper host |
