@@ -60,14 +60,17 @@ test('sync: every priced model becomes a bonded offer on the house provider at t
   try {
     const engine = createEngine({ ...FAST, upstream: upCfg(agg.url) });
     const info = await engine.syncUpstream();
-    assert.equal(info.enabled, true); assert.equal(info.models, 3); assert.equal(info.error, null); assert.equal(info.name, 'MockRouter');
+    assert.equal(info.enabled, true); assert.equal(info.models, 3); assert.equal(info.stale, false); assert.equal(info.label, 'Vouch sourcing');
     assert.equal(agg.seen[0].headers.authorization, 'Bearer sk-agg-test', 'the catalog is read with the operator key');
     const book = engine.priceBook();
     const gpt = book.find((m) => m.model === 'openai/gpt-4o');
     assert.equal(gpt.price_in, 2.75); assert.equal(gpt.price_out, 11); assert.equal(gpt.house, true); assert.equal(gpt.display_name, 'OpenAI: GPT-4o');
-    assert.equal(gpt.source.type, 'vendor_api'); assert.match(gpt.source.name, /MockRouter/); assert.equal(gpt.retention, 'none');
+    assert.equal(gpt.source.type, 'reseller_agreement'); assert.match(gpt.source.name, /Vouch sourcing/); assert.equal(gpt.retention, 'none');
+    assert.ok(!JSON.stringify(engine.priceBook()).includes('MockRouter'), 'the aggregator is never named in public');
+    assert.ok(!JSON.stringify(engine.upstreamInfo()).includes('MockRouter'));
+    assert.equal(engine.upstreamInfo({ admin: true }).name, 'MockRouter');
     const p = engine.getProvider(info.provider);
-    assert.equal(p.stake, 1000); assert.match(p.name, /house/i); assert.equal(p.inference.active, 3);
+    assert.equal(p.stake, 1000); assert.equal(p.name, 'Vouch sourcing'); assert.equal(p.inference.active, 3);
     // the second sync inside the refresh window is a no-op; a forced one re-reads
     const reads = agg.seen.length;
     await engine.syncUpstream(); assert.equal(agg.seen.length, reads);
@@ -83,7 +86,8 @@ test('sync: every priced model becomes a bonded offer on the house provider at t
 test('sync: an unreachable aggregator records the error and leaves the book as it was', async () => {
   const engine = createEngine({ ...FAST, upstream: upCfg('http://127.0.0.1:9/api/v1') });
   const info = await engine.syncUpstream();
-  assert.equal(info.enabled, true); assert.equal(info.models, 0); assert.match(info.error, /unreachable|fetch|ECONNREFUSED/i);
+  assert.equal(info.enabled, true); assert.equal(info.models, 0); assert.equal(info.stale, true);
+  assert.match(engine.upstreamInfo({ admin: true }).error, /unreachable|fetch|ECONNREFUSED/i);
   assert.equal(engine.upstream.due(), false, 'a failed attempt is not retried immediately');
 });
 
@@ -110,16 +114,23 @@ test('gateway: a call on a house model is proxied to the aggregator with the ope
     // billed at the marked-up price; the house metered its own cost underneath
     const u = r.body.usage, cost = (u.prompt_tokens * 2.75 + u.completion_tokens * 11) / 1e6;
     assert.ok(Math.abs(r.body.vouch.cost - cost) < 1e-6, `${r.body.vouch.cost} vs ${cost}`);
-    const info = (await call('GET', '/v1/inference/upstream')).body;
-    assert.equal(info.budget.calls_today, 2); assert.ok(info.budget.today_usd > 0 && info.budget.today_usd < r.body.vouch.cost * 2);
+    const pub = (await call('GET', '/v1/inference/upstream')).body;
+    assert.equal(pub.models, 3); assert.equal(pub.label, 'Vouch sourcing'); assert.ok(!('budget' in pub) && !('name' in pub) && !('margin' in pub), 'budget, aggregator and margin are admin-only');
+    engine.cfg.adminToken = 'adm';
+    const info = (await call('GET', '/v1/inference/upstream', { headers: { 'X-Admin-Token': 'adm' } })).body;
+    assert.equal(info.name, 'MockRouter'); assert.equal(info.margin, 0.1);
+    // two buyer calls, plus at most one treasury-paid canary the gateway may have slipped in
+    assert.ok(info.budget.calls_today >= 2 && info.budget.calls_today <= 3, String(info.budget.calls_today));
+    assert.ok(info.budget.today_usd > 0 && info.budget.today_usd < r.body.vouch.cost * 3);
     // a spent house budget takes the house out of routing with a stated reason
     engine.state.inference.upstream.spend.usd = 5;
     const blocked = await call('POST', '/v1/chat/completions', { key: buyer.token, body: chat('openai/gpt-4o') });
     assert.equal(blocked.status, 409); assert.equal(blocked.body.error.code, 'no_offers');
     assert.ok(blocked.body.error.rejected.some((x) => /house upstream budget/.test(x.reason)));
     const status = (await call('GET', '/v1/status')).body;
-    assert.equal(status.upstream.budget.blocked, 'house upstream budget spent for today');
+    assert.equal(status.upstream.paused, true); assert.ok(!('budget' in status.upstream));
     // admin resync; anyone else is refused
+    engine.cfg.adminToken = '';
     assert.equal((await call('POST', '/v1/admin/inference/upstream/sync')).status, 403);
     engine.cfg.adminToken = 'adm';
     const synced = await call('POST', '/v1/admin/inference/upstream/sync', { headers: { 'X-Admin-Token': 'adm' } });

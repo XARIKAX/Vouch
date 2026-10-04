@@ -179,6 +179,7 @@ Before real traffic:
 | `VOUCH_MODEL_BUDGET_USD` | Daily model spend cap; past it, or on a credit error, model calls pause until the next day and tasks run on the simulator and heuristic grader | `5` |
 | `OPENROUTER_API_KEY` | The house source for the inference gateway: every priced text model OpenRouter lists becomes a bonded offer, proxied with this key. `VOUCH_UPSTREAM_URL` / `VOUCH_UPSTREAM_KEY` / `VOUCH_UPSTREAM_NAME` select another OpenAI-compatible aggregator | unset (no house source) |
 | `VOUCH_UPSTREAM_MARGIN` / `VOUCH_UPSTREAM_BUDGET_USD` | Margin over the upstream price on house offers; what the house may pay upstream per UTC day | `0.10` / `5` |
+| `VOUCH_UPSTREAM_LABEL` | The house provider's public name. The aggregator is never named in public; margin, budget and errors are shown to admins only (`X-Admin-Token` on `GET /v1/inference/upstream` or `/v1/status`) | `Vouch sourcing` |
 | `VOUCH_UPSTREAM_RETENTION` / `VOUCH_UPSTREAM_MODELS` | What the aggregator keeps, declared on every house offer (`none` or `retained`; must match its data policy); an optional regex limiting which model ids are offered | `none` / all |
 | `VOUCH_ANTHROPIC_BASE_URL` | Anthropic API base URL | `https://api.anthropic.com` |
 | `VOUCH_EPHEMERAL` | `1` = in-memory state (dev only) | unset |

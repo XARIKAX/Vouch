@@ -121,17 +121,15 @@ const row = (o) => `<tr>
   <td>${esc(o.source.name)}<div class="sub">${esc(o.source.type.replace('_', ' '))} · resale permitted</div></td>
 </tr>`;
 let rows = [], all = false;
-const fmt = (n) => (n == null ? '—' : `$${Number(n).toFixed(2)}`);
 function houseBanner(u) {
   const el = $('house');
   if (!u?.enabled) { el.hidden = true; return; }
-  const b = u.budget || {};
   el.hidden = false;
-  el.innerHTML = `<span><b>${u.models}</b> models sourced by the house from <b>${esc(u.name)}</b> at a <b>${Math.round(u.margin * 100)}%</b> margin</span>`
-    + `<span class="dim">any model id ${esc(u.name)} lists works here; a bare id such as gpt-4o resolves to its prefixed one</span>`
-    + `<span class="dim">house budget today ${fmt(b.today_usd)} of ${fmt(b.budget_usd)}${b.blocked ? ' · <b>spent: house offers paused until tomorrow</b>' : ''}</span>`
-    + (u.synced_at ? `<span class="dim">catalog read ${new Date(u.synced_at).toLocaleString()}</span>` : '')
-    + (u.error ? `<span class="dim">last read failed: ${esc(u.error)}</span>` : '');
+  el.innerHTML = `<span><b>${u.models}</b> models on the book. <b>${esc(u.label)}</b> finds the best price on the net for every one and bonds it.</span>`
+    + `<span class="dim">any model id works; a bare id such as gpt-4o resolves to its vendor-prefixed one</span>`
+    + (u.paused ? '<span class="dim"><b>house offers paused until tomorrow</b>; other providers\' offers stay live</span>' : '')
+    + (u.synced_at ? `<span class="dim">prices read ${new Date(u.synced_at).toLocaleString()}</span>` : '')
+    + (u.stale && !u.synced_at ? '<span class="dim">reading prices now; reload in a moment</span>' : '');
 }
 function render() {
   const q = $('f-q').value.trim().toLowerCase();
