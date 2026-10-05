@@ -2,10 +2,11 @@ import { id, txHash, hash01, money, clamp, sha256, sleep } from './util.js';
 import { CAPABILITIES, validateInput } from './catalog.js';
 import { seedProviders, runExecutor } from './providers.js';
 import { modelBacked } from './execute-claude.js';
-import { ponsConfig, buildLaunchIntent, verifyLaunch, readCurve, readCreatorFees, pairFor } from './chain/pons.js';
+import { pumpConfig, buildLaunchIntent, buildClaimIntent, tokenMetadata, verifyLaunch, readCurve, readCreatorFees, solUsd } from './chain/pump.js';
 import { createRpc } from './chain/rpc.js';
-import { fundsConfig, verifyDeposit, verifyPayout, sendToken, toUnits, fromUnits } from './chain/funds.js';
-import { recoverAddress, personalHash } from './chain/secp256k1.js';
+import { fundsConfig, verifyDeposit, verifyPayout, sendToken, depositInstructions, toUnits, fromUnits } from './chain/funds.js';
+import { verifyMessage } from './chain/ed25519.js';
+import { isPubkey } from './chain/base58.js';
 import { createSpend } from './spend.js';
 import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
@@ -57,11 +58,11 @@ export function createEngine(cfg = {}) {
     cachePriceRate: 0.1,   // cache-hit price as a fraction of the cheapest quote
     attestKey: process.env.VOUCH_ATTEST_KEY || null,
     allowPrivateWebhooks: false, // let webhook_url / acceptance.webhook point at private hosts (tests)
-    // Token launches on Pons (Robinhood Chain). The engine only prepares and
-    // verifies; wallets sign. `chain` carries the RPC, factory, explorer.
-    chain: ponsConfig(),
+    // Token launches on pump.fun (Solana). The engine only prepares and
+    // verifies; wallets sign. `chain` carries the RPC, program, explorer.
+    chain: pumpConfig(),
     chainRefreshMs: 60 * 1000,   // how often a live agent's price is re-read from its curve
-    // Real funds: USDG deposits to the treasury and withdrawals back to the
+    // Real funds: USDT deposits to the treasury and withdrawals back to the
     // account's wallet. Off (sandbox credits) until VOUCH_REAL_FUNDS=1 and a
     // treasury address are set.
     funds: fundsConfig(),
@@ -92,7 +93,7 @@ export function createEngine(cfg = {}) {
   state.insurance ??= { balance: 0, funded: 0, claims: [] };
   state.cache ??= {}; // verified-output cache: fingerprint -> { output, attestation, ... }
   state.agents ??= {};   // launchpad: agentId -> launched-agent record
-  state.treasury ??= { balance: 0, burned: 0, buyback: 0 }; // protocol treasury (USDG)
+  state.treasury ??= { balance: 0, burned: 0, buyback: 0 }; // protocol treasury (USDT)
   state.launchpad ??= { paused: false, pending_slashes: [] }; // guardian + queued token-bond slashes
   state.launchpad.pending_slashes ??= [];
   state.attest ??= {};   // attestation key material: generated key persisted here, plus every public key ever used
@@ -178,7 +179,7 @@ export function createEngine(cfg = {}) {
     // Optional owner wallet: lets the launchpad detect self-dealing (a buyer and
     // a launched agent funded by the same owner earn that agent zero reputation).
     if (opts.owner) key.owner = String(opts.owner);
-    if (opts.wallet) key.wallet = String(opts.wallet).toLowerCase();
+    if (opts.wallet) key.wallet = String(opts.wallet);
     state.keys[key.id] = key;
     // real-funds deployments have no faucet: balances come from deposits only
     const faucet = cfg.funds.enabled ? 0 : cfg.faucet;
@@ -201,25 +202,25 @@ export function createEngine(cfg = {}) {
   // The wallet signs a one-time message; a valid signature either mints the
   // wallet's account (first time) or hands back a fresh token for the account
   // it already owns (recovery). Vouch never sees a private key.
-  const isAddress = (a) => /^0x[0-9a-fA-F]{40}$/.test(String(a || ''));
+  const isAddress = (a) => isPubkey(a);
   const signInMessage = (address, nonce, issued) => `Vouch sign-in\n\nWallet: ${address}\nNonce: ${nonce}\nIssued: ${issued}\n\nSigning proves you control this wallet. It costs nothing and sends no transaction.`;
   function authNonce(address) {
-    if (!isAddress(address)) throw new ApiError(400, 'invalid_input', 'address must be a wallet address');
-    const addr = String(address).toLowerCase();
+    if (!isAddress(address)) throw new ApiError(400, 'invalid_input', 'address must be a Solana wallet address');
+    const addr = String(address);
     const nonce = id('nonce'), issued = new Date().toISOString();
     state.nonces[addr] = { nonce, issued, ts: Date.now() };
     persist();
     return { address: addr, nonce, message: signInMessage(address, nonce, issued), expires_in_s: 600 };
   }
   function authVerify(address, signature) {
-    if (!isAddress(address)) throw new ApiError(400, 'invalid_input', 'address must be a wallet address');
-    const addr = String(address).toLowerCase();
+    if (!isAddress(address)) throw new ApiError(400, 'invalid_input', 'address must be a Solana wallet address');
+    const addr = String(address);
     const ch = state.nonces[addr];
     if (!ch || Date.now() - ch.ts > 600 * 1000) throw new ApiError(400, 'nonce_expired', 'Request a new sign-in message first.');
-    let signer;
-    try { signer = recoverAddress(personalHash(signInMessage(address, ch.nonce, ch.issued)), signature); }
+    let ok;
+    try { ok = verifyMessage(signInMessage(address, ch.nonce, ch.issued), signature, addr); }
     catch (e) { throw new ApiError(400, 'bad_signature', `The signature could not be verified: ${e.message}`); }
-    if (signer.toLowerCase() !== addr) throw new ApiError(401, 'wrong_signer', 'The signature was not made by this wallet.');
+    if (!ok) throw new ApiError(401, 'wrong_signer', 'The signature was not made by this wallet.');
     delete state.nonces[addr];                                      // one use
     const existing = state.wallets[addr] && state.keys[state.wallets[addr]];
     if (existing && !existing.revoked) {
@@ -237,32 +238,42 @@ export function createEngine(cfg = {}) {
   function fundsInfo() {
     const f = cfg.funds;
     return {
-      mode: f.enabled ? 'real' : 'sandbox', enabled: f.enabled, network: cfg.chain.network, chain_id: cfg.chain.chainId, chain_id_hex: '0x' + cfg.chain.chainId.toString(16), rpc: cfg.chain.rpc, explorer: cfg.chain.explorer,
-      token: f.token, treasury: f.treasury, payouts: f.treasuryKey ? 'automatic' : 'operator', min_withdrawal: f.minWithdrawal, max_withdrawal: f.maxWithdrawal,
-      transfer_selector: '0xa9059cbb',
+      mode: f.enabled ? 'real' : 'sandbox', enabled: f.enabled, network: cfg.chain.network, cluster: cfg.chain.cluster, rpc: cfg.chain.rpc, explorer: cfg.chain.explorer,
+      token: f.token, treasury: f.treasury, treasury_ata: f.treasuryAta, payouts: f.treasuryKey ? 'automatic' : 'operator', min_withdrawal: f.minWithdrawal, max_withdrawal: f.maxWithdrawal,
     };
   }
   const requireFunds = () => { if (!cfg.funds.enabled) throw new ApiError(409, 'sandbox_mode', 'This deployment runs on sandbox credits. Real deposits and withdrawals are off until VOUCH_REAL_FUNDS=1 and a treasury address are configured.'); };
   const requireWallet = (key) => { if (!key.wallet) throw new ApiError(403, 'wallet_required', 'Sign in with a wallet first; deposits are credited to the wallet that sent them and withdrawals go back to it.'); return key.wallet; };
 
-  // The wallet sent USDG to the treasury: verify the receipt, credit once.
+  // What the signed-in wallet signs to deposit `amount`: the transfer instruction, ready to compile.
+  function depositIntent(key, amount) {
+    requireFunds();
+    const wallet = requireWallet(key);
+    const amt = money(Number(amount));
+    if (!(amt > 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', 'amount must be a positive number');
+    const units = toUnits(amt, cfg.funds.token.decimals);
+    const ixs = depositInstructions(cfg.funds, wallet, units);
+    return { venue: 'funds', network: cfg.chain.network, cluster: cfg.chain.cluster, rpc: cfg.chain.rpc, fee_payer: wallet, signers: [wallet], amount: amt, units: units.toString(), token: cfg.funds.token, treasury: cfg.funds.treasury, treasury_ata: cfg.funds.treasuryAta,
+      instructions: ixs.map((i) => ({ program_id: i.programId, keys: i.keys.map((k) => ({ pubkey: k.pubkey, is_signer: k.isSigner, is_writable: k.isWritable })), data: Buffer.from(i.data).toString('base64') })) };
+  }
+  // The wallet sent USDT to the treasury: verify the transaction, credit once.
   async function confirmDeposit(key, txHash_) {
     requireFunds();
     const wallet = requireWallet(key);
     if (key.parent) throw new ApiError(403, 'forbidden', 'Sub-keys are funded by their parent.');
-    const tx = String(txHash_ || '').toLowerCase();
+    const tx = String(txHash_ || '').trim();
     if (state.deposits[tx]) return { ...state.deposits[tx], already_credited: true, balance: state.accounts[key.id].balance };
     let t;
     try { t = await verifyDeposit(fundsRpc(), tx, cfg.funds); }
     catch (e) { throw new ApiError(e.code === 'invalid_input' ? 400 : e.code ? 409 : 502, e.code ?? 'chain_unreachable', e.message); }
     if (!t) return { tx_hash: tx, pending: true, status: 'pending' };
-    if (t.from.toLowerCase() !== wallet) throw new ApiError(409, 'wrong_wallet', 'The deposit came from a different wallet than the one signed in.', { expected: wallet, from: t.from });
+    if (t.from !== wallet) throw new ApiError(409, 'wrong_wallet', 'The deposit came from a different wallet than the one signed in.', { expected: wallet, from: t.from });
     if (state.deposits[tx]) return { ...state.deposits[tx], already_credited: true, balance: state.accounts[key.id].balance };
     const acct = state.accounts[key.id];
     acct.balance = money(acct.balance + t.amount);
     const entry = { ts: Date.now(), kind: 'deposit', amount: t.amount, tx, chain: cfg.chain.network, token: cfg.funds.token.symbol };
     acct.history.push(entry);
-    state.deposits[tx] = { tx_hash: tx, key_id: key.id, wallet, amount: t.amount, token: cfg.funds.token.symbol, block_number: t.block_number, credited_at: entry.ts, status: 'credited' };
+    state.deposits[tx] = { tx_hash: tx, key_id: key.id, wallet, amount: t.amount, token: cfg.funds.token.symbol, slot: t.slot ?? null, credited_at: entry.ts, status: 'credited' };
     persist();
     return { ...state.deposits[tx], balance: acct.balance };
   }
@@ -288,7 +299,7 @@ export function createEngine(cfg = {}) {
     persist();
     if (cfg.funds.treasuryKey) {
       try {
-        w.tx_hash = await sendToken(fundsRpc(), cfg.funds, wallet, BigInt(w.units), { chainId: cfg.chain.chainId });
+        w.tx_hash = await sendToken(fundsRpc(), cfg.funds, wallet, BigInt(w.units));
         w.status = 'sent'; w.sent_at = Date.now();
       } catch (e) {
         // nothing left the treasury: give the balance back and say why
@@ -311,12 +322,12 @@ export function createEngine(cfg = {}) {
     if (!w) throw new ApiError(404, 'not_found', `No withdrawal ${withdrawalId}.`);
     if (w.status === 'paid') return publicWithdrawal(w);
     if (w.status === 'failed') throw new ApiError(409, 'withdrawal_failed', 'This withdrawal failed and was refunded; ask for a new one.');
-    const tx = String(txHash_ || w.tx_hash || '').toLowerCase();
+    const tx = String(txHash_ || w.tx_hash || '').trim();
     let t;
     try { t = await verifyPayout(fundsRpc(), tx, cfg.funds, { to: w.to, units: BigInt(w.units) }); }
     catch (e) { throw new ApiError(e.code === 'invalid_input' ? 400 : e.code ? 409 : 502, e.code ?? 'chain_unreachable', e.message); }
     if (!t) { w.tx_hash = tx; w.status = 'sent'; persist(); return { ...publicWithdrawal(w), pending: true }; }
-    w.tx_hash = tx; w.status = 'paid'; w.paid_at = Date.now(); w.block_number = t.block_number;
+    w.tx_hash = tx; w.status = 'paid'; w.paid_at = Date.now(); w.slot = t.slot ?? null;
     const acct = state.accounts[w.key_id];
     const h = acct?.history.find((e) => e.tx === w.id); if (h) h.status = 'paid';
     persist();
@@ -364,13 +375,13 @@ export function createEngine(cfg = {}) {
     if (parent.parent) throw new ApiError(403, 'forbidden', 'Sub-keys cannot mint their own sub-keys.');
     if (!body || typeof body !== 'object') throw new ApiError(400, 'invalid_input', 'body must be a JSON object');
     const fund = Number(body.fund) || 0;
-    if (!(fund > 0)) throw new ApiError(400, 'invalid_input', 'fund must be a positive USDG amount to transfer to the sub-key');
+    if (!(fund > 0)) throw new ApiError(400, 'invalid_input', 'fund must be a positive USDT amount to transfer to the sub-key');
     const allow = normalizeAllow(body.allow);
     let perTaskCap = null;
     if (body.per_task_cap !== undefined && body.per_task_cap !== null) {
       const cap = Number(body.per_task_cap);
       if (!(typeof body.per_task_cap === 'number' || typeof body.per_task_cap === 'string') || !Number.isFinite(cap) || cap <= 0) {
-        throw new ApiError(400, 'invalid_input', 'per_task_cap must be a positive USDG amount');
+        throw new ApiError(400, 'invalid_input', 'per_task_cap must be a positive USDT amount');
       }
       perTaskCap = money(cap);
     }
@@ -492,7 +503,7 @@ export function createEngine(cfg = {}) {
   }
 
   function deposit(key, amount) {
-    if (cfg.funds.enabled) throw new ApiError(409, 'sandbox_disabled', 'Simulated deposits are off on a real-funds deployment. Send USDG to the treasury from your signed-in wallet and confirm the transaction.');
+    if (cfg.funds.enabled) throw new ApiError(409, 'sandbox_disabled', `Simulated deposits are off on a real-funds deployment. Send ${cfg.funds.token.symbol} to the treasury from your signed-in wallet and confirm the transaction.`);
     if (key.parent) throw new ApiError(403, 'forbidden', 'Sub-keys are funded by their parent; deposit to the parent key instead.');
     if (!(typeof amount === 'number' && Number.isFinite(amount) && amount > 0)) throw new ApiError(400, 'invalid_input', 'amount must be a positive number');
     const capped = Math.min(amount, 100); // simulated faucet cap
@@ -649,7 +660,7 @@ export function createEngine(cfg = {}) {
   // and a rolling-window cap, both from slashPlan) and QUEUED behind the
   // pending-slash delay with a guardian freeze; its token-bond capacity
   // reprices when the slash executes. A normal provider is slashed flat off
-  // its USDG stake immediately. Either way the slashed USDG value capitalizes
+  // its USDT stake immediately. Either way the slashed USDT value capitalizes
   // the insurance pool when funds move.
   function applySlash(p, priceUsdg, multiple, meta = {}) {
     const agent = p.agentId ? state.agents[p.agentId] : null;
@@ -1060,7 +1071,7 @@ export function createEngine(cfg = {}) {
     if (!inputCheck.ok) throw new ApiError(400, 'invalid_input', inputCheck.detail);
     const acceptCheck = validateAcceptance(acceptance, cfg);
     if (!acceptCheck.ok) throw new ApiError(400, 'invalid_acceptance', acceptCheck.detail);
-    if (!(typeof budget === 'number' && Number.isFinite(budget) && budget > 0)) throw new ApiError(400, 'invalid_input', 'budget must be a positive USDG amount');
+    if (!(typeof budget === 'number' && Number.isFinite(budget) && budget > 0)) throw new ApiError(400, 'invalid_input', 'budget must be a positive USDT amount');
     if (!Number.isInteger(deadline_ms) || deadline_ms <= 0) {
       throw new ApiError(400, 'invalid_input', 'deadline_ms must be a positive integer');
     }
@@ -1190,7 +1201,7 @@ export function createEngine(cfg = {}) {
   // ---- launchpad: launched agents, token bond, revenue routing ------------
   // An "agent" here is a supply-side, token-wrapped provider (distinct from the
   // demand-side API keys also called "agents"). Its slashable bond is the
-  // platform token, valued in USDG. A launched agent's linked provider reuses
+  // platform token, valued in USDT. A launched agent's linked provider reuses
   // the existing reservation machinery: we set provider.stake to the agent's
   // bond *capacity* (haircut value / reservationMultiple), so the engine's
   // 1x-price reservation is exactly the brief's 200%-of-price against haircut.
@@ -1247,7 +1258,7 @@ export function createEngine(cfg = {}) {
   }
   function publicChain(c) {
     const { intent, ...rest } = c;
-    return { ...rest, intent: intent ? { chain_id: intent.chain_id, network: intent.network, to: intent.to, data: intent.data, value_wei: intent.value_wei, value_note: intent.value_note, launch_fee_selector: intent.launch_fee_selector, params: intent.params, explorer: intent.explorer } : null };
+    return { ...rest, intent: intent ? { venue: intent.venue, network: intent.network, cluster: intent.cluster, explorer: intent.explorer, site: intent.site, program: intent.program, fee_payer: intent.fee_payer, mint: intent.mint, creator: intent.creator, bonding_curve: intent.bonding_curve, creator_vault: intent.creator_vault, signers: intent.signers, instructions: intent.instructions, estimated_cost_sol: intent.estimated_cost_sol, cost_note: intent.cost_note, params: intent.params } : null };
   }
 
   function mustAgent(agentId) {
@@ -1292,16 +1303,16 @@ export function createEngine(cfg = {}) {
       creatorPaid: 0, ownerPaid: 0, buyback: 0, burned: 0, treasuryPaid: 0, bondToppedUp: 0,
       ledger: [], unbonding: null,
     };
-    // A real launch on Pons: prepare the transaction for the launcher's wallet.
-    // The token has no price until the launch is confirmed on-chain.
+    // A real launch on pump.fun: prepare the instruction for the launcher's
+    // wallet. The token has no price until the launch is confirmed on-chain.
     if (body.launch && typeof body.launch === 'object') {
-      if (body.launch.venue && body.launch.venue !== 'pons') throw new ApiError(400, 'invalid_input', 'launch.venue must be "pons"');
+      if (body.launch.venue && body.launch.venue !== 'pump') throw new ApiError(400, 'invalid_input', 'launch.venue must be "pump"');
       let intent;
       try {
         intent = buildLaunchIntent({ ...body.launch, agent_id: agentId, symbol: agent.token.symbol, name: agent.name ?? body.launch.name, description: body.launch.description ?? body.description, logo: body.launch.logo ?? body.logo }, cfg.chain);
       } catch (e) { throw new ApiError(400, e.code === 'invalid_input' ? 'invalid_input' : 'launch_error', e.message); }
       agent.token.twapUsdg = 0; agent.token.poolLiquidityUsdg = 0;
-      agent.chain = { venue: 'pons', network: cfg.chain.network, chain_id: cfg.chain.chainId, status: 'awaiting_signature', created_at: Date.now(), intent, wallet: body.launch.wallet };
+      agent.chain = { venue: 'pump', network: cfg.chain.network, cluster: cfg.chain.cluster, status: 'awaiting_signature', created_at: Date.now(), intent, wallet: body.launch.wallet, mint: intent.mint };
     }
     if (prov) { prov.agentId = agentId; agent.providerId = prov.id; }
     state.accounts[agentId] = newAccount(0, []);
@@ -1323,15 +1334,30 @@ export function createEngine(cfg = {}) {
     try { launch = await verifyLaunch(rpc, txHash, cfg.chain); }
     catch (e) { throw new ApiError(e.code === 'invalid_input' ? 400 : e.code ? 409 : 502, e.code ?? 'chain_unreachable', e.message); }
     if (!launch) { agent.chain.status = 'pending'; agent.chain.tx_hash = txHash; persist(); return { ...publicAgent(agent), pending: true }; }
-    if (agent.chain.wallet && launch.deployer.toLowerCase() !== agent.chain.wallet.toLowerCase()) {
+    if (agent.chain.wallet && launch.deployer !== agent.chain.wallet) {
       throw new ApiError(409, 'wrong_wallet', 'The launch was sent from a different wallet than the one this agent was prepared for.', { expected: agent.chain.wallet, deployer: launch.deployer });
     }
-    const pair = pairFor(cfg.chain, launch.pair_token);
-    agent.chain = { ...agent.chain, status: 'live', tx_hash: txHash, confirmed_at: Date.now(), ...launch, pair: pair.symbol, creator_fee_recipient: agent.chain.intent?.params?.creator_fee_recipient ?? null };
+    if (agent.chain.mint && launch.token !== agent.chain.mint) {
+      throw new ApiError(409, 'wrong_mint', 'The transaction created a different token than the one this agent was prepared with.', { expected: agent.chain.mint, token: launch.token });
+    }
+    agent.chain = { ...agent.chain, status: 'live', tx_hash: txHash, confirmed_at: Date.now(), ...launch, pair: cfg.chain.pair.symbol, creator_fee_recipient: launch.creator ?? agent.chain.intent?.creator ?? null };
     agent.token.address = launch.token;
     persist();
     await refreshAgentChain(agentId, { force: true });
     return publicAgent(agent);
+  }
+  // The token JSON pump.fun reads from the metadata URI of a launch prepared here.
+  function agentTokenMetadata(agentId) {
+    const agent = mustAgent(agentId);
+    if (!agent.chain?.intent?.params) throw new ApiError(404, 'not_found', 'This agent has no on-chain token.');
+    return tokenMetadata(agent.chain.intent.params);
+  }
+  // The claim the creator's wallet signs to collect accrued creator fees.
+  function agentClaimIntent(agentId) {
+    const agent = mustAgent(agentId);
+    const creator = agent.chain?.creator_fee_recipient ?? agent.chain?.intent?.creator;
+    if (!creator) throw new ApiError(409, 'not_a_chain_launch', 'This agent was not launched on-chain.');
+    return { ...buildClaimIntent(creator, cfg.chain), claimable: agent.chain.creator_fees ?? null };
   }
 
   // Re-read price, liquidity and creator fees from the curve; swallow RPC
@@ -1341,13 +1367,13 @@ export function createEngine(cfg = {}) {
     if (!agent?.chain || agent.chain.status !== 'live') return null;
     if (!force && agent.chain.refreshed_at && Date.now() - agent.chain.refreshed_at < cfg.chainRefreshMs) return agent.chain.curve_state ?? null;
     const rpc = createRpc(cfg.chain.rpc);
-    const pair = pairFor(cfg.chain, agent.chain.pair_token);
     try {
-      const curve = await readCurve(rpc, agent.chain.curve, pair);
+      const curve = await readCurve(rpc, agent.chain.curve, cfg.chain);
       let fees = null;
-      try { if (agent.chain.creator_fee_recipient) fees = await readCreatorFees(rpc, cfg.chain.factory, agent.chain.creator_fee_recipient, pair); } catch { /* optional */ }
-      const usd = pair.symbol === 'USDG' ? 1 : (pair.symbol === 'ETH' && cfg.chain.ethUsd) ? cfg.chain.ethUsd : null;
-      agent.chain.curve_state = curve;          // `curve` stays the curve contract's address
+      try { if (agent.chain.creator_fee_recipient) fees = await readCreatorFees(rpc, agent.chain.creator_fee_recipient, cfg.chain); } catch { /* optional */ }
+      const usd = await solUsd(cfg.chain);
+      agent.chain.curve_state = curve;          // `curve` stays the curve account's address
+      agent.chain.sol_usd = usd;
       agent.chain.creator_fees = fees;
       // curve tokens are priced in millionths of a cent: keep significant digits, not 6 decimals
       agent.chain.price_usd = usd != null ? Number((curve.price_quote * usd).toPrecision(12)) : null;
@@ -1372,7 +1398,7 @@ export function createEngine(cfg = {}) {
   }
 
   // Harvest `feeAmount` of pool fees and split per the agent's snapshot — bond
-  // staked, operating credited (spend-only USDG), creator and treasury paid.
+  // staked, operating credited (spend-only USDT), creator and treasury paid.
   function harvestFees(agentId, feeAmount, actor) {
     const agent = mustAgent(agentId);
     assertAgentActor(agent, actor);
@@ -1430,7 +1456,7 @@ export function createEngine(cfg = {}) {
     const cur = topUpRule(agent);
     const threshold = body.threshold === undefined ? cur.threshold : Number(body.threshold);
     const share = body.share === undefined ? cur.share : Number(body.share);
-    if (!(Number.isFinite(threshold) && threshold >= 0)) throw new ApiError(400, 'invalid_input', 'threshold must be a non-negative USDG amount');
+    if (!(Number.isFinite(threshold) && threshold >= 0)) throw new ApiError(400, 'invalid_input', 'threshold must be a non-negative USDT amount');
     if (!(Number.isFinite(share) && share >= 0 && share <= agent.params.topUp.shareCap)) throw new ApiError(400, 'invalid_input', `share must be between 0 and ${agent.params.topUp.shareCap} (the cap fixed at launch)`);
     agent.topUp = { threshold: money(threshold), share: Math.round(share * 1e4) / 1e4, set_at: Date.now() };
     agent.ledger.push({ ts: Date.now(), kind: 'top_up_rule', threshold: agent.topUp.threshold, share: agent.topUp.share });
@@ -1469,12 +1495,12 @@ export function createEngine(cfg = {}) {
   }
 
   // Queue a slash of a launched agent's token bond for a bad outcome. Sized in
-  // USDG off the FULL bond at TWAP (unbonding tokens included, no liquidity
+  // USDT off the FULL bond at TWAP (unbonding tokens included, no liquidity
   // floor), taken in platform token, and double-capped: a single verdict can
   // never exceed maxSlashMultiple x price, and no more than rollingSlashCap of
   // bond value can be slashed within a rolling window. Funds move only after
   // pendingSlashMs (instantly in fast mode) and never while the guardian has
-  // paused. Returns the USDG value queued.
+  // paused. Returns the USDT value queued.
   function queueAgentSlash(agent, priceUsdg, multiple, meta = {}) {
     const now = Date.now();
     const windowMs = agent.params.rollingSlashWindowMs;
@@ -1741,7 +1767,7 @@ export function createEngine(cfg = {}) {
     for (const [cap, o] of Object.entries(offered)) {
       if (!CAPABILITIES[cap]) throw new ApiError(404, 'unknown_capability', `No capability "${cap}" in the catalog.`);
       if (!(typeof o?.price_ceiling === 'number' && o.price_ceiling > 0 && Number.isFinite(o.price_ceiling))) {
-        throw new ApiError(400, 'invalid_input', `offers.${cap}.price_ceiling must be a positive USDG amount`);
+        throw new ApiError(400, 'invalid_input', `offers.${cap}.price_ceiling must be a positive USDT amount`);
       }
       if (!Number.isInteger(o?.sla_deadline_ms) || o.sla_deadline_ms <= 0) {
         throw new ApiError(400, 'invalid_input', `offers.${cap}.sla_deadline_ms must be a positive integer`);
@@ -1752,7 +1778,7 @@ export function createEngine(cfg = {}) {
     let bonded = 1;
     if (stake !== undefined && stake !== null) {
       if (typeof stake !== 'number' || !Number.isFinite(stake) || stake < 0) {
-        throw new ApiError(400, 'invalid_input', 'stake must be a non-negative USDG amount');
+        throw new ApiError(400, 'invalid_input', 'stake must be a non-negative USDT amount');
       }
       bonded = Math.min(Math.max(stake, 1), 1000);
     }
@@ -2055,14 +2081,14 @@ export function createEngine(cfg = {}) {
     setTopUpRule, createAgentKey, postInferenceOffer, delistInferenceOffer,
     listInferenceOffers: (q) => inference.listOffers(q), priceBook: () => inference.priceBook(), inferenceUsage: (key, q) => inference.usage(key, q), providerInference: (id_) => inference.providerInference(id_),
     createKey, authenticate, me, deposit, balance, rotateKey,
-    authNonce, authVerify, fundsInfo, confirmDeposit, requestWithdrawal, listWithdrawals, listPendingWithdrawals, confirmPayout, spend,
+    authNonce, authVerify, fundsInfo, depositIntent, confirmDeposit, requestWithdrawal, listWithdrawals, listPendingWithdrawals, confirmPayout, spend,
     createSubKey, listSubKeys, revokeSubKey, freezeSubKey,
     offers, createTask, getTask, listTasks, subscribe, publicTask,
     openDispute, getDispute, registerProvider,
     listProviders, getProvider, insuranceStats, getAttestation, attestorKey,
     verifyOutput, createWorkflow, getWorkflow,
     launchAgent, harvestFees, requestUnbond, withdrawUnbonded, setAgentPrice, getAgent, listAgents,
-    confirmLaunch, refreshAgentChain, refreshStaleChains,
+    confirmLaunch, refreshAgentChain, refreshStaleChains, agentTokenMetadata, agentClaimIntent,
     guardianStatus, setGuardian, processPendingSlashes,
   };
 }

@@ -1,8 +1,8 @@
-// Minimal Ethereum JSON-RPC over fetch: eth_call, receipts, chain id, and
-// what a payout needs (nonce, fees, gas estimate, raw send). Zero
+// Minimal Solana JSON-RPC over fetch: what verifying a launch, reading a
+// curve, checking a transfer and sending a signed transaction need. Zero
 // dependencies. Every call is bounded by a timeout.
 
-export function createRpc(url, { timeoutMs = 8000 } = {}) {
+export function createRpc(url, { timeoutMs = 10000, commitment = 'confirmed' } = {}) {
   let n = 0;
   const call = async (method, params = []) => {
     const res = await fetch(url, {
@@ -15,17 +15,18 @@ export function createRpc(url, { timeoutMs = 8000 } = {}) {
     if (body.error) throw new Error(`rpc ${method} failed: ${body.error.message ?? JSON.stringify(body.error)}`);
     return body.result;
   };
-  const big = async (method, params) => BigInt(await call(method, params));
   return {
-    url, call,
-    chainId: async () => Number(await call('eth_chainId')),
-    ethCall: (to, data, from) => call('eth_call', [from ? { from, to, data } : { to, data }, 'latest']),
-    getTransactionReceipt: (hash) => call('eth_getTransactionReceipt', [hash]),
-    getBalance: (addr) => big('eth_getBalance', [addr, 'latest']),
-    getTransactionCount: async (addr) => Number(await big('eth_getTransactionCount', [addr, 'pending'])),
-    gasPrice: () => big('eth_gasPrice', []),
-    maxPriorityFeePerGas: async () => { try { return await big('eth_maxPriorityFeePerGas', []); } catch { return 0n; } },
-    estimateGas: (tx) => big('eth_estimateGas', [tx]),
-    sendRawTransaction: (raw) => call('eth_sendRawTransaction', [raw]),
+    url, call, commitment,
+    // null while the signature is unknown to the cluster or not yet confirmed
+    getTransaction: (signature) => call('getTransaction', [signature, { encoding: 'jsonParsed', commitment, maxSupportedTransactionVersion: 0 }]),
+    getAccountInfo: async (address) => (await call('getAccountInfo', [address, { encoding: 'base64', commitment }]))?.value ?? null,
+    getAccountData: async function (address) { const v = await this.getAccountInfo(address); return v ? new Uint8Array(Buffer.from(v.data[0], 'base64')) : null; },
+    getBalance: async (address) => BigInt((await call('getBalance', [address, { commitment }]))?.value ?? 0),
+    getTokenAccountBalance: async (ata) => { try { const v = (await call('getTokenAccountBalance', [ata, { commitment }]))?.value; return v ? BigInt(v.amount) : 0n; } catch { return 0n; } },
+    getLatestBlockhash: async () => (await call('getLatestBlockhash', [{ commitment }])).value,
+    getMinimumBalanceForRentExemption: (bytes) => call('getMinimumBalanceForRentExemption', [bytes]),
+    sendTransaction: (base64) => call('sendTransaction', [base64, { encoding: 'base64', preflightCommitment: commitment, skipPreflight: false, maxRetries: 3 }]),
+    getSignatureStatuses: async (sigs) => (await call('getSignatureStatuses', [sigs, { searchTransactionHistory: true }]))?.value ?? [],
+    getSlot: () => call('getSlot', [{ commitment }]),
   };
 }

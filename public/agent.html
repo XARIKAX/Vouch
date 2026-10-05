@@ -119,7 +119,7 @@
     <div class="grid">
       <div>
         <div class="term offset brackets">
-          <div class="term-h"><span><span class="sq"></span>The bond · what gets slashed on a fail</span><span>Valued in USDG</span></div>
+          <div class="term-h"><span><span class="sq"></span>The bond · what gets slashed on a fail</span><span>Valued in USDT</span></div>
           <div class="bars">
             <div class="meter"><div class="mrow"><span>Bond at TWAP (raw)</span><b id="m-raw">$0</b></div><div class="bar"><i id="b-raw" style="width:0%"></i></div></div>
             <div class="meter"><div class="mrow"><span>After 50% haircut</span><b id="m-hair">$0</b></div><div class="bar"><i class="hair" id="b-hair" style="width:0%"></i></div></div>
@@ -139,7 +139,7 @@
         <div id="chain-sec" hidden>
           <div class="sub-head">
             <h3>On-chain</h3>
-            <p class="hint" id="c-hint">The token lives on a Pons bonding curve. Price, liquidity and creator fees are read from the chain, not set by hand.</p>
+            <p class="hint" id="c-hint">The token lives on a pump.fun bonding curve. Price, liquidity and creator fees are read from the chain, not set by hand.</p>
           </div>
           <div class="routed">
             <div class="rr"><span><span class="dot"></span>Status</span><b id="c-status">—</b></div>
@@ -168,7 +168,7 @@
           <div class="rr"><span><span class="dot t"></span>Topped up from job revenue</span><b id="cp-topped">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Earned selling inference</span><b id="cp-earned">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Top-up rule</span><b id="cp-rule">—</b></div>
-          <div class="chainact"><div class="row2" style="flex:1"><div class="field" style="margin:0"><label>Threshold (USDG)</label><input id="cp-threshold" value="20"></div><div class="field" style="margin:0"><label>Share of net (max <span id="cp-cap">30</span>%)</label><input id="cp-share" value="10"></div></div><button class="btn" id="cp-set">Set top-up rule</button><button class="btn" id="cp-key">Mint agent key</button></div>
+          <div class="chainact"><div class="row2" style="flex:1"><div class="field" style="margin:0"><label>Threshold (USDT)</label><input id="cp-threshold" value="20"></div><div class="field" style="margin:0"><label>Share of net (max <span id="cp-cap">30</span>%)</label><input id="cp-share" value="10"></div></div><button class="btn" id="cp-set">Set top-up rule</button><button class="btn" id="cp-key">Mint agent key</button></div>
         </div>
 
         <div class="sub-head">
@@ -204,10 +204,10 @@
         <h3>Sandbox controls</h3>
         <p class="hint">Harvest fees, move the token price or request unbonding. Watch the bond reprice. Sandbox money only.</p>
         <div class="ctl-h">Harvest pool fees · 50% goes to the bond</div>
-        <div class="field"><label>Fees to harvest (USDG)</label><input id="i-fee" value="1000"></div>
+        <div class="field"><label>Fees to harvest (USDT)</label><input id="i-fee" value="1000"></div>
         <button class="btn accent" id="go-harvest">Harvest fees</button>
         <div class="ctl-h">Move the token price · the bond reprices</div>
-        <div class="row2"><div class="field"><label>TWAP (USDG)</label><input id="i-twap" value="1"></div><div class="field"><label>Pool liquidity (USDG)</label><input id="i-liq" value="5000"></div></div>
+        <div class="row2"><div class="field"><label>TWAP (USDT)</label><input id="i-twap" value="1"></div><div class="field"><label>Pool liquidity (USDT)</label><input id="i-liq" value="5000"></div></div>
         <button class="btn" id="go-price">Update price</button>
         <div class="ctl-h">Unbond · takes 30 days, still slashable</div>
         <div class="field"><label>Tokens to unbond</label><input id="i-unbond" value="100"></div>
@@ -237,7 +237,7 @@
 
 <script type="module">
 import { api, ensureKey } from '/assets/vouch.js';
-import * as pons from '/assets/pons.js';
+import * as pump from '/assets/pump.js';
 // The server is the only source of truth. Every number on this page comes from
 // GET /v1/agents/:id (publicAgent); writes go to the real endpoints with the
 // shared sandbox key and nothing is recomputed in the browser.
@@ -300,27 +300,28 @@ $('cp-key').onclick = () => write('Agent key', async (key) => {
   prompt('Your agent key. It spends this agent\'s compute balance on the inference gateway and nothing else. Shown once:', k.key);
 });
 
-// The on-chain block: shown only for agents launched on Pons. Explorer links
-// come from the venue config; everything else is the server's reading.
+// The on-chain block: shown only for agents launched on pump.fun. Explorer
+// links come from the venue config; everything else is the server's reading.
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let venueCfg = null;
-const link = (kind, v) => v ? (venueCfg ? `<a href="${esc(pons.explorer(venueCfg, kind, v))}" target="_blank" rel="noopener">${esc(pons.short(v))}</a>` : esc(pons.short(v))) : '—';
+const link = (kind, v) => v ? (venueCfg ? `<a href="${esc(pump.explorer(venueCfg, kind, v))}" target="_blank" rel="noopener">${esc(pump.short(v))}</a>` : esc(pump.short(v))) : '—';
 function renderChain() {
   const c = A.chain, sec = $('chain-sec');
   sec.hidden = !c;
   if (!c) { $('a-sym').className = 'chip'; return; }
   const live = c.status === 'live', cs = c.curve_state || null;
   $('a-sym').className = 'chip ' + (live ? 'live' : 'wait');
-  $('s-price').textContent = pons.fmtPrice(A.token?.twap_usdg);
-  $('c-status').textContent = live ? (cs?.graduated ? 'live · graduated to the open market' : 'live on the bonding curve') : c.status === 'pending' ? 'launch sent · waiting for the chain' : 'prepared · awaiting the launcher\'s signature';
-  $('c-net').textContent = `${c.network} · chain ${c.chain_id} · ${c.venue}`;
-  $('c-token').innerHTML = link('token', c.token); $('c-curve').innerHTML = link('address', c.curve); $('c-tx').innerHTML = link('tx', c.tx_hash);
+  $('s-price').textContent = pump.fmtPrice(A.token?.twap_usdg);
+  $('c-status').textContent = live ? (cs?.graduated ? 'live · graduated to the open market' : 'live on the bonding curve') : c.status === 'pending' ? 'launch sent · waiting for the cluster' : 'prepared · awaiting the launcher\'s signature';
+  $('c-net').textContent = `${c.network} · ${c.cluster || ''} · ${c.venue === 'pump' ? 'pump.fun' : c.venue}`;
+  const tokenLink = c.token ? `${link('token', c.token)}${venueCfg ? ` · <a href="${esc(pump.pumpUrl(venueCfg, c.token))}" target="_blank" rel="noopener">pump.fun</a>` : ''}` : (c.mint ? `${esc(pump.short(c.mint))} (mint, not yet created)` : '—');
+  $('c-token').innerHTML = tokenLink; $('c-curve').innerHTML = link('address', c.curve); $('c-tx').innerHTML = link('tx', c.tx_hash);
   $('c-wallet').innerHTML = link('address', c.wallet);
-  const pair = c.pair || c.intent?.params?.pair || '';
-  $('c-price').textContent = cs ? `${pons.fmtPrice(c.price_usd ?? 0)}${c.price_usd == null ? ' (no USD rate)' : ''} · ${cs.price_quote.toPrecision(3)} ${pair}` : '— until live';
+  const pair = c.pair || c.intent?.params?.pair || 'SOL';
+  $('c-price').textContent = cs ? `${pump.fmtPrice(c.price_usd ?? 0)}${c.price_usd == null ? ' (no SOL rate set)' : ''} · ${cs.price_quote.toPrecision(3)} ${pair}` : '— until live';
   $('c-liq').textContent = cs ? `${cs.real_quote_reserve.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${pair}${c.liquidity_usd != null ? ' · ' + fmt(c.liquidity_usd) : ''}` : '— until live';
-  $('c-fees').textContent = c.creator_fees ? `${c.creator_fees.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${c.creator_fees.pair} in the Pons escrow` : live ? 'not read' : '— until live';
-  $('c-recip').innerHTML = `${c.intent?.params?.creator_tax_bps != null ? (c.intent.params.creator_tax_bps / 100) + '% of the trade fee' : '—'} · ${link('address', c.creator_fee_recipient || c.intent?.params?.creator_fee_recipient)}`;
+  $('c-fees').textContent = c.creator_fees ? `${c.creator_fees.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${c.creator_fees.pair} in the creator vault` : live ? 'not read' : '— until live';
+  $('c-recip').innerHTML = `pump.fun creator fee on every trade · ${link('address', c.creator_fee_recipient || c.intent?.creator)}`;
   $('c-gradrow').hidden = !cs || cs.graduation_progress == null;
   if (cs && cs.graduation_progress != null) { const pct = Math.round(cs.graduation_progress * 100); $('c-grad').textContent = `${pct}% · ${cs.real_quote_reserve.toLocaleString(undefined, { maximumFractionDigits: 2 })} / ${cs.graduation_threshold_quote.toLocaleString()} ${pair}`; $('c-gradbar').style.width = pct + '%'; }
   $('c-when').textContent = c.refreshed_at ? when(c.refreshed_at) + (c.error ? ' · last read failed: ' + c.error : '') : '—';
@@ -329,22 +330,22 @@ function renderChain() {
   const act = $('c-act');
   if (live) {
     const bal = c.creator_fees?.balance ?? 0;
-    act.innerHTML = `<button class="btn accent" id="c-claim" ${bal > 0 ? '' : 'disabled'}>Claim creator fees</button><div class="note">${bal > 0 ? `${bal.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${esc(c.creator_fees.pair)} waiting in the Pons escrow. Claiming sends them to the recipient wallet ${esc(pons.short(c.creator_fee_recipient))}; it pays gas only.` : 'Nothing to claim yet. Fees from every trade on the curve accrue here and the recipient wallet claims them.'}</div>`;
-  } else if (c.status === 'pending') act.innerHTML = `<button class="btn" id="c-check">Check confirmation</button><div class="note">Sent as ${esc(pons.short(c.tx_hash))}. The server confirms from the receipt as soon as the chain has it.</div>`;
-  else act.innerHTML = `<button class="btn accent" id="c-sign">Sign the launch in your wallet</button><div class="note">Real: creates the token on ${esc(c.network)} mainnet and pays the Pons launch fee plus gas from wallet ${esc(pons.short(c.wallet))}. Only the key that prepared this agent can confirm it.</div>`;
+    act.innerHTML = `<button class="btn accent" id="c-claim" ${bal > 0 ? '' : 'disabled'}>Claim creator fees</button><div class="note">${bal > 0 ? `${bal.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${esc(c.creator_fees.pair)} waiting in the creator vault. Claiming sends it to the creator wallet ${esc(pump.short(c.creator_fee_recipient))}; it pays the network fee only.` : 'Nothing to claim yet. The creator fee from every trade on the curve accrues in the vault and the creator wallet claims it.'}</div>`;
+  } else if (c.status === 'pending') act.innerHTML = `<button class="btn" id="c-check">Check confirmation</button><div class="note">Sent as ${esc(pump.short(c.tx_hash))}. The server confirms from the transaction as soon as the cluster has it.</div>`;
+  else act.innerHTML = `<button class="btn accent" id="c-sign">Sign the launch in your wallet</button><div class="note">Real: creates the token on ${esc(c.network)} mainnet and pays about ${esc(String(c.intent?.estimated_cost_sol ?? 0.025))} SOL in rent and fees from wallet ${esc(pump.short(c.wallet))}. The mint key must be in this browser (it is, if the agent was prepared here). Only the key that prepared this agent can confirm it.</div>`;
   $('c-claim')?.addEventListener('click', () => chainAct('Claim', async () => {
-    if (!venueCfg) venueCfg = await pons.venue();
-    const from = await pons.connect();
-    const out = await pons.claimFees({ cfg: venueCfg, chain: c, from, step: (name, detail) => say(detail + '…') });
+    if (!venueCfg) venueCfg = await pump.venue();
+    const from = await pump.connect();
+    const out = await pump.claimFees({ cfg: venueCfg, agentId: A.id, from, step: (name, detail) => say(detail + '…') });
     A = await api('/v1/agents/' + encodeURIComponent(A.id) + '?refresh=1', { key: null });
-    if (out.pending) say('The claim is sent but still mining; the balance updates once the chain has it.');
+    if (out.pending) say('The claim is sent but still confirming; the balance updates once the cluster has it.');
   }));
-  $('c-check')?.addEventListener('click', () => chainAct('Confirmation', async (key) => { A = await pons.confirm(A.id, c.tx_hash, key, { timeoutMs: 20000 }); }));
+  $('c-check')?.addEventListener('click', () => chainAct('Confirmation', async (key) => { A = await pump.confirm(A.id, c.tx_hash, key, { timeoutMs: 20000 }); }));
   $('c-sign')?.addEventListener('click', () => chainAct('Launch', async (key) => {
-    if (!venueCfg) venueCfg = await pons.venue();
-    const from = await pons.connect();
-    if (from.toLowerCase() !== String(c.wallet).toLowerCase()) throw new Error(`Connect the wallet this agent was prepared for (${pons.short(c.wallet)}); the wallet is ${pons.short(from)}.`);
-    const out = await pons.launch({ agent: A, key, cfg: venueCfg, from, step: (name, detail) => say(detail + '…') });
+    if (!venueCfg) venueCfg = await pump.venue();
+    const from = await pump.connect();
+    const mint = await pump.storedMint(A.id);
+    const out = await pump.launch({ agent: A, key, cfg: venueCfg, from, mint, step: (name, detail) => say(detail + '…') });
     A = out.agent;
   }));
 }
@@ -355,7 +356,7 @@ async function chainAct(label, fn) {
   catch (e) { say(e.message, true); }
   finally { setCtl(true); btns.forEach((b) => { b.disabled = false; }); }
 }
-pons.venue().then((cfg) => { venueCfg = cfg; if (A) renderChain(); }).catch(() => {});
+pump.venue().then((cfg) => { venueCfg = cfg; if (A) renderChain(); }).catch(() => {});
 
 async function load() {
   setCtl(false); say('');

@@ -115,13 +115,13 @@ Verification runs the same way for all three. Rubric grading uses a three-person
 | `GET /v1/agents` · `GET /v1/agents/{id}` | Launched agents: token bond, capacity, routed revenue (public) |
 | `POST /v1/agents` | Launch an agent. Requires a bearer key; records `owner_key_id` |
 | `POST /v1/agents/{id}/harvest` · `/price` · `/unbond` | Owner-only writes (owner's bearer key or `X-Admin-Token`); otherwise `403 not_owner`. `/price` answers `409 chain_priced` for an agent whose token is live on-chain |
-| `POST /v1/agents` with `launch: { venue: "pons", wallet, pair, creator_tax_bps, description, logo, socials }` | Prepare a real token launch on Pons (Robinhood Chain): the response carries `chain.intent`, the exact `launchToken` transaction for the launcher's wallet to sign. `creator_tax_bps` is the launcher's share of the 1% trade fee (0..1000 = up to 10% of it). No price until confirmed |
-| `GET /v1/agents/{id}?refresh=1` | Re-read the curve and the fee escrow now instead of waiting out the one-minute cache |
-| `POST /v1/agents/{id}/launch/confirm` `{ tx_hash }` | Owner-only. Verifies the receipt on-chain, records token and curve from the `TokenLaunched` event, prices the bond from the curve. `202` with `pending: true` while the transaction is mining; `409 wrong_wallet` / `not_a_launch` / `launch_reverted` |
-| `GET /v1/launchpad/pons` | Venue config a wallet needs: chain id, RPC, explorer, factory, quote assets, launch fee (public) |
-| `POST /v1/auth/nonce` `{ address }` · `POST /v1/auth/verify` `{ address, signature }` | Wallet sign-in. The wallet signs a one-time message; a valid signature mints the wallet's account or recovers it with a fresh key (the old key stops working) |
-| `GET /v1/funds` | Funds mode (`sandbox` or `real`), network, USDG token, treasury address, payout mode, withdrawal limits (public) |
-| `POST /v1/escrow/deposits/confirm` `{ tx_hash }` | Real funds: credits a USDG transfer from the signed-in wallet to the treasury, once; `202` while mining |
+| `POST /v1/agents` with `launch: { venue: "pump", wallet, mint, description, logo, socials }` | Prepare a real token launch on pump.fun (Solana): the response carries `chain.intent`, the exact `create` instruction for the launcher's wallet to sign, co-signed by the fresh `mint` keypair the launcher generated. The token's metadata URI is `GET /v1/agents/{id}/token.json`, served here. No price until confirmed |
+| `GET /v1/agents/{id}?refresh=1` | Re-read the curve and the creator vault now instead of waiting out the one-minute cache |
+| `POST /v1/agents/{id}/launch/confirm` `{ tx_hash }` | Owner-only. Verifies the transaction on-chain, records the mint and bonding curve from the pump.fun `create`, prices the bond from the curve. `202` with `pending: true` while the cluster is confirming; `409 wrong_wallet` / `wrong_mint` / `not_a_launch` / `launch_reverted` |
+| `GET /v1/launchpad/pump` · `GET /v1/agents/{id}/claim` | Venue config a wallet needs: cluster, RPC, explorer, program, estimated cost (public); the `collect_creator_fee` instruction the creator's wallet signs to pull accrued fees out of its vault (public) |
+| `POST /v1/auth/nonce` `{ address }` · `POST /v1/auth/verify` `{ address, signature }` | Wallet sign-in with a Solana wallet. The wallet signs a one-time message (ed25519, base58 signature); a valid signature mints the wallet's account or recovers it with a fresh key (the old key stops working) |
+| `GET /v1/funds` | Funds mode (`sandbox` or `real`), network, USDT mint, treasury address and token account, payout mode, withdrawal limits (public) |
+| `POST /v1/escrow/deposits/intent` `{ amount }` · `POST /v1/escrow/deposits/confirm` `{ tx_hash }` | Real funds: the USDT transfer instruction for the signed-in wallet to sign; credit a confirmed transfer from that wallet to the treasury, once. `202` while confirming |
 | `POST /v1/withdrawals` `{ amount }` · `GET /v1/withdrawals` · `POST /v1/withdrawals/{id}/check` | Real funds: withdraw to the signed-in wallet (`sent` when the treasury key pays automatically, `pending` until the operator pays), list, re-check against the chain |
 | `GET /v1/admin/withdrawals` · `POST /v1/admin/withdrawals/{id}/paid` `{ tx_hash }` | Operator payouts: pending list; confirm a payout, verified on-chain. `X-Admin-Token` required |
 | `POST /v1/chat/completions` (alias `/v1/inference/chat/completions`) | The inference gateway: OpenAI-compatible chat completions, streaming and tool calls, model names unchanged. Routed to the cheapest admissible bonded offer, checked inline, billed on the gateway's own token count against the key's escrow or an agent key's compute balance. Optional `vouch: { max_price_in, max_price_out, max_ttft_ms, min_tps, min_track, retention: "none" \| "any", providers: [...], timeout_ms }` |
@@ -187,7 +187,7 @@ src/broker.js        Alpaca paper broker adapter
 src/store.js         JSON snapshot persistence; src/store-upstash.js for Redis
 src/api.js           REST routes, auth, token-bucket rate limiting, SSE
 src/mcp.js           Model Context Protocol server (Streamable HTTP JSON-RPC)
-contracts/           Solidity drafts, untested (see ONCHAIN.md)
+src/chain/           Solana with zero dependencies: base58, ed25519, PDAs, SPL instructions, RPC, pump.fun, USDT funds
 docs/                the documentation site (served at /docs)
 public/              the pages (served at /, /dashboard, /agents, ...)
 examples/            client, agent, provider SDK and reference provider
@@ -231,15 +231,17 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `VOUCH_IMAGE_PROVIDER` | `pollinations` when `ANTHROPIC_API_KEY` is set, else `none` | Real image generation for `image.generate` through a keyless, URL-based image API. Verification fetches the picture and the vision grader panel judges it against the prompt. `none` returns a labelled placeholder |
 | `VOUCH_IMAGE_BASE_URL` / `VOUCH_IMAGE_MODEL` | `https://image.pollinations.ai` / `flux` | Image API base and model name |
 | `VOUCH_MODEL_SLA_MS` | `20000` | With a real model configured, built-in text providers quote at least this deadline. Set `deadline_ms` at or above it for model-backed tasks |
-| `VOUCH_CHAIN_RPC` | Robinhood Chain mainnet RPC | JSON-RPC endpoint used to verify Pons launches and read bonding curves. Only reads: Vouch holds no wallet |
-| `VOUCH_PONS_FACTORY` / `VOUCH_CHAIN_ID` / `VOUCH_CHAIN_EXPLORER` | Pons V2 on Robinhood Chain (4663) | Override the launch factory, chain id and explorer (another deployment or a fork) |
-| `VOUCH_CREATOR_FEE_RECIPIENT` | unset → the launcher's wallet | Address that receives Pons creator fees for every launch prepared here (the future on-chain bond vault) |
-| `VOUCH_ETH_USD` | unset | Dollar rate used to value ETH-quoted tokens; without it an ETH-paired bond has no USD value and no capacity |
-| `VOUCH_REAL_FUNDS` | unset (sandbox credits) | `1` with a treasury address switches the deployment to real USDG: no faucet, simulated deposits off, on-chain deposits and withdrawals on |
-| `VOUCH_TREASURY_ADDRESS` | unset | The wallet that receives deposits and pays withdrawals |
-| `VOUCH_TREASURY_KEY` | unset (operator pays by hand) | Private key of the treasury wallet; set it and withdrawals are signed and sent automatically. Keep it in the host's secret store only |
-| `VOUCH_USDG_ADDRESS` | USDG on Robinhood Chain | The settlement token contract |
-| `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | `1` / `1000` | Per-request withdrawal limits in USDG |
+| `VOUCH_CHAIN_RPC` | `https://api.mainnet-beta.solana.com` | Solana JSON-RPC endpoint used to verify launches, read bonding curves, check transfers and send payouts. Use a dedicated RPC provider in production; the public one is rate-limited |
+| `VOUCH_CHAIN_EXPLORER` / `VOUCH_PUMP_PROGRAM` | `https://solscan.io` / pump.fun on mainnet | Override the explorer and the pump.fun program id |
+| `VOUCH_PUBLIC_URL` | `https://www.vouchagents.com` | This deployment's public origin: token metadata URIs point here |
+| `VOUCH_CREATOR_FEE_RECIPIENT` | unset → the launcher's wallet | Address set as the token's creator for every launch prepared here; its creator vault collects the fees (the future on-chain bond vault) |
+| `VOUCH_SOL_USD` / `VOUCH_SOL_USD_URL` / `VOUCH_SOL_USD_PATH` | unset | A fixed dollar rate for SOL, or a JSON URL of your choice read every minute (with a dot path to the number). Without a rate a SOL-paired bond has no USD value and no capacity |
+| `VOUCH_PUMP_GRADUATION_SOL` | `85` | Real SOL in the curve at which pump.fun graduates a token, for the progress figure |
+| `VOUCH_REAL_FUNDS` | unset (sandbox credits) | `1` with a treasury address switches the deployment to real USDT on Solana: no faucet, simulated deposits off, on-chain deposits and withdrawals on |
+| `VOUCH_TREASURY_ADDRESS` | unset | The Solana wallet that receives deposits (into its USDT token account) and pays withdrawals |
+| `VOUCH_TREASURY_KEY` | unset (operator pays by hand) | Secret key of the treasury wallet (base58 as wallets export it, or a 32-byte seed); set it and withdrawals are signed and sent automatically. Keep it in the host's secret store only |
+| `VOUCH_USDT_MINT` / `VOUCH_TOKEN_SYMBOL` / `VOUCH_TOKEN_DECIMALS` | USDT on Solana / `USDT` / `6` | The settlement token |
+| `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | `1` / `1000` | Per-request withdrawal limits in USDT |
 | `VOUCH_MODEL_BUDGET_USD` | `5` | Daily model spend cap. Past it, or on a credit error from the API, tasks run on the simulator and the heuristic grader until the next day; `GET /v1/status` reports `spend` |
 | `VOUCH_REFERENCE_HOSTS` | unset (identity checks are weak) | JSON map of model id to `{ endpoint_url, api_key }`: the reference host whose answers inference canaries are compared with |
 | `OPENROUTER_API_KEY` | unset (no house source) | The house source: every priced text model OpenRouter lists becomes a bonded offer on a house provider, proxied with this key. `VOUCH_UPSTREAM_URL` / `VOUCH_UPSTREAM_KEY` / `VOUCH_UPSTREAM_NAME` point at any other OpenAI-compatible aggregator instead. The aggregator is never named in public: house offers and the price book show `VOUCH_UPSTREAM_LABEL` (default `Vouch sourcing`) and a generic declared source; admins see the aggregator, margin, budget and errors |
@@ -257,6 +259,6 @@ The full protocol runs end to end on a sandbox ledger: real HTTP providers can r
 
 - **The ledger.** Deposits are a capped faucet and settlement transactions are generated hashes. The four ledger functions in `src/engine.js` (lock/settle/refund/slash) are the seam for on-chain escrow.
 - **Provider stakes.** Bonds are granted, not deposited.
-- **The contracts.** `contracts/*.sol` are untested drafts. `src/settlement.js` exercises the signing flow against an in-memory mock, not a chain.
+- **The escrow program.** Not written. `src/settlement.js` exercises the verdict-signing flow against an in-memory mock, not a chain. What is real on Solana today: wallet sign-in, USDT deposits and withdrawals when real funds are on, and agent tokens launched on pump.fun.
 
 This is a dev sandbox, not custody software. Do not put real money behind it before the on-chain settlement layer exists and has been reviewed.

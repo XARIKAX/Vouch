@@ -4,7 +4,6 @@ import { CAPABILITIES } from './catalog.js';
 import * as broker from './broker.js';
 import { checkThesis, THESIS_ACCEPTANCE, THESIS_CAPABILITY } from './thesis.js';
 import { probeModel } from './execute-claude.js';
-import { selector, toHex } from './chain/abi.js';
 import { createGateway } from './gateway.js';
 
 // GET /v1/status?probe=1 makes one tiny model call per configured model; the
@@ -345,27 +344,36 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, engine.getAgent(agentId), rl);
     }],
 
-    // The launcher's wallet sent the Pons launch: hand over the transaction
-    // hash and the engine verifies it on-chain. 202 while still pending.
+    // The launcher's wallet sent the pump.fun launch: hand over the transaction
+    // signature and the engine verifies it on-chain. 202 while still pending.
     ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/launch\/confirm$/, async (req, res, [agentId]) => {
       const actor = agentActor(req);
       const rl = limit(actor.key ?? anonKey(req));
       const body = await readBody(req);
-      const out = await engine.confirmLaunch(agentId, body.tx_hash ?? body.txHash, actor);
+      const out = await engine.confirmLaunch(agentId, body.tx_hash ?? body.signature ?? body.txHash, actor);
       send(res, out.pending ? 202 : 200, out, rl);
     }],
+    // The token JSON pump.fun reads from the metadata URI of a launch prepared here (public).
+    ['GET', /^\/v1\/agents\/([a-z0-9_]+)\/token\.json$/, async (req, res, [agentId]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, engine.agentTokenMetadata(agentId), rl);
+    }],
+    // The claim a creator's wallet signs to collect the token's creator fees (public: it is only an instruction).
+    ['GET', /^\/v1\/agents\/([a-z0-9_]+)\/claim$/, async (req, res, [agentId]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, engine.agentClaimIntent(agentId), rl);
+    }],
 
-    // What a wallet needs to launch on Pons: chain, factory, pairs, explorer.
-    ['GET', /^\/v1\/launchpad\/pons$/, async (req, res) => {
+    // What a wallet needs to launch on pump.fun: cluster, RPC, program, explorer, costs.
+    ['GET', /^\/v1\/launchpad\/(?:pump|venue)$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
       const c = engine.cfg.chain;
       send(res, 200, {
-        venue: 'pons', network: c.network, chain_id: c.chainId, chain_id_hex: '0x' + c.chainId.toString(16), rpc: c.rpc, explorer: c.explorer,
-        factory: c.factory, pairs: Object.values(c.pairs).map((p) => ({ symbol: p.symbol, address: p.address, decimals: p.decimals, native: p.native })),
-        default_launch_fee_wei: c.defaultLaunchFeeWei.toString(), max_creator_tax_bps: c.maxCreatorTaxBps,
-        creator_fee_recipient: c.creatorFeeRecipient ?? 'launcher wallet', eth_usd: c.ethUsd,
-        // the fee escrow's claim calls, for a wallet to pull accrued creator fees
-        claim_selectors: { claim: toHex(selector('claim()')), claim_token: toHex(selector('claimToken(address)')) },
+        venue: 'pump', network: c.network, cluster: c.cluster, rpc: c.rpc, explorer: c.explorer, site: c.site, program: c.program,
+        pair: { symbol: c.pair.symbol, decimals: c.pair.decimals }, token_decimals: c.tokenDecimals,
+        estimated_cost_sol: c.estimatedCostSol, graduation_sol: c.graduationSol,
+        creator_fee_recipient: c.creatorFeeRecipient ?? 'launcher wallet', sol_usd: c.solUsd ?? null, sol_usd_source: c.solUsd ? 'fixed' : c.solUsdUrl ? 'url' : null,
+        limits: c.limits,
       }, rl);
     }],
 
@@ -595,6 +603,13 @@ export function createApi(engine, { buckets } = {}) {
     ['GET', /^\/v1\/funds$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
       send(res, 200, engine.fundsInfo(), rl);
+    }],
+    // what the signed-in wallet signs to deposit: the transfer instruction, ready to compile
+    ['POST', /^\/v1\/escrow\/deposits\/intent$/, async (req, res) => {
+      const key = auth(req);
+      const rl = limit(key);
+      const body = await readBody(req);
+      send(res, 200, engine.depositIntent(key, body.amount), rl);
     }],
     ['POST', /^\/v1\/escrow\/deposits\/confirm$/, async (req, res) => {
       const key = auth(req);

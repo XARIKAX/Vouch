@@ -145,9 +145,9 @@ Before real traffic:
    lose the snapshot and old receipts stop verifying against
    `GET /v1/attestation/key`. Generate one with
    `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))"`.
-5. **On-chain settlement** is not available yet. `contracts/*.sol` are
-   untested drafts and the engine settles on a sandbox ledger. See
-   `ONCHAIN.md` for the plan.
+5. **On-chain settlement** of task escrow is not available yet: the engine
+   settles on a sandbox ledger. Real USDT deposits and withdrawals on Solana
+   and pump.fun token launches are available; see `ONCHAIN.md`.
 
 ## Environment variables
 
@@ -167,15 +167,16 @@ Before real traffic:
 | `VOUCH_IMAGE_BASE_URL` / `VOUCH_IMAGE_MODEL` | Image API base URL and model name | `https://image.pollinations.ai` / `flux` |
 | `VOUCH_MODEL_SLA_MS` | Minimum deadline the built-in text providers quote when they execute through a real model (a buyer's `deadline_ms` below it gets a 409 with the nearest quote) | `20000` |
 | `VOUCH_GRADER_URL` | Custom webhook grader | unset |
-| `VOUCH_CHAIN_RPC` | JSON-RPC endpoint for verifying Pons launches and reading bonding curves (reads only; Vouch holds no wallet) | Robinhood Chain mainnet RPC |
-| `VOUCH_PONS_FACTORY` / `VOUCH_CHAIN_ID` / `VOUCH_CHAIN_EXPLORER` | Override the Pons launch factory, chain id and explorer | Pons V2 on Robinhood Chain (4663) |
-| `VOUCH_CREATOR_FEE_RECIPIENT` | Address that receives Pons creator fees for launches prepared here (the future on-chain bond vault) | unset → the launcher's wallet |
-| `VOUCH_ETH_USD` | Dollar rate to value ETH-quoted tokens; unset leaves ETH-paired bonds without a USD value | unset |
-| `VOUCH_REAL_FUNDS` | `1` with a treasury address switches the deployment to real USDG: no faucet, simulated deposits off, on-chain deposits and withdrawals on | unset (sandbox credits) |
-| `VOUCH_TREASURY_ADDRESS` | The wallet that receives deposits and pays withdrawals | unset |
-| `VOUCH_TREASURY_KEY` | Private key of the treasury wallet for automatic payouts; without it withdrawals wait for an operator payout confirmed through `/v1/admin/withdrawals` | unset |
-| `VOUCH_USDG_ADDRESS` | The settlement token contract | USDG on Robinhood Chain |
-| `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | Per-request withdrawal limits in USDG | `1` / `1000` |
+| `VOUCH_CHAIN_RPC` | Solana JSON-RPC endpoint: verifying launches, reading curves, checking transfers, sending payouts. Use a dedicated provider in production | `https://api.mainnet-beta.solana.com` |
+| `VOUCH_CHAIN_EXPLORER` / `VOUCH_PUMP_PROGRAM` | Override the explorer and the pump.fun program id | `https://solscan.io` / pump.fun mainnet |
+| `VOUCH_PUBLIC_URL` | This deployment's public origin; token metadata URIs point here | `https://www.vouchagents.com` |
+| `VOUCH_CREATOR_FEE_RECIPIENT` | The creator set on every launch prepared here; its creator vault collects the fees (the future on-chain bond vault) | unset → the launcher's wallet |
+| `VOUCH_SOL_USD` / `VOUCH_SOL_USD_URL` / `VOUCH_SOL_USD_PATH` | A fixed SOL rate, or a JSON URL of your choice read every minute with a dot path to the number; without one SOL-paired bonds have no USD value | unset |
+| `VOUCH_REAL_FUNDS` | `1` with a treasury address switches the deployment to real USDT on Solana: no faucet, simulated deposits off, on-chain deposits and withdrawals on | unset (sandbox credits) |
+| `VOUCH_TREASURY_ADDRESS` | The Solana wallet that receives deposits and pays withdrawals | unset |
+| `VOUCH_TREASURY_KEY` | Secret key of the treasury wallet (base58 as wallets export it) for automatic payouts; without it withdrawals wait for an operator payout confirmed through `/v1/admin/withdrawals` | unset |
+| `VOUCH_USDT_MINT` / `VOUCH_TOKEN_SYMBOL` / `VOUCH_TOKEN_DECIMALS` | The settlement token | USDT on Solana / `USDT` / `6` |
+| `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | Per-request withdrawal limits in USDT | `1` / `1000` |
 | `VOUCH_MODEL_BUDGET_USD` | Daily model spend cap; past it, or on a credit error, model calls pause until the next day and tasks run on the simulator and heuristic grader | `5` |
 | `OPENROUTER_API_KEY` | The house source for the inference gateway: every priced text model OpenRouter lists becomes a bonded offer, proxied with this key. `VOUCH_UPSTREAM_URL` / `VOUCH_UPSTREAM_KEY` / `VOUCH_UPSTREAM_NAME` select another OpenAI-compatible aggregator | unset (no house source) |
 | `VOUCH_UPSTREAM_MARGIN` / `VOUCH_UPSTREAM_BUDGET_USD` | Margin over the upstream price on house offers; what the house may pay upstream per UTC day | `0.10` / `5` |
@@ -199,21 +200,22 @@ Before real traffic:
 
 The sandbox and production are the same code with three switches.
 
-### 1. Real USDG in and out
+### 1. Real USDT in and out, on Solana
 
-1. Create a treasury wallet on Robinhood Chain and fund it with a little ETH for gas.
-2. Set `VOUCH_REAL_FUNDS=1` and `VOUCH_TREASURY_ADDRESS=<that wallet>`. From then on new keys get no faucet credit, `POST /v1/escrow/deposit` is refused, and the console shows **Deposit USDG** and **Withdraw** instead of the sandbox faucet.
-3. Deposits: the account's wallet sends USDG to the treasury (the console does this through the wallet), then `POST /v1/escrow/deposits/confirm { tx_hash }`. The server reads the receipt, checks it is a USDG `Transfer` from the signed-in wallet to the treasury, and credits the ledger once.
+1. Create a treasury wallet on Solana (Phantom, Solflare or a CLI keypair). Fund it with a little SOL for fees, and send it a token's worth of USDT once so its USDT token account exists.
+2. Set `VOUCH_REAL_FUNDS=1` and `VOUCH_TREASURY_ADDRESS=<that wallet>`. From then on new keys get no faucet credit, `POST /v1/escrow/deposit` is refused, and the console shows **Deposit USDT** and **Withdraw** instead of the sandbox faucet.
+3. Deposits: the console asks the server for the transfer instruction (`POST /v1/escrow/deposits/intent`), compiles it, simulates it, and the wallet signs and sends it; then `POST /v1/escrow/deposits/confirm { tx_hash }` with the signature. The server reads the confirmed transaction, checks from its token balance changes that USDT moved from the signed-in wallet to the treasury, and credits the ledger once.
 4. Withdrawals: `POST /v1/withdrawals { amount }` debits the ledger and goes back to the signed-in wallet.
-   - With `VOUCH_TREASURY_KEY` set, the server signs and sends the transfer itself (EIP-1559, zero dependencies) and the request is `sent`, then `paid` once the receipt is checked. If the send fails, the balance is returned and the request is `failed`.
-   - Without it, the request is `pending`. An operator lists `GET /v1/admin/withdrawals`, pays from the treasury wallet, and posts the hash to `POST /v1/admin/withdrawals/{id}/paid`; the server verifies the transfer on-chain before marking it paid.
+   - With `VOUCH_TREASURY_KEY` set, the server signs and sends the transfer itself (a legacy transaction that creates the wallet's USDT account if it is missing and does a checked transfer; zero dependencies) and the request is `sent`, then `paid` once the transaction is checked. If the send fails, the balance is returned and the request is `failed`.
+   - Without it, the request is `pending`. An operator lists `GET /v1/admin/withdrawals`, pays from the treasury wallet, and posts the signature to `POST /v1/admin/withdrawals/{id}/paid`; the server verifies the transfer on-chain before marking it paid.
 5. Only wallet-signed-in accounts can deposit or withdraw: a deposit is credited to the wallet that sent it, and a withdrawal goes only to that wallet. Anonymous sandbox keys cannot move real money.
+6. Use a dedicated RPC provider (`VOUCH_CHAIN_RPC`); the public endpoint is rate-limited and will refuse bursts.
 
-Start a real-funds deployment from an empty state (a new `VOUCH_STATE_KEY`): sandbox balances must never become withdrawable.
+Start a real-funds deployment from an empty state (a new `VOUCH_STATE_KEY`): sandbox balances must never become withdrawable, and state written before the move to Solana holds wallets of another chain.
 
 ### 2. Accounts
 
-Wallet sign-in works in both modes. `POST /v1/auth/nonce` returns a message, the wallet signs it (`personal_sign`, no transaction, no cost), and `POST /v1/auth/verify` returns the account's key: a new account the first time, and a fresh key for the same account afterwards, which is how a lost key is recovered. The console's **Sign in with wallet** button does the whole exchange. Set `VOUCH_LOCK_SIGNUP=1` on a production deployment so anonymous keys can no longer be minted and every account is a wallet.
+Wallet sign-in works in both modes. `POST /v1/auth/nonce` returns a message, the wallet signs it (a Solana message signature, no transaction, no cost), and `POST /v1/auth/verify` with the base58 signature returns the account's key: a new account the first time, and a fresh key for the same account afterwards, which is how a lost key is recovered. The console's **Sign in with wallet** button does the whole exchange with any Wallet Standard wallet (Phantom, Solflare, Backpack and others). Set `VOUCH_LOCK_SIGNUP=1` on a production deployment so anonymous keys can no longer be minted and every account is a wallet.
 
 ### 3. Capacity
 
