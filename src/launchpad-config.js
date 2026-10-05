@@ -5,7 +5,7 @@ import { ApiError } from './errors.js';
 // default never alters an already-launched agent. Risk parameters are set by
 // the platform only: the launch request body cannot override them.
 //
-// All money values are in USDG. The platform token is referenced by address
+// All money values are in USDT. The platform token is referenced by address
 // only — its identity is a deploy-time parameter, not hard-coded here. Shares
 // are fractions of 1 and each group must sum to 1.
 
@@ -67,7 +67,7 @@ export const LAUNCHPAD_DEFAULTS = deepFreeze({
 
   // Platform token — identity is a deploy parameter (address filled per chain).
   platformToken: { symbol: 'VOUCH', address: null, decimals: 18 },
-  stablecoin: { symbol: 'USDG', address: null, decimals: 6 },
+  stablecoin: { symbol: 'USDT', address: null, decimals: 6 },
   chain: 'robinhood',
 });
 

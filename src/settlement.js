@@ -9,16 +9,14 @@ import { bondValue, bondCapacity, splitFees, slashPlan, slashBase } from './laun
 // on-chain: escrow held in a VouchEscrow contract, released or refunded+slashed
 // only on a verifier-signed verdict.
 //
-// The verifier signs with secp256k1 (Ethereum's curve). The mock backend here
-// verifies that signature exactly as the on-chain contract's ECDSA.recover
-// would, so the trust flow is real and testable without a chain. A real Base
-// backend swaps mockChain() for JSON-RPC calls to the deployed contract;
-// everything above that line is unchanged. See contracts/VouchEscrow.sol and
+// The verifier signs with ed25519 (Solana's curve). The mock backend here
+// verifies that signature the way an on-chain program would through the
+// ed25519 native program, so the trust flow is real and testable without a
+// chain. A real Solana backend swaps mockChain() for JSON-RPC calls to the
+// deployed escrow program; everything above that line is unchanged. See
 // ONCHAIN.md.
 
-// Deterministic verdict digest. NOTE: a real EVM deployment hashes with
-// keccak256 over an EIP-712 typed struct; the mock uses sha256 — the signing
-// and recovery flow is identical, only the hash function differs.
+// Deterministic verdict digest over the verdict's fields (sha256).
 export function verdictDigest({ taskId, outcome, amount, slashBps = 0 }) {
   return sha256(`vouch.verdict|${taskId}|${outcome}|${amount}|${slashBps}`);
 }
@@ -32,7 +30,7 @@ export function createVerifier(opts = {}) {
     priv = crypto.createPrivateKey(opts.privateKeyPem);
     pub = crypto.createPublicKey(priv);
   } else {
-    const kp = crypto.generateKeyPairSync('ec', { namedCurve: 'secp256k1' });
+    const kp = crypto.generateKeyPairSync('ed25519');
     priv = kp.privateKey; pub = kp.publicKey;
   }
   const publicKeyPem = pub.export({ type: 'spki', format: 'pem' }).toString();
@@ -42,12 +40,12 @@ export function createVerifier(opts = {}) {
     id,
     sign(verdict) {
       const digest = verdictDigest(verdict);
-      return crypto.sign('sha256', Buffer.from(digest), priv).toString('base64');
+      return crypto.sign(null, Buffer.from(digest), priv).toString('base64');
     },
     // Sign an arbitrary digest string (used for slash verdicts, which have a
-    // different shape than settle/refund verdicts). Mirrors AgentBondVault._digest.
+    // different shape than settle/refund verdicts). Mirrors the bond vault's digest.
     signDigest(digest) {
-      return crypto.sign('sha256', Buffer.from(digest), priv).toString('base64');
+      return crypto.sign(null, Buffer.from(digest), priv).toString('base64');
     },
   };
 }
@@ -58,7 +56,7 @@ export function slashDigest({ slashId, agentId, price, multipleBps }) {
 }
 export function verifyDigestSig(digest, signatureB64, verifierPublicKeyPem) {
   try {
-    return crypto.verify('sha256', Buffer.from(digest),
+    return crypto.verify(null, Buffer.from(digest),
       crypto.createPublicKey(verifierPublicKeyPem), Buffer.from(signatureB64, 'base64'));
   } catch { return false; }
 }
@@ -66,17 +64,17 @@ export function verifyDigestSig(digest, signatureB64, verifierPublicKeyPem) {
 export function verifyVerdictSig(verdict, signatureB64, verifierPublicKeyPem) {
   try {
     const digest = verdictDigest(verdict);
-    return crypto.verify('sha256', Buffer.from(digest),
+    return crypto.verify(null, Buffer.from(digest),
       crypto.createPublicKey(verifierPublicKeyPem), Buffer.from(signatureB64, 'base64'));
   } catch { return false; }
 }
 
 // In-memory stand-in for the VouchEscrow contract: same state machine, same
-// signature gate. Used for tests and local dev; a Base backend implements the
+// signature gate. Used for tests and local dev; a Solana backend implements the
 // same interface over JSON-RPC.
 export function mockChain({ verifierPublicKeyPem }) {
   const escrows = {}; // taskId -> { keyId, amount, provider, stake, state }
-  const balances = {}; // address -> USDG
+  const balances = {}; // address -> USDT
   const insurancePool = { balance: 0 };
   const credit = (addr, amt) => { balances[addr] = round(fromNum(balances[addr]) + amt); };
 
@@ -136,7 +134,7 @@ export function mockBondVault({ verifierPublicKeyPem, params, now = () => Date.n
   const p = params ?? snapshotParams();
   const agents = {};   // agentId -> { wallet, bond, reserved, unbondingQty, unbondReady, token, slashWindow }
   const pending = {};  // slashId -> { agentId, amountUsdg, tokenQty, executeAfter, settled }
-  const insurance = { balance: 0 }; // USDG value of executed slashes
+  const insurance = { balance: 0 }; // USDT value of executed slashes
   let paused = false;
 
   const must = (agentId) => {

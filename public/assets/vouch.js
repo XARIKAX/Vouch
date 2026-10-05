@@ -118,50 +118,49 @@ export async function ensureKey(name = 'sandbox') {
 }
 
 // ---------------------------------------------------------------------------
-// Wallet sign-in and real funds. The wallet signs a one-time message (no
-// transaction, no cost); the server mints or recovers the wallet's account and
-// the key is kept like any other. Deposits are a USDG transfer the wallet
-// sends to the treasury, confirmed by its receipt.
+// Wallet sign-in and real funds, on Solana. The wallet signs a one-time
+// message (no transaction, no cost); the server mints or recovers the
+// wallet's account and the key is kept like any other. Deposits are a USDT
+// transfer the wallet signs to the treasury, confirmed from the transaction.
 // ---------------------------------------------------------------------------
 export const WALLET_STORE = 'vouch_wallet';
 export function getWallet() { try { return localStorage.getItem(WALLET_STORE) || null; } catch { return null; } }
-const walletProvider = () => { const p = window.ethereum; if (!p?.request) throw Object.assign(new Error('No wallet found. Install a browser wallet (MetaMask, Rabby, Coinbase Wallet) and reload.'), { code: 'no_wallet' }); return p; };
+const sol = () => import('/assets/sol.js');
 export async function signInWithWallet() {
-  const p = walletProvider();
-  const [address] = await p.request({ method: 'eth_requestAccounts' });
-  if (!address) throw new Error('The wallet returned no account.');
+  const s = await sol();
+  const address = await s.connect();
   const { message } = await api('/v1/auth/nonce', { method: 'POST', body: { address }, key: null });
-  const signature = await p.request({ method: 'personal_sign', params: [message, address] });
+  const signature = await s.signMessage(message);
   const out = await api('/v1/auth/verify', { method: 'POST', body: { address, signature }, key: null });
   setKey(out.key);
   try { localStorage.setItem(WALLET_STORE, out.wallet); } catch {}
   return out;
 }
-// Send `amount` USDG from the signed-in wallet to the treasury, then confirm
-// it with the server until the receipt is in. Resolves with the credit.
-export async function depositUsdg(amount, { onStep = () => {} } = {}) {
-  const p = walletProvider();
+// Send `amount` of the settlement token from the signed-in wallet to the
+// treasury, then confirm it with the server until the cluster has it.
+export async function depositToken(amount, { onStep = () => {} } = {}) {
+  const s = await sol();
   const funds = await api('/v1/funds', { key: null });
   if (!funds.enabled) throw Object.assign(new Error('This deployment runs on sandbox credits; real deposits are off.'), { code: 'sandbox_mode' });
-  const [from] = await p.request({ method: 'eth_requestAccounts' });
-  const want = funds.chain_id_hex, have = await p.request({ method: 'eth_chainId' });
-  if (String(have).toLowerCase() !== want.toLowerCase()) {
-    try { await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: want }] }); }
-    catch (e) { if (e?.code === 4902) await p.request({ method: 'wallet_addEthereumChain', params: [{ chainId: want, chainName: funds.network, rpcUrls: [funds.rpc], nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 }, blockExplorerUrls: [funds.explorer] }] }); else throw e; }
-  }
-  const units = BigInt(Math.round(Number(amount) * 10 ** funds.token.decimals));
-  const data = funds.transfer_selector + funds.treasury.slice(2).toLowerCase().padStart(64, '0') + units.toString(16).padStart(64, '0');
+  const from = await s.connect();
+  const intent = await api('/v1/escrow/deposits/intent', { method: 'POST', body: { amount } });
+  if (intent.fee_payer !== from) throw Object.assign(new Error(`Connect the wallet you signed in with (${intent.fee_payer.slice(0, 4)}…${intent.fee_payer.slice(-4)}); the wallet is ${from.slice(0, 4)}…${from.slice(-4)}.`), { code: 'wrong_wallet' });
+  onStep('Building the transfer');
+  const { bytes } = await s.buildTx(intent, { rpc: funds.rpc });
+  onStep('Simulating it');
+  await s.simulate(funds.rpc, bytes);
   onStep('Confirm the transfer in your wallet');
-  const tx_hash = await p.request({ method: 'eth_sendTransaction', params: [{ from, to: funds.token.address, data }] });
-  onStep('Sent. Waiting for the chain');
+  const tx_hash = await s.signAndSend(bytes);
+  onStep('Sent. Waiting for the cluster');
   const t0 = Date.now();
   for (;;) {
     const out = await api('/v1/escrow/deposits/confirm', { method: 'POST', body: { tx_hash } });
     if (!out.pending) return { ...out, tx_hash, explorer: `${funds.explorer}/tx/${tx_hash}` };
-    if (Date.now() - t0 > 240000) throw Object.assign(new Error(`Still pending. Confirm later with transaction ${tx_hash}.`), { code: 'still_pending', tx_hash });
-    await new Promise((r) => setTimeout(r, 4000));
+    if (Date.now() - t0 > 180000) throw Object.assign(new Error(`Still confirming. Confirm later with transaction ${tx_hash}.`), { code: 'still_pending', tx_hash });
+    await new Promise((r) => setTimeout(r, 3000));
   }
 }
+export const depositUsdg = depositToken;
 
 // Poll a task until it reaches a terminal state (settled / refunded) or the timeout.
 // A just-created task can take a moment to become visible to other serverless

@@ -1,128 +1,151 @@
+// Real funds on Solana: wallet sign-in by ed25519 signature, USDT deposits
+// read from a confirmed transaction's token balances, withdrawals signed by
+// the treasury or paid by an operator, and the spend guard.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { createEngine } from '../src/engine.js';
 import { createApp } from '../server.js';
-import { fundsConfig, TRANSFER_TOPIC, toUnits } from '../src/chain/funds.js';
-import { ponsConfig, PONS } from '../src/chain/pons.js';
-import { addressFromPrivate, signPersonal, recover, addressOf } from '../src/chain/secp256k1.js';
-import { rlpDecode, rlp } from '../src/chain/tx.js';
-import { keccak256 } from '../src/chain/keccak.js';
-import { encodeParams, toHex } from '../src/chain/abi.js';
+import { fundsConfig, toUnits, parseTokenMovement, USDT } from '../src/chain/funds.js';
+import { pumpConfig } from '../src/chain/pump.js';
+import { randomKeypair, sign, verify } from '../src/chain/ed25519.js';
+import { encodeBase58 } from '../src/chain/base58.js';
+import { associatedTokenAddress, PROGRAMS, fromBase64 } from '../src/chain/solana.js';
+import { parseTransaction, readU64le } from '../public/assets/solmsg.js';
 import { createSpend } from '../src/spend.js';
 
-const USER_KEY = '0x' + '42'.repeat(32), USER = addressFromPrivate(USER_KEY);
-const TREASURY_KEY = '0x' + '77'.repeat(32), TREASURY = addressFromPrivate(TREASURY_KEY);
-const USDG = PONS.pairs.USDG.address;
-const pad = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
-const topicAddr = (a) => '0x' + '0'.repeat(24) + a.slice(2).toLowerCase();
-const transferReceipt = (from, to, units, token = USDG) => ({ status: '0x1', blockNumber: '0x20', logs: [{ address: token, topics: [TRANSFER_TOPIC, topicAddr(from), topicAddr(to)], data: toHex(encodeParams(['uint256'], [units])) }] });
+const USER = randomKeypair(), TREASURY = randomKeypair();
+const TREASURY_SECRET = encodeBase58(Buffer.concat([Buffer.from(TREASURY.seed), Buffer.from(TREASURY.publicKey)]));
+const signMsg = (message, kp) => encodeBase58(sign(Buffer.from(message, 'utf8'), kp.seed));
+const sig = (fill) => encodeBase58(Buffer.alloc(64, fill));
+// a confirmed transaction whose token balances show `units` of USDT moving from `from` to `to`
+const transferTx = (from, to, units, { mint = USDT.mint, err = null } = {}) => ({
+  slot: 99, blockTime: 1700000000, meta: {
+    err,
+    preTokenBalances: [{ accountIndex: 1, mint, owner: from, uiTokenAmount: { amount: String(100_000000n), decimals: 6 } }, { accountIndex: 2, mint, owner: to, uiTokenAmount: { amount: '0', decimals: 6 } }],
+    postTokenBalances: [{ accountIndex: 1, mint, owner: from, uiTokenAmount: { amount: String(100_000000n - units), decimals: 6 } }, { accountIndex: 2, mint, owner: to, uiTokenAmount: { amount: String(units), decimals: 6 } }],
+  }, transaction: { message: { instructions: [] } },
+});
 
-// a fake node: receipts by hash, and enough to accept a signed payout
+// a fake node: transactions by signature, and enough to accept a signed payout
 function fakeChain() {
-  const receipts = {}, sent = [];
+  const txs = {}, sent = [];
   const server = http.createServer((req, res) => {
     let body = ''; req.on('data', (c) => { body += c; }); req.on('end', () => {
       const { id, method, params } = JSON.parse(body);
       let result = null;
-      if (method === 'eth_chainId') result = '0x1237';
-      else if (method === 'eth_getTransactionReceipt') result = receipts[String(params[0]).toLowerCase()] ?? null;
-      else if (method === 'eth_getTransactionCount') result = '0x5';
-      else if (method === 'eth_gasPrice') result = '0x5f5e100';
-      else if (method === 'eth_maxPriorityFeePerGas') result = '0x0';
-      else if (method === 'eth_estimateGas') result = '0xea60';
-      else if (method === 'eth_sendRawTransaction') { sent.push(params[0]); result = '0x' + keccak256(Buffer.from(params[0].slice(2), 'hex')).toString('hex'); }
-      else result = '0x';
+      if (method === 'getTransaction') result = txs[params[0]] ?? null;
+      else if (method === 'getLatestBlockhash') result = { context: { slot: 1 }, value: { blockhash: encodeBase58(Buffer.alloc(32, 3)), lastValidBlockHeight: 100 } };
+      else if (method === 'sendTransaction') { sent.push(params[0]); result = encodeBase58(parseTransaction(fromBase64(params[0])).signatures[0]); }
       res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ jsonrpc: '2.0', id, result }));
     });
   });
-  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ url: `http://127.0.0.1:${server.address().port}`, receipts, sent, close: () => server.close() })));
+  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ url: `http://127.0.0.1:${server.address().port}`, txs, sent, close: () => server.close() })));
 }
-const realCfg = (url, extra = {}) => ({ fast: true, chain: ponsConfig({ VOUCH_CHAIN_RPC: url }), funds: fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: TREASURY, ...extra }) });
+const realCfg = (url, extra = {}) => ({ fast: true, chain: pumpConfig({ VOUCH_CHAIN_RPC: url }), funds: fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: TREASURY.address, ...extra }) });
+
+test('funds: config derives the treasury token account, refuses a key that is not the treasury\'s, and defaults to USDT', () => {
+  const f = fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: TREASURY.address, VOUCH_TREASURY_KEY: TREASURY_SECRET });
+  assert.equal(f.enabled, true); assert.equal(f.signer, TREASURY.address); assert.equal(f.treasuryAta, associatedTokenAddress(TREASURY.address, USDT.mint));
+  assert.equal(f.token.symbol, 'USDT'); assert.equal(f.token.mint, USDT.mint); assert.equal(f.token.decimals, 6);
+  const wrong = fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: TREASURY.address, VOUCH_TREASURY_KEY: encodeBase58(Buffer.concat([Buffer.from(USER.seed), Buffer.from(USER.publicKey)])) });
+  assert.equal(wrong.treasuryKey, null, 'another wallet\'s key is ignored');
+  assert.equal(fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: '0xFbc943b2cE7A11Eca6d161e3F0b13c083679e82D' }).enabled, false, 'an EVM address is not a treasury here');
+  assert.equal(fundsConfig({}).enabled, false);
+  // the movement parser
+  const t = parseTokenMovement(transferTx(USER.address, TREASURY.address, 25_500000n), { mint: USDT.mint, to: TREASURY.address });
+  assert.deepEqual({ from: t.from, to: t.to, units: t.units }, { from: USER.address, to: TREASURY.address, units: 25_500000n });
+  assert.equal(parseTokenMovement(transferTx(USER.address, TREASURY.address, 5n, { mint: randomKeypair().address }), { mint: USDT.mint, to: TREASURY.address }), null, 'another token does not count');
+  assert.equal(parseTokenMovement(transferTx(USER.address, randomKeypair().address, 5n), { mint: USDT.mint, to: TREASURY.address }), null);
+});
 
 test('funds: sandbox deployments keep the faucet and refuse real-money endpoints', async () => {
   const e = createEngine({ fast: true });
   const k = e.createKey('t');
   assert.equal(e.balance(k).balance, 5);
-  await assert.rejects(e.confirmDeposit(k, '0x' + '11'.repeat(32)), /sandbox/);
+  await assert.rejects(e.confirmDeposit(k, sig(1)), /sandbox/);
   await assert.rejects(e.requestWithdrawal(k, 2), /sandbox/);
   assert.equal(e.fundsInfo().mode, 'sandbox');
 });
 
 test('auth: a wallet signature mints an account, and signing again recovers it with a fresh key', () => {
   const e = createEngine({ fast: true });
-  const { message, nonce } = e.authNonce(USER);
-  assert.ok(message.includes(USER) && message.includes(nonce));
+  assert.throws(() => e.authNonce('0xFbc943b2cE7A11Eca6d161e3F0b13c083679e82D'), /Solana wallet/);
+  const { message, nonce } = e.authNonce(USER.address);
+  assert.ok(message.includes(USER.address) && message.includes(nonce));
   // the wrong wallet's signature is refused
-  assert.throws(() => e.authVerify(USER, signPersonal(message, '0x' + '99'.repeat(32))), /not made by this wallet/);
-  const first = e.authVerify(USER, signPersonal(message, USER_KEY));
-  assert.equal(first.recovered, false); assert.equal(first.wallet, USER.toLowerCase());
+  assert.throws(() => e.authVerify(USER.address, signMsg(message, randomKeypair())), /not made by this wallet/);
+  assert.throws(() => e.authVerify(USER.address, 'zzz'), /could not be verified/);
+  const first = e.authVerify(USER.address, signMsg(message, USER));
+  assert.equal(first.recovered, false); assert.equal(first.wallet, USER.address);
   const key = e.authenticate(first.key);
-  assert.equal(key.wallet, USER.toLowerCase()); assert.equal(e.me(key).wallet, USER.toLowerCase());
+  assert.equal(key.wallet, USER.address); assert.equal(e.me(key).wallet, USER.address);
   // a nonce is single use
-  assert.throws(() => e.authVerify(USER, signPersonal(message, USER_KEY)), /new sign-in message/);
+  assert.throws(() => e.authVerify(USER.address, signMsg(message, USER)), /new sign-in message/);
   // recovery: same wallet, same account, new token; the old one is dead
-  const again = e.authNonce(USER);
-  const second = e.authVerify(USER, signPersonal(again.message, USER_KEY));
+  const again = e.authNonce(USER.address);
+  const second = e.authVerify(USER.address, signMsg(again.message, USER));
   assert.equal(second.recovered, true); assert.equal(second.id, first.id); assert.notEqual(second.key, first.key);
   assert.throws(() => e.authenticate(first.key), /revoked|invalid/i);
   assert.equal(e.authenticate(second.key).id, first.id);
 });
 
-test('funds: a real deployment credits a verified USDG deposit once, from the signed-in wallet only', async () => {
+test('funds: a real deployment credits a verified USDT deposit once, from the signed-in wallet only', async () => {
   const chain = await fakeChain();
   try {
     const e = createEngine(realCfg(chain.url));
-    const { message } = e.authNonce(USER);
-    const key = e.authenticate(e.authVerify(USER, signPersonal(message, USER_KEY)).key);
+    const { message } = e.authNonce(USER.address);
+    const key = e.authenticate(e.authVerify(USER.address, signMsg(message, USER)).key);
     assert.equal(e.balance(key).balance, 0, 'no faucet with real funds');
     assert.throws(() => e.deposit(key, 2), /Simulated deposits are off/);
-    const tx = '0x' + 'aa'.repeat(32);
-    // pending first
-    assert.equal((await e.confirmDeposit(key, tx)).pending, true);
-    chain.receipts[tx] = transferReceipt(USER, TREASURY, 25_500000n);
+    const tx = sig(0xaa);
+    assert.equal((await e.confirmDeposit(key, tx)).pending, true, 'pending first');
+    chain.txs[tx] = transferTx(USER.address, TREASURY.address, 25_500000n);
     const out = await e.confirmDeposit(key, tx);
-    assert.equal(out.amount, 25.5); assert.equal(out.balance, 25.5); assert.equal(out.status, 'credited');
+    assert.equal(out.amount, 25.5); assert.equal(out.balance, 25.5); assert.equal(out.status, 'credited'); assert.equal(out.slot, 99);
     const twice = await e.confirmDeposit(key, tx);
     assert.equal(twice.already_credited, true); assert.equal(e.balance(key).balance, 25.5, 'never credited twice');
     // someone else's deposit cannot be claimed
-    const other = '0x' + 'bb'.repeat(32); chain.receipts[other] = transferReceipt('0x' + '55'.repeat(20), TREASURY, 1_000000n);
+    const other = sig(0xbb); chain.txs[other] = transferTx(randomKeypair().address, TREASURY.address, 1_000000n);
     await assert.rejects(e.confirmDeposit(key, other), /different wallet/);
     // a transfer to the wrong place is not a deposit
-    const wrong = '0x' + 'cc'.repeat(32); chain.receipts[wrong] = transferReceipt(USER, '0x' + '66'.repeat(20), 1_000000n);
+    const wrong = sig(0xcc); chain.txs[wrong] = transferTx(USER.address, randomKeypair().address, 1_000000n);
     await assert.rejects(e.confirmDeposit(key, wrong), /not transfer/);
+    // a failed transaction
+    const failed = sig(0xdd); chain.txs[failed] = transferTx(USER.address, TREASURY.address, 1_000000n, { err: { InstructionError: [0, 'Custom'] } });
+    await assert.rejects(e.confirmDeposit(key, failed), /failed on-chain/);
     // a key without a wallet cannot deposit
     await assert.rejects(e.confirmDeposit(e.createKey('anon'), tx), /Sign in with a wallet/);
+    await assert.rejects(e.confirmDeposit(key, '0x' + 'aa'.repeat(32)), /signature/);
   } finally { chain.close(); }
 });
 
-test('funds: a withdrawal debits the ledger and the treasury signs a transfer to the wallet', async () => {
+test('funds: a withdrawal debits the ledger and the treasury signs a USDT transfer to the wallet', async () => {
   const chain = await fakeChain();
   try {
-    const e = createEngine(realCfg(chain.url, { VOUCH_TREASURY_KEY: TREASURY_KEY }));
-    assert.equal(e.fundsInfo().payouts, 'automatic');
-    const { message } = e.authNonce(USER);
-    const key = e.authenticate(e.authVerify(USER, signPersonal(message, USER_KEY)).key);
-    const dep = '0x' + 'aa'.repeat(32); chain.receipts[dep] = transferReceipt(USER, TREASURY, 40_000000n);
+    const e = createEngine(realCfg(chain.url, { VOUCH_TREASURY_KEY: TREASURY_SECRET }));
+    assert.equal(e.fundsInfo().payouts, 'automatic'); assert.equal(e.fundsInfo().treasury_ata, associatedTokenAddress(TREASURY.address, USDT.mint));
+    const { message } = e.authNonce(USER.address);
+    const key = e.authenticate(e.authVerify(USER.address, signMsg(message, USER)).key);
+    const dep = sig(0xaa); chain.txs[dep] = transferTx(USER.address, TREASURY.address, 40_000000n);
     await e.confirmDeposit(key, dep);
     await assert.rejects(e.requestWithdrawal(key, 0.5), /Minimum/);
     await assert.rejects(e.requestWithdrawal(key, 100), /Available balance/);
     const w = await e.requestWithdrawal(key, 12.25);
-    assert.equal(w.status, 'sent'); assert.ok(w.tx_hash); assert.equal(w.balance, 27.75);
-    // the raw transaction: type 2, to the USDG contract, transfer(wallet, 12.25e6), signed by the treasury
+    assert.equal(w.status, 'sent'); assert.ok(w.tx_hash); assert.equal(w.balance, 27.75); assert.ok(w.explorer.includes('solscan.io/tx/'));
+    // the wire transaction: signed by the treasury, creates the wallet's token account, transfers 12.25 USDT checked at 6 decimals
     assert.equal(chain.sent.length, 1);
-    const bytes = Buffer.from(chain.sent[0].slice(2), 'hex');
-    assert.equal(bytes[0], 2);
-    const f = rlpDecode(bytes, 1).value;
-    assert.equal('0x' + f[5].toString('hex'), USDG.toLowerCase());
-    const data = '0x' + f[7].toString('hex');
-    assert.equal(data.slice(0, 10), '0xa9059cbb');
-    assert.equal('0x' + data.slice(34, 74), USER.toLowerCase());
-    assert.equal(BigInt('0x' + data.slice(74)), toUnits(12.25));
-    const signing = keccak256(Buffer.concat([Buffer.from([2]), rlp(f.slice(0, 9).map((b, i) => i === 8 ? [] : b))]));
-    assert.equal(addressOf(recover(signing, BigInt('0x' + f[10].toString('hex')), BigInt('0x' + f[11].toString('hex')), f[9].length ? f[9][0] : 0)).toLowerCase(), TREASURY.toLowerCase());
+    const tx = parseTransaction(fromBase64(chain.sent[0]));
+    assert.equal(tx.signatures.length, 1); assert.equal(tx.accountKeys[0], TREASURY.address);
+    assert.equal(verify(tx.messageBytes, tx.signatures[0], TREASURY.publicKey), true, 'signed by the treasury');
+    assert.equal(encodeBase58(tx.signatures[0]), w.tx_hash);
+    const [ata, xfer] = tx.instructions;
+    assert.equal(tx.accountKeys[ata.programIdIndex], PROGRAMS.associatedToken); assert.equal(tx.accountKeys[ata.accounts[1]], associatedTokenAddress(USER.address, USDT.mint));
+    assert.equal(tx.accountKeys[xfer.programIdIndex], PROGRAMS.token);
+    assert.equal(xfer.data[0], 12); assert.equal(readU64le(xfer.data, 1), toUnits(12.25)); assert.equal(xfer.data[9], 6);
+    assert.deepEqual(xfer.accounts.map((i) => tx.accountKeys[i]), [associatedTokenAddress(TREASURY.address, USDT.mint), USDT.mint, associatedTokenAddress(USER.address, USDT.mint), TREASURY.address]);
     // confirmed on-chain → paid
-    chain.receipts[w.tx_hash] = transferReceipt(TREASURY, USER, 12_250000n);
+    chain.txs[w.tx_hash] = transferTx(TREASURY.address, USER.address, 12_250000n);
     const paid = await e.confirmPayout(w.id);
     assert.equal(paid.status, 'paid'); assert.ok(paid.explorer.includes(w.tx_hash));
     assert.equal(e.listWithdrawals(key)[0].status, 'paid');
@@ -135,16 +158,18 @@ test('funds: without a treasury key a withdrawal waits for the operator, and a s
   try {
     const e = createEngine(realCfg(chain.url));
     assert.equal(e.fundsInfo().payouts, 'operator');
-    const { message } = e.authNonce(USER);
-    const key = e.authenticate(e.authVerify(USER, signPersonal(message, USER_KEY)).key);
-    const dep = '0x' + 'aa'.repeat(32); chain.receipts[dep] = transferReceipt(USER, TREASURY, 10_000000n);
+    const { message } = e.authNonce(USER.address);
+    const key = e.authenticate(e.authVerify(USER.address, signMsg(message, USER)).key);
+    const dep = sig(0xaa); chain.txs[dep] = transferTx(USER.address, TREASURY.address, 10_000000n);
     await e.confirmDeposit(key, dep);
     const w = await e.requestWithdrawal(key, 4);
     assert.equal(w.status, 'pending'); assert.equal(w.balance, 6); assert.equal(chain.sent.length, 0);
     assert.equal(e.listPendingWithdrawals()[0].id, w.id);
-    const short = '0x' + 'dd'.repeat(32); chain.receipts[short] = transferReceipt(TREASURY, USER, 3_000000n);
+    const short = sig(0xd1); chain.txs[short] = transferTx(TREASURY.address, USER.address, 3_000000n);
     await assert.rejects(e.confirmPayout(w.id, short), /smaller/);
-    const full = '0x' + 'ee'.repeat(32); chain.receipts[full] = transferReceipt(TREASURY, USER, 4_000000n);
+    const stranger = sig(0xd2); chain.txs[stranger] = transferTx(randomKeypair().address, USER.address, 4_000000n);
+    await assert.rejects(e.confirmPayout(w.id, stranger), /not a treasury payout/);
+    const full = sig(0xee); chain.txs[full] = transferTx(TREASURY.address, USER.address, 4_000000n);
     assert.equal((await e.confirmPayout(w.id, full)).status, 'paid');
   } finally { chain.close(); }
 });
@@ -152,14 +177,12 @@ test('funds: without a treasury key a withdrawal waits for the operator, and a s
 test('funds: a failed automatic payout gives the balance back', async () => {
   const chain = await fakeChain();
   try {
-    const e = createEngine(realCfg('http://127.0.0.1:1', { VOUCH_TREASURY_KEY: TREASURY_KEY }));   // unreachable node for the send
-    // credit through a reachable node first
-    e.cfg.chain = ponsConfig({ VOUCH_CHAIN_RPC: chain.url });
-    const { message } = e.authNonce(USER);
-    const key = e.authenticate(e.authVerify(USER, signPersonal(message, USER_KEY)).key);
-    const dep = '0x' + 'aa'.repeat(32); chain.receipts[dep] = transferReceipt(USER, TREASURY, 10_000000n);
+    const e = createEngine(realCfg(chain.url, { VOUCH_TREASURY_KEY: TREASURY_SECRET }));
+    const { message } = e.authNonce(USER.address);
+    const key = e.authenticate(e.authVerify(USER.address, signMsg(message, USER)).key);
+    const dep = sig(0xaa); chain.txs[dep] = transferTx(USER.address, TREASURY.address, 10_000000n);
     await e.confirmDeposit(key, dep);
-    e.cfg.chain = ponsConfig({ VOUCH_CHAIN_RPC: 'http://127.0.0.1:1' });
+    e.cfg.chain = pumpConfig({ VOUCH_CHAIN_RPC: 'http://127.0.0.1:1' });   // unreachable node for the send
     await assert.rejects(e.requestWithdrawal(key, 5), /could not be sent/);
     assert.equal(e.balance(key).balance, 10, 'refunded');
     assert.equal(e.listWithdrawals(key)[0].status, 'failed');
@@ -174,15 +197,15 @@ test('api: sign-in, deposit confirm and withdrawal over HTTP; admin lists and pa
   const post = (p, body, headers = {}) => fetch(`${base}${p}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
   try {
     const funds = await (await fetch(`${base}/v1/funds`)).json();
-    assert.equal(funds.mode, 'real'); assert.equal(funds.treasury, TREASURY); assert.equal(funds.token.symbol, 'USDG');
-    const n = await (await post('/v1/auth/nonce', { address: USER })).json();
-    const v = await (await post('/v1/auth/verify', { address: USER, signature: signPersonal(n.message, USER_KEY) })).json();
+    assert.equal(funds.mode, 'real'); assert.equal(funds.treasury, TREASURY.address); assert.equal(funds.token.symbol, 'USDT'); assert.equal(funds.network, 'Solana'); assert.equal(funds.cluster, 'mainnet-beta');
+    const n = await (await post('/v1/auth/nonce', { address: USER.address })).json();
+    const v = await (await post('/v1/auth/verify', { address: USER.address, signature: signMsg(n.message, USER) })).json();
     const h = { Authorization: `Bearer ${v.key}` };
     const me = await (await fetch(`${base}/v1/me`, { headers: h })).json();
-    assert.equal(me.wallet, USER.toLowerCase()); assert.equal(me.funds, 'real');
-    const dep = '0x' + 'aa'.repeat(32);
+    assert.equal(me.wallet, USER.address); assert.equal(me.funds, 'real');
+    const dep = sig(0xaa);
     assert.equal((await post('/v1/escrow/deposits/confirm', { tx_hash: dep }, h)).status, 202);
-    chain.receipts[dep] = transferReceipt(USER, TREASURY, 9_000000n);
+    chain.txs[dep] = transferTx(USER.address, TREASURY.address, 9_000000n);
     const c = await post('/v1/escrow/deposits/confirm', { tx_hash: dep }, h);
     assert.equal(c.status, 200); assert.equal((await c.json()).balance, 9);
     const w = await (await post('/v1/withdrawals', { amount: 2 }, h)).json();
@@ -190,7 +213,7 @@ test('api: sign-in, deposit confirm and withdrawal over HTTP; admin lists and pa
     assert.equal((await fetch(`${base}/v1/admin/withdrawals`)).status, 403);
     const pend = await (await fetch(`${base}/v1/admin/withdrawals`, { headers: { 'X-Admin-Token': 'adm' } })).json();
     assert.equal(pend.withdrawals[0].id, w.id);
-    const tx = '0x' + 'ff'.repeat(32); chain.receipts[tx] = transferReceipt(TREASURY, USER, 2_000000n);
+    const tx = sig(0xff); chain.txs[tx] = transferTx(TREASURY.address, USER.address, 2_000000n);
     const paid = await (await post(`/v1/admin/withdrawals/${w.id}/paid`, { tx_hash: tx }, { 'X-Admin-Token': 'adm' })).json();
     assert.equal(paid.status, 'paid');
     const mine = await (await fetch(`${base}/v1/withdrawals`, { headers: h })).json();

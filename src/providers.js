@@ -134,7 +134,7 @@ async function executeExternal(provider, task) {
 async function sandboxPayer(requirements) {
   const payload = {
     scheme: requirements?.scheme ?? 'exact',
-    network: requirements?.network ?? 'eip155:4663',
+    network: requirements?.network ?? 'solana',
     sandbox: true,
     authorization: 'sandbox-voucher',
   };
@@ -262,7 +262,7 @@ async function executeInner(provider, task, cfg, setMode, diag) {
 }
 
 // ---------------------------------------------------------------------------
-// Seed network. Stake is USDG bonded by the provider; track is 0-100.
+// Seed network. Stake is USDT bonded by the provider; track is 0-100.
 // prv_shade is the cautionary tale: reliability 0. It quotes the fastest SLA
 // on text.generate but its price ceiling sits above the reliable providers, so
 // a plain text.generate task settles by default and prv_shade only wins when a

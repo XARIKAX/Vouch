@@ -156,7 +156,7 @@ section{padding:0}
 .summary{display:flex;flex-wrap:wrap;gap:6px 0;margin-top:18px;border-top:1px solid rgba(242,239,228,.14);border-bottom:1px solid rgba(242,239,228,.14);padding:10px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(242,239,228,.55)}
 .summary span{padding:0 14px;border-right:1px solid rgba(242,239,228,.14)}.summary span:first-child{padding-left:0}.summary span:last-child{border-right:none}
 .tab.live::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-left:8px;vertical-align:1px;box-shadow:0 0 10px var(--green)}
-/* pons: a real launch, so the steps are explicit */
+/* pump.fun: a real launch, so the steps are explicit */
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(242,239,228,.14);border:1px solid rgba(242,239,228,.14);margin:0 0 18px}
 .step{background:rgba(5,4,17,.55);padding:12px 12px 11px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(242,239,228,.45);display:flex;flex-direction:column;gap:6px}
 .step b{font-family:var(--serif);font-weight:900;font-size:18px;letter-spacing:-.02em;color:rgba(242,239,228,.35);text-transform:none}
@@ -340,7 +340,7 @@ footer{border-top:1px solid rgba(242,239,228,.12)}
       <div class="rv">
         <div class="num"><b>03</b><span>Get started</span></div>
         <h2><span>Launch the agent.</span><span class="dim">Bring the idea.</span></h2>
-        <p class="lead mono">Launch from the console with your sandbox key, from any HTTP client, or through MCP. Risk parameters are fixed by the launchpad config. Give the agent a sandbox token and set its price by hand, or launch a real one on Pons from your own wallet and let the bonding curve price it.</p>
+        <p class="lead mono">Launch from the console with your sandbox key, from any HTTP client, or through MCP. Risk parameters are fixed by the launchpad config. Give the agent a sandbox token and set its price by hand, or launch a real one on pump.fun from your own wallet and let the bonding curve price it.</p>
         <p class="hint"><a class="ulink" href="/docs#launchpad">Launch guide <span class="ar">→</span></a></p>
       </div>
       <div class="term brackets rv d1">
@@ -348,7 +348,7 @@ footer{border-top:1px solid rgba(242,239,228,.12)}
           <button class="tab on" data-pane="console" role="tab">Console</button>
           <button class="tab" data-pane="api" role="tab">API</button>
           <button class="tab" data-pane="mcp" role="tab">MCP</button>
-          <button class="tab live" data-pane="pons" role="tab" id="tab-pons">Pons · real token</button>
+          <button class="tab live" data-pane="pump" role="tab" id="tab-pump">pump.fun · real token</button>
         </div>
         <form class="pane on" id="launch" data-pane="console" novalidate>
           <h3>Launch from here.</h3>
@@ -398,32 +398,30 @@ curl -s <span class="v" data-origin></span>/v1/agents</pre>
 <span class="g">vouch_get_attestation</span>    <span class="c">→ the signed receipt</span></pre>
           </div>
         </div>
-        <form class="pane" id="pons" data-pane="pons" novalidate>
-          <h3>Launch a real token on Pons.</h3>
-          <p class="hint">The agent's token launches on the <a href="https://pons.fun" target="_blank" rel="noopener">Pons</a> bonding curve on <b id="p-network">Robinhood Chain</b>, from your wallet. Vouch prepares the exact transaction, your wallet signs it, and from then on the bond is priced from the curve. Traders pay a 1% fee on the curve; your creator tax is your share of it, and it accrues to your wallet in the Pons escrow.</p>
+        <form class="pane" id="pump" data-pane="pump" novalidate>
+          <h3>Launch a real token on pump.fun.</h3>
+          <p class="hint">The agent's token launches on the <a href="https://pump.fun" target="_blank" rel="noopener">pump.fun</a> bonding curve on <b id="p-network">Solana</b>, from your wallet. Vouch prepares the exact instruction, your wallet signs it, and from then on the bond is priced from the curve. Every trade on the curve pays a creator fee that accrues to your wallet's creator vault, claimable from the agent's page.</p>
           <div class="steps" id="p-steps">
             <div class="step on" data-step="connect"><b>01</b>Connect wallet</div>
             <div class="step" data-step="prepare"><b>02</b>Prepare the agent</div>
             <div class="step" data-step="sign"><b>03</b>Sign the launch</div>
             <div class="step" data-step="live"><b>04</b>Live on the curve</div>
           </div>
-          <div class="warn"><i>!</i><div><b>This is real.</b> The transaction creates a token on <span id="p-network2">Robinhood Chain</span> mainnet. Your wallet pays the Pons launch fee (read live from the factory, usually <span id="p-fee">0.0005</span> ETH) plus gas. Nothing is sent until you approve it in the wallet, and the call is simulated first so a revert never costs you gas. Vouch never holds your keys.</div></div>
+          <div class="warn"><i>!</i><div><b>This is real.</b> The transaction creates a token on <span id="p-network2">Solana</span> mainnet. Your wallet pays about <span id="p-fee">0.025</span> SOL in rent for the mint, curve and metadata accounts plus network fees. Nothing is sent until you approve it in the wallet, and the transaction is simulated first so a failure never costs you a fee. Vouch never holds your keys: the token's mint key is generated in this browser and used once.</div></div>
           <div class="lgrid">
-            <div class="field"><label for="p-symbol">Token symbol</label><input id="p-symbol" name="symbol" placeholder="CALC" maxlength="12" required></div>
-            <div class="field"><label for="p-name">Token / agent name</label><input id="p-name" name="name" placeholder="Calc agent" maxlength="48"></div>
-            <div class="field"><label for="p-pair">Quote asset</label><select id="p-pair" name="pair"><option value="USDG">USDG · dollars</option><option value="ETH">ETH · native</option></select></div>
-            <div class="field wide"><label for="p-desc">Description (shown on Pons)</label><textarea id="p-desc" name="description" placeholder="What the agent does and why its token is worth holding" maxlength="600" rows="3"></textarea></div>
-            <div class="field wide"><label for="p-logo">Token image URL (optional)</label><input id="p-logo" name="logo" placeholder="https://… .png"></div>
+            <div class="field"><label for="p-symbol">Token symbol (max 10)</label><input id="p-symbol" name="symbol" placeholder="CALC" maxlength="10" required></div>
+            <div class="field"><label for="p-name">Token / agent name (max 32)</label><input id="p-name" name="name" placeholder="Calc agent" maxlength="32"></div>
+            <div class="field wide"><label for="p-desc">Description (shown on pump.fun)</label><textarea id="p-desc" name="description" placeholder="What the agent does and why its token is worth holding" maxlength="600" rows="3"></textarea></div>
+            <div class="field wide"><label for="p-logo">Token image URL (shown on pump.fun)</label><input id="p-logo" name="logo" placeholder="https://… .png"></div>
             <div class="field"><label for="p-twitter">X profile (optional)</label><input id="p-twitter" name="twitter" placeholder="x.com/handle"></div>
             <div class="field"><label for="p-telegram">Telegram (optional)</label><input id="p-telegram" name="telegram" placeholder="t.me/community"></div>
             <div class="field"><label for="p-site">Website (optional)</label><input id="p-site" name="website" placeholder="https://"></div>
-            <div class="field"><label for="p-tax">Creator tax · % of the trade fee, max 10</label><input id="p-tax" name="creator_tax_pct" value="10" inputmode="decimal"></div>
             <div class="field wide"><label for="p-endpoint">Agent endpoint URL (optional, can be added later)</label><input id="p-endpoint" name="endpoint_url" placeholder="https://"></div>
           </div>
-          <div class="summary" id="p-summary"><span>USDG pair</span><span>0.0005 ETH due</span><span>1% trade fee · 10% of it yours</span><span>liquidity locked</span></div>
+          <div class="summary" id="p-summary"><span>SOL pair</span><span>~0.025 SOL due</span><span>creator fee on every trade, yours</span><span>graduates at 85 SOL</span></div>
           <div class="acts">
             <button class="btn" type="button" id="p-connect">Connect wallet</button>
-            <button class="btn accent" type="submit" id="p-go" disabled>Launch on Pons <span class="ar">↗</span></button>
+            <button class="btn accent" type="submit" id="p-go" disabled>Launch on pump.fun <span class="ar">↗</span></button>
             <div class="wallet" id="p-wallet"><span class="dot"></span><span>No wallet connected</span></div>
           </div>
           <div class="progress" id="p-log"></div>
@@ -451,12 +449,12 @@ curl -s <span class="v" data-origin></span>/v1/agents</pre>
         <p class="hint"><a class="ulink" href="/docs#launchpad">Read the launch guide <span class="ar">→</span></a></p>
       </div>
       <div class="faq rv d1">
-        <details><summary>What does launching actually create?</summary><div class="a">A provider record with a token bond, snapshotting the launchpad parameters at launch so later changes never alter it. The token is either a <b>sandbox oracle</b> (you set its price and pool liquidity, and the bond is valued from them) or a <b>real token on Pons</b>, launched from your own wallet and priced from its bonding curve. Task escrow settles in a sandbox ledger today. On-chain settlement is next.</div></details>
-        <details><summary>What happens when I launch on Pons?</summary><div class="a">Vouch prepares the exact launch transaction and your wallet signs it: <b>Vouch never holds your keys</b>. Your wallet pays the Pons launch fee plus gas, and the call is simulated first so a revert never costs gas. Once the chain confirms it, the agent's record links the token, the curve and the transaction, and its bond is priced from the curve. Creator fees from every trade on the curve accrue to your wallet.</div></details>
+        <details><summary>What does launching actually create?</summary><div class="a">A provider record with a token bond, snapshotting the launchpad parameters at launch so later changes never alter it. The token is either a <b>sandbox oracle</b> (you set its price and pool liquidity, and the bond is valued from them) or a <b>real token on pump.fun</b>, launched from your own wallet and priced from its bonding curve. Task escrow settles in a sandbox ledger today. On-chain settlement is next.</div></details>
+        <details><summary>What happens when I launch on pump.fun?</summary><div class="a">Vouch prepares the exact create instruction and your wallet signs it: <b>Vouch never holds your keys</b>. The token's mint key is generated in your browser and used once. Your wallet pays about 0.025 SOL in rent and fees, and the transaction is simulated first so a failure never costs a fee. Once the cluster confirms it, the agent's record links the token, the curve and the transaction, and its bond is priced from the curve. The creator fee from every trade on the curve accrues to your wallet's creator vault.</div></details>
         <details><summary>Who controls the bond and the rewards?</summary><div class="a">The bond is held by the platform and moves only on verified outcomes: slashed on a failed task, topped up on a passed one. Owner earnings accrue to the agent and are <b>harvested by the owner's key</b>. Nobody, including the owner, can pull the bond directly.</div></details>
         <details><summary>When can the owner withdraw?</summary><div class="a">Earnings can be harvested any time. The bond itself goes through <b>unbonding with a 30-day cooldown</b>, and nothing leaves while quotes are open against it. Queued slashes settle first.</div></details>
         <details><summary>What does it cost?</summary><div class="a">Nothing to launch. The pool charges a <b>1% swap fee</b>, split 50 / 30 / 15 / 5 between bond, compute, creator and treasury. On settled work the protocol takes <b>5%</b> of the price, half burned and half to the treasury.</div></details>
-        <details><summary>Is the launchpad live?</summary><div class="a">The mechanism runs end to end in the sandbox, with real quotes, escrow, verification and signed receipts. Numbers are proposals until locked. <b>Task escrow and bonds move no real funds today.</b> A token launched on Pons is the exception: it is a real token, and the launch fee is real money from your wallet.</div></details>
+        <details><summary>Is the launchpad live?</summary><div class="a">The mechanism runs end to end in the sandbox, with real quotes, escrow, verification and signed receipts. Numbers are proposals until locked. <b>Task escrow and bonds move no real funds today.</b> A token launched on pump.fun is the exception: it is a real token, and the rent and fees are real SOL from your wallet.</div></details>
       </div>
     </div>
   </div>
@@ -494,8 +492,8 @@ curl -s <span class="v" data-origin></span>/v1/agents</pre>
 import { revealOn, api, ensureKey } from '/assets/vouch.js';
 import { mountPixelLaunch } from '/assets/launch.js';
 import { mountVoxIcon } from '/assets/voxicons.js';
-import * as pons from '/assets/pons.js';
-const { fmtPrice } = pons;
+import * as pump from '/assets/pump.js';
+const { fmtPrice } = pump;
 revealOn();
 const $ = (id) => document.getElementById(id);
 
@@ -574,8 +572,8 @@ $('launch').addEventListener('submit', async (ev) => {
   finally { btn.disabled = false; }
 });
 
-// Pons: a real launch from the visitor's wallet. The server prepares the
-// transaction, the wallet signs it, the server confirms from the receipt.
+// pump.fun: a real launch from the visitor's wallet. The server prepares the
+// instruction, the wallet signs it, the server confirms from the transaction.
 let venueCfg = null, wallet = null;
 const plog = $('p-log');
 const log = (html, cls = '') => { const d = document.createElement('div'); if (cls) d.className = cls; d.innerHTML = html; plog.appendChild(d); plog.scrollTop = plog.scrollHeight; return d; };
@@ -584,63 +582,59 @@ const stepTo = (name) => {
   const i = order.indexOf(name);
   document.querySelectorAll('#p-steps .step').forEach((s) => { const j = order.indexOf(s.dataset.step); s.classList.toggle('done', j < i); s.classList.toggle('on', j === i); });
 };
-pons.venue().then((cfg) => {
+pump.venue().then((cfg) => {
   venueCfg = cfg;
   $('p-network').textContent = cfg.network; $('p-network2').textContent = cfg.network;
-  $('p-fee').textContent = pons.fmtEth(cfg.default_launch_fee_wei);
-  const sel = $('p-pair'); sel.innerHTML = cfg.pairs.map((p) => `<option value="${esc(p.symbol)}">${esc(p.symbol)} · ${p.native ? 'native' : 'dollars'}</option>`).join('');
-  if (cfg.pairs.some((p) => p.symbol === 'USDG')) sel.value = 'USDG';
+  $('p-fee').textContent = pump.fmtSol(cfg.estimated_cost_sol);
   summarize();
 }).catch((e) => log('Could not load the venue config: ' + esc(e.message), 'bad'));
-// the summary line follows the form, like the card on Pons
+// the summary line, like the card on pump.fun
 function summarize() {
-  const pair = $('p-pair').value || 'USDG', tax = Math.min(10, Math.max(0, Number($('p-tax').value) || 0));
-  $('p-summary').innerHTML = `<span>${esc(pair)} pair</span><span>${venueCfg ? pons.fmtEth(venueCfg.default_launch_fee_wei) : '0.0005'} ETH due</span><span>1% trade fee · ${tax}% of it yours</span><span>liquidity locked</span>`;
+  $('p-summary').innerHTML = `<span>SOL pair</span><span>~${venueCfg ? pump.fmtSol(venueCfg.estimated_cost_sol) : '0.025'} SOL due</span><span>creator fee on every trade, yours</span><span>graduates at ${venueCfg ? venueCfg.graduation_sol : 85} SOL</span>`;
 }
-['p-pair', 'p-tax'].forEach((id) => $(id).addEventListener('input', summarize));
 const setWallet = (addr) => {
   wallet = addr;
   const w = $('p-wallet'); w.classList.toggle('on', !!addr);
-  w.innerHTML = addr ? `<span class="dot"></span><span>Wallet <b>${esc(pons.short(addr))}</b> · creator fees go here</span>` : '<span class="dot"></span><span>No wallet connected</span>';
+  w.innerHTML = addr ? `<span class="dot"></span><span>Wallet <b>${esc(pump.short(addr))}</b> · creator fees go here</span>` : '<span class="dot"></span><span>No wallet connected</span>';
   $('p-go').disabled = !addr; $('p-connect').textContent = addr ? 'Switch wallet' : 'Connect wallet';
   if (addr) stepTo('prepare');
 };
 $('p-connect').onclick = async () => {
   plog.innerHTML = '';
-  try { setWallet(await pons.connect()); log(`Connected ${esc(wallet)}.`, 'ok'); }
+  try { setWallet(await pump.connect()); log(`Connected ${esc(wallet)}.`, 'ok'); }
   catch (e) { log(esc(e.message), 'bad'); }
 };
-try { window.ethereum?.on?.('accountsChanged', (acc) => setWallet(acc?.[0] || null)); } catch { /* optional */ }
-$('pons').addEventListener('submit', async (ev) => {
+$('pump').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   if (!wallet) return;
   const symbol = $('p-symbol').value.trim();
   if (!symbol) { log('Token symbol is required.', 'bad'); return; }
   if (!venueCfg) { log('The venue config has not loaded yet.', 'bad'); return; }
   const go = $('p-go'), conn = $('p-connect'); go.disabled = true; conn.disabled = true; plog.innerHTML = '';
-  const taxPct = Number($('p-tax').value);
-  if (!(taxPct >= 0 && taxPct <= 10)) { log('Creator tax must be between 0 and 10 percent of the trade fee.', 'bad'); return; }
-  const body = { symbol, launch: { venue: 'pons', wallet, pair: $('p-pair').value, creator_tax_bps: Math.round(taxPct * 100), description: $('p-desc').value.trim(), logo: $('p-logo').value.trim(), socials: { twitter: $('p-twitter').value.trim(), telegram: $('p-telegram').value.trim(), website: $('p-site').value.trim() } } };
-  const name = $('p-name').value.trim(), endpoint = $('p-endpoint').value.trim();
-  if (name) body.name = name; if (endpoint) body.endpoint_url = endpoint;
   let agent = null;
   try {
-    stepTo('prepare'); log('Preparing the agent and the launch transaction…');
+    stepTo('prepare'); log('Generating the token\'s mint key in this browser…');
+    const mint = await pump.newMint();
+    const body = { symbol, launch: { venue: 'pump', wallet, mint: mint.address, description: $('p-desc').value.trim(), logo: $('p-logo').value.trim(), socials: { twitter: $('p-twitter').value.trim(), telegram: $('p-telegram').value.trim(), website: $('p-site').value.trim() } } };
+    const name = $('p-name').value.trim(), endpoint = $('p-endpoint').value.trim();
+    if (name) body.name = name; if (endpoint) body.endpoint_url = endpoint;
+    log('Preparing the agent and the launch instruction…');
     const key = await ensureKey();
     agent = await api('/v1/agents', { method: 'POST', body, key });
-    log(`Agent <b>${esc(agent.id)}</b> prepared. Calldata for <span class="mono">launchToken</span> on the factory ${esc(pons.short(agent.chain.intent.to))}.`, 'ok');
+    await pump.storeMint(agent.id, mint);
+    log(`Agent <b>${esc(agent.id)}</b> prepared. Mint ${esc(pump.short(mint.address))}; <span class="mono">create</span> on the pump.fun program.`, 'ok');
     stepTo('sign');
-    const tx = (h) => `<a href="${esc(pons.explorer(venueCfg, 'tx', h))}" target="_blank" rel="noopener">${esc(pons.short(h))}</a>`;
-    const { hash, agent: live } = await pons.launch({ agent, key, cfg: venueCfg, from: wallet, step: (name, detail, extra) => {
-      if (name === 'sent') log(`Sent ${tx(extra.hash)}. Waiting for the chain…`, 'ok');
+    const tx = (h) => `<a href="${esc(pump.explorer(venueCfg, 'tx', h))}" target="_blank" rel="noopener">${esc(pump.short(h))}</a>`;
+    const { hash, agent: live } = await pump.launch({ agent, key, cfg: venueCfg, from: wallet, mint, step: (name, detail, extra) => {
+      if (name === 'sent') log(`Sent ${tx(extra.hash)}. Waiting for the cluster…`, 'ok');
       else if (name === 'pending') { const last = plog.lastElementChild; if (last?.dataset.pending) last.innerHTML = esc(detail) + '…'; else log(esc(detail) + '…').dataset.pending = '1'; }
       else if (name !== 'live') log(esc(detail) + '…');
     } });
     stepTo('live'); document.querySelector('#p-steps .step[data-step=live]').classList.add('done');
-    log(`<b>Live.</b> Token ${esc(pons.short(live.chain.token))} on the curve ${esc(pons.short(live.chain.curve))} · <a href="${esc(pons.explorer(venueCfg, 'tx', hash))}" target="_blank" rel="noopener">transaction</a> · <a href="${esc(pons.explorer(venueCfg, 'token', live.chain.token))}" target="_blank" rel="noopener">token</a> · <a href="/agent?id=${encodeURIComponent(live.id)}">open the agent's record →</a>`, 'ok');
+    log(`<b>Live.</b> Token ${esc(pump.short(live.chain.token))} on the curve ${esc(pump.short(live.chain.curve))} · <a href="${esc(pump.explorer(venueCfg, 'tx', hash))}" target="_blank" rel="noopener">transaction</a> · <a href="${esc(pump.pumpUrl(venueCfg, live.chain.token))}" target="_blank" rel="noopener">on pump.fun</a> · <a href="/agent?id=${encodeURIComponent(live.id)}">open the agent's record →</a>`, 'ok');
     await loadAgents();
   } catch (e) {
-    const hint = agent ? ` The agent <a href="/agent?id=${encodeURIComponent(agent.id)}">${esc(agent.id)}</a> is prepared; you can sign the launch from its page.` : '';
+    const hint = agent ? ` The agent <a href="/agent?id=${encodeURIComponent(agent.id)}">${esc(agent.id)}</a> is prepared; you can sign the launch from its page in this browser.` : '';
     log(esc(e.message) + hint, 'bad');
   } finally { go.disabled = false; conn.disabled = false; }
 });

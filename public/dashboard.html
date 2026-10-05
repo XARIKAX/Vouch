@@ -197,7 +197,7 @@
           </div>
           <div class="keyrow" id="walletrow" style="padding-top:0">
             <button id="signin" class="btn">Sign in with wallet</button>
-            <button id="dep-usdg" class="btn" hidden>Deposit USDG</button>
+            <button id="dep-usdg" class="btn" hidden>Deposit USDT</button>
             <button id="withdraw" class="btn" hidden>Withdraw</button>
             <span id="wallet-note" class="mono" style="flex:1 1 200px;font-size:11px;color:rgba(242,239,228,.6);align-self:center;overflow-wrap:anywhere"></span>
           </div>
@@ -740,7 +740,7 @@ $('signin').onclick = async () => {
 };
 $('dep-usdg').onclick = async () => {
   if (!getKey()) return note('Sign in with your wallet first.', 'err');
-  const amount = Number(prompt(`Amount of ${FUNDS?.token?.symbol || 'USDG'} to deposit`, '10'));
+  const amount = Number(prompt(`Amount of ${FUNDS?.token?.symbol || 'USDT'} to deposit`, '10'));
   if (!(amount > 0)) return;
   $('dep-usdg').disabled = true;
   try {
@@ -752,7 +752,7 @@ $('dep-usdg').onclick = async () => {
 };
 $('withdraw').onclick = async () => {
   if (!getKey()) return note('Sign in with your wallet first.', 'err');
-  const amount = Number(prompt(`Amount of ${FUNDS?.token?.symbol || 'USDG'} to withdraw to ${short(getWallet() || 'your wallet')}`, '5'));
+  const amount = Number(prompt(`Amount of ${FUNDS?.token?.symbol || 'USDT'} to withdraw to ${short(getWallet() || 'your wallet')}`, '5'));
   if (!(amount > 0)) return;
   $('withdraw').disabled = true;
   try {

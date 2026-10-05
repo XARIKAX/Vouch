@@ -1,6 +1,6 @@
 // Launchpad math — pure, stateless functions the engine and contracts share.
 // No I/O, no mutation: given numbers and a params snapshot, return numbers.
-// All money is USDG. These encode the brief's worked example exactly.
+// All money is USDT. These encode the brief's worked example exactly.
 
 const money = (n) => Math.round((n + Number.EPSILON) * 1e6) / 1e6;
 
@@ -18,7 +18,7 @@ export function splitFees(feeAmount, p) {
 }
 
 // ---- token-bond valuation & capacity ------------------------------------
-// Haircut-adjusted value of a token bond, given a TWAP price in USDG.
+// Haircut-adjusted value of a token bond, given a TWAP price in USDT.
 // Below the liquidity floor the token bond is worth nothing for capacity.
 export function bondValue({ tokenQty = 0, twapUsdg = 0, poolLiquidityUsdg = 0 }, p) {
   if (!(poolLiquidityUsdg >= p.liquidityFloorUsdg)) return 0;
@@ -104,7 +104,7 @@ export function inferenceReservation(windowRevenue, callCost, p) {
 }
 
 // ---- slashing in token terms --------------------------------------------
-// Slash is sized in USDG; taken in platform token at the TWAP; the per-verdict
+// Slash is sized in USDT; taken in platform token at the TWAP; the per-verdict
 // cap is reservationMultiple * price; a rolling window cap limits total damage.
 // `bondRawValueUsdg` is the slash base: the FULL bond (including any tokens
 // in an unbonding request) at TWAP, ignoring the liquidity floor. The floor
