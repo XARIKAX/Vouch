@@ -5,6 +5,12 @@ import * as broker from './broker.js';
 import { checkThesis, THESIS_ACCEPTANCE, THESIS_CAPABILITY } from './thesis.js';
 import { probeModel } from './execute-claude.js';
 import { createGateway } from './gateway.js';
+import { fetchWithTimeout } from './netguard.js';
+
+// JSON-RPC methods the browser may send through /v1/chain/rpc: compiling,
+// simulating and watching a transaction, and reading balances. Nothing that
+// writes beyond sending a signed transaction.
+const CHAIN_RPC_METHODS = new Set(['getLatestBlockhash', 'simulateTransaction', 'sendTransaction', 'getSignatureStatuses', 'getBalance', 'getTokenAccountBalance', 'getAccountInfo', 'getMinimumBalanceForRentExemption']);
 
 // GET /v1/status?probe=1 makes one tiny model call per configured model; the
 // result is cached per process so the public endpoint cannot be used to run
@@ -364,12 +370,30 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, engine.agentClaimIntent(agentId), rl);
     }],
 
+    // The browser's chain calls, forwarded to the configured RPC so its URL
+    // (and any key in it) never leaves the server. Only what compiling,
+    // simulating and watching a transaction needs; rate-limited per client.
+    ['POST', /^\/v1\/chain\/rpc$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      const body = await readBody(req);
+      const method = String(body.method ?? '');
+      if (!CHAIN_RPC_METHODS.has(method)) throw new ApiError(400, 'method_not_allowed', `${method || 'that method'} is not forwarded. Allowed: ${[...CHAIN_RPC_METHODS].join(', ')}.`);
+      const params = Array.isArray(body.params) ? body.params : [];
+      let up;
+      try {
+        up = await fetchWithTimeout(engine.cfg.chain.rpc, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: body.id ?? 1, method, params }) }, 15000);
+      } catch (e) { throw new ApiError(502, 'chain_unreachable', `The RPC endpoint could not be reached: ${e.message}`); }
+      const text = await up.text();
+      let json; try { json = JSON.parse(text); } catch { throw new ApiError(502, 'chain_bad_reply', `The RPC endpoint answered ${up.status} with a non-JSON body.`); }
+      send(res, 200, json, rl);
+    }],
+
     // What a wallet needs to launch on pump.fun: cluster, RPC, program, explorer, costs.
     ['GET', /^\/v1\/launchpad\/(?:pump|venue)$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
       const c = engine.cfg.chain;
       send(res, 200, {
-        venue: 'pump', network: c.network, cluster: c.cluster, rpc: c.rpc, explorer: c.explorer, site: c.site, program: c.program,
+        venue: 'pump', network: c.network, cluster: c.cluster, rpc: '/v1/chain/rpc', explorer: c.explorer, site: c.site, program: c.program,
         pair: { symbol: c.pair.symbol, decimals: c.pair.decimals }, token_decimals: c.tokenDecimals,
         estimated_cost_sol: c.estimatedCostSol, graduation_sol: c.graduationSol,
         creator_fee_recipient: c.creatorFeeRecipient ?? 'launcher wallet', sol_usd: c.solUsd ?? null, sol_usd_source: c.solUsd ? 'fixed' : c.solUsdUrl ? 'url' : null,
