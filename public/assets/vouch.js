@@ -126,9 +126,9 @@ export async function ensureKey(name = 'sandbox') {
 export const WALLET_STORE = 'vouch_wallet';
 export function getWallet() { try { return localStorage.getItem(WALLET_STORE) || null; } catch { return null; } }
 const sol = () => import('/assets/sol.js');
-export async function signInWithWallet() {
+export async function signInWithWallet({ choose = false } = {}) {
   const s = await sol();
-  const address = await s.connect();
+  const address = await s.connect({ choose });
   const { message } = await api('/v1/auth/nonce', { method: 'POST', body: { address }, key: null });
   const signature = await s.signMessage(message);
   const out = await api('/v1/auth/verify', { method: 'POST', body: { address, signature }, key: null });
