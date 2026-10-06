@@ -346,7 +346,7 @@ const TERMINAL = new Set(['settled', 'refunded']);
 /* ---------- API errors, worded with the server's own detail ---------- */
 function reason(e) {
   const d = e.detail || {};
-  let s = e.code && e.code !== 'http_error' ? `${e.status} ${e.code} · ${e.message}` : e.message;
+  let s = e.code && e.code !== 'http_error' && e.status ? `${e.status} ${e.code} · ${e.message}` : e.message;
   if (e.status === 402 && d.required !== undefined) s += ` Required ${money(d.required)}, balance ${money(d.balance)}.`;
   if (e.status === 402 && d.ceiling !== undefined) s += ` Daily ceiling ${money(d.ceiling)}, locked today ${money(d.locked_today)}.`;
   if (e.status === 409 && d.nearest_miss) {
@@ -732,7 +732,8 @@ async function fundsMode() {
 $('signin').onclick = async () => {
   $('signin').disabled = true;
   try {
-    const out = await signInWithWallet();
+    // "Switch wallet" (already signed in) always shows the chooser
+    const out = await signInWithWallet({ choose: $('signin').textContent.trim() === 'Switch wallet' });
     await session(); await fundsMode();
     note(out.recovered ? `Welcome back. A fresh key for the account of ${short(out.wallet)} is stored in this browser; the old key no longer works.` : `Account created for ${short(out.wallet)}. The key is stored in this browser; sign in with the same wallet on any device to recover it.`, 'ok');
   } catch (e) { note(reason(e), 'err'); }

@@ -27,33 +27,72 @@ function discovered() {
 }
 const usable = (w) => w?.features?.['standard:connect'] && w.features['solana:signAndSendTransaction'] && w.features['solana:signMessage'] && (w.chains || []).some((c) => String(c).startsWith('solana:'));
 export function availableWallets() { return discovered().filter(usable).map((w) => ({ name: w.name, icon: w.icon })); }
-function pick(preferred) {
+// Which wallet: the one the visitor chose before, else Phantom when it is
+// installed, else the only one. With several installed and no choice made
+// yet (or when asked to switch), a chooser is shown: MetaMask and others
+// now announce themselves as Solana wallets too, and picking silently
+// would open the wrong one.
+async function pick({ preferred, choose } = {}) {
   const list = discovered().filter(usable);
+  if (!list.length) return null;
   let pref = preferred; try { pref = pref || localStorage.getItem(WALLET_PREF); } catch { /* private mode */ }
-  return list.find((w) => w.name === pref) || list.find((w) => /phantom/i.test(w.name)) || list[0] || null;
+  const stored = list.find((w) => w.name === pref);
+  if (!choose && stored) return stored;
+  const phantom = list.find((w) => /phantom/i.test(w.name));
+  if (!choose && (list.length === 1 || phantom)) return phantom || list[0];
+  return chooser(list);
+}
+function chooser(list) {
+  return new Promise((resolve, reject) => {
+    const host = document.createElement('div');
+    host.setAttribute('style', 'position:fixed;inset:0;z-index:99999;background:rgba(10,10,20,.72);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace');
+    const box = document.createElement('div');
+    box.setAttribute('style', 'background:#0f0f1a;color:#f2efe4;border:1px solid rgba(242,239,228,.25);padding:22px 22px 18px;min-width:280px;max-width:92vw;box-shadow:12px 12px 0 #5b4df0');
+    box.innerHTML = '<div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(242,239,228,.6);margin-bottom:14px">Choose a Solana wallet</div>';
+    for (const w of list) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('style', 'display:flex;align-items:center;gap:12px;width:100%;margin:0 0 8px;padding:12px 14px;background:transparent;color:#f2efe4;border:1px solid rgba(242,239,228,.35);font:inherit;font-size:14px;cursor:pointer;text-align:left');
+      b.innerHTML = `${w.icon ? `<img src="${w.icon}" alt="" style="width:22px;height:22px;border-radius:4px">` : ''}<span>${String(w.name).replace(/[<>&]/g, '')}</span>`;
+      b.onclick = () => { host.remove(); resolve(w); };
+      box.appendChild(b);
+    }
+    const cancel = document.createElement('button');
+    cancel.type = 'button'; cancel.textContent = 'Cancel';
+    cancel.setAttribute('style', 'margin-top:6px;background:transparent;color:rgba(242,239,228,.6);border:none;font:inherit;font-size:12px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase');
+    cancel.onclick = () => { host.remove(); reject(err('cancelled', 'No wallet chosen.')); };
+    box.appendChild(cancel);
+    host.appendChild(box);
+    host.addEventListener('click', (e) => { if (e.target === host) cancel.onclick(); });
+    document.body.appendChild(host);
+  });
 }
 let current = null;   // { kind: 'standard', wallet, account } | { kind: 'phantom', provider, address }
+const named = (name, e) => Object.assign(e instanceof Error ? e : new Error(String(e?.message || e)), { wallet: name, message: `${name}: ${e?.message || (e?.code === 4001 ? 'the request was rejected in the wallet' : 'the wallet refused')}` });
 
-export async function connect({ preferred } = {}) {
-  const w = pick(preferred);
+export async function connect({ preferred, choose } = {}) {
+  const w = await pick({ preferred, choose });
   if (w) {
-    const { accounts } = await w.features['standard:connect'].connect();
+    let accounts;
+    try { ({ accounts } = await w.features['standard:connect'].connect()); } catch (e) { throw named(w.name, e); }
     const account = (accounts || []).find((a) => (a.chains || []).some((c) => String(c).startsWith('solana:'))) || accounts?.[0];
-    if (!account) throw err('no_account', 'The wallet returned no account.');
+    if (!account) throw err('no_account', `${w.name} returned no Solana account. Open the wallet and add or unlock a Solana account.`);
     current = { kind: 'standard', wallet: w, account };
     try { localStorage.setItem(WALLET_PREF, w.name); } catch { /* optional */ }
     return account.address;
   }
   const p = window.phantom?.solana || window.solana;
   if (p?.connect) {
-    const r = await p.connect();
+    let r;
+    try { r = await p.connect(); } catch (e) { throw named('Phantom', e); }
     const address = r?.publicKey?.toString?.() || p.publicKey?.toString?.();
-    if (!address) throw err('no_account', 'The wallet returned no account.');
+    if (!address) throw err('no_account', 'Phantom returned no account.');
     current = { kind: 'phantom', provider: p, address };
     return address;
   }
   throw err('no_wallet', 'No Solana wallet found. Install Phantom, Solflare or Backpack and reload.');
 }
+export function forgetWalletChoice() { try { localStorage.removeItem(WALLET_PREF); } catch { /* optional */ } }
 export const address = () => (current?.kind === 'standard' ? current.account.address : current?.address) || null;
 export const walletName = () => (current?.kind === 'standard' ? current.wallet.name : current ? 'Phantom' : null);
 const need = () => { if (!current) throw err('not_connected', 'Connect a wallet first.'); return current; };

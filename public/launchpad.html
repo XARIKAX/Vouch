@@ -601,7 +601,7 @@ const setWallet = (addr) => {
 };
 $('p-connect').onclick = async () => {
   plog.innerHTML = '';
-  try { setWallet(await pump.connect()); log(`Connected ${esc(wallet)}.`, 'ok'); }
+  try { setWallet(await pump.connect({ choose: !!wallet })); log(`Connected ${esc(wallet)}.`, 'ok'); }
   catch (e) { log(esc(e.message), 'bad'); }
 };
 $('pump').addEventListener('submit', async (ev) => {
