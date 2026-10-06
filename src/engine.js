@@ -238,7 +238,8 @@ export function createEngine(cfg = {}) {
   function fundsInfo() {
     const f = cfg.funds;
     return {
-      mode: f.enabled ? 'real' : 'sandbox', enabled: f.enabled, network: cfg.chain.network, cluster: cfg.chain.cluster, rpc: cfg.chain.rpc, explorer: cfg.chain.explorer,
+      // the browser's few chain calls go through /v1/chain/rpc; the configured endpoint (and any key in it) stays server-side
+      mode: f.enabled ? 'real' : 'sandbox', enabled: f.enabled, network: cfg.chain.network, cluster: cfg.chain.cluster, rpc: '/v1/chain/rpc', explorer: cfg.chain.explorer,
       token: f.token, treasury: f.treasury, treasury_ata: f.treasuryAta, payouts: f.treasuryKey ? 'automatic' : 'operator', min_withdrawal: f.minWithdrawal, max_withdrawal: f.maxWithdrawal,
     };
   }
@@ -253,7 +254,7 @@ export function createEngine(cfg = {}) {
     if (!(amt > 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', 'amount must be a positive number');
     const units = toUnits(amt, cfg.funds.token.decimals);
     const ixs = depositInstructions(cfg.funds, wallet, units);
-    return { venue: 'funds', network: cfg.chain.network, cluster: cfg.chain.cluster, rpc: cfg.chain.rpc, fee_payer: wallet, signers: [wallet], amount: amt, units: units.toString(), token: cfg.funds.token, treasury: cfg.funds.treasury, treasury_ata: cfg.funds.treasuryAta,
+    return { venue: 'funds', network: cfg.chain.network, cluster: cfg.chain.cluster, rpc: '/v1/chain/rpc', fee_payer: wallet, signers: [wallet], amount: amt, units: units.toString(), token: cfg.funds.token, treasury: cfg.funds.treasury, treasury_ata: cfg.funds.treasuryAta,
       instructions: ixs.map((i) => ({ program_id: i.programId, keys: i.keys.map((k) => ({ pubkey: k.pubkey, is_signer: k.isSigner, is_writable: k.isWritable })), data: Buffer.from(i.data).toString('base64') })) };
   }
   // The wallet sent USDT to the treasury: verify the transaction, credit once.

@@ -159,6 +159,15 @@ test('api: GET /v1/launchpad/pump describes the venue; token.json and the claim 
   try {
     const cfg = await (await fetch(`${base}/v1/launchpad/pump`)).json();
     assert.equal(cfg.venue, 'pump'); assert.equal(cfg.cluster, 'mainnet-beta'); assert.equal(cfg.program, PUMP.program); assert.equal(cfg.pair.symbol, 'SOL'); assert.equal(cfg.site, 'https://pump.fun');
+    assert.equal(cfg.rpc, '/v1/chain/rpc', 'the configured endpoint never reaches the public');
+    assert.ok(!JSON.stringify(cfg).includes(chain.url));
+    // the browser's chain calls are forwarded, allowlisted
+    const fwd = await (await fetch(`${base}/v1/chain/rpc`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'getLatestBlockhash', params: [{ commitment: 'confirmed' }] }) })).json();
+    assert.ok(fwd.result.value.blockhash);
+    const no = await fetch(`${base}/v1/chain/rpc`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: 'requestAirdrop', params: [] }) });
+    assert.equal(no.status, 400);
+    const funds = await (await fetch(`${base}/v1/funds`)).json();
+    assert.equal(funds.rpc, '/v1/chain/rpc');
     const key = (await (await fetch(`${base}/v1/keys`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json()).key;
     const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
     const a = await (await fetch(`${base}/v1/agents`, { method: 'POST', headers: h, body: JSON.stringify({ symbol: 'API', name: 'Api agent', launch: { wallet: WALLET, mint: MINT, description: 'd', socials: { website: 'https://x.y' } } }) })).json();
