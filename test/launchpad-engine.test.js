@@ -26,51 +26,53 @@ async function waitTerminal(engine, id, ms = 6000) {
   throw new Error('task never settled');
 }
 
-test('launch + harvest: fees split, bond capacity, unbond and price-drop shrink it', () => {
+test('launch with a stake: the stake comes out of the owner key, capacity is half of it, more stake and unstaking move it', () => {
   const engine = createEngine(FAST);
+  const owner = engine.createKey('owner');
+  engine.deposit(owner, 100);                                   // faucet 5 + 100
+  assert.throws(() => engine.launchAgent({ stake: 500 }, owner), (e) => e.code === 'insufficient_balance');
   const a = engine.launchAgent({
-    owner: '0xowner', endpoint_url: 'http://x/task',
+    owner: '0xowner', name: 'calc', endpoint_url: 'http://x/task',
     offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } },
-    twap_usdg: 1, pool_liquidity_usdg: 5000,
-  });
-  // harvest $1,000 → 500/300/150/50 (the worked example)
-  const h = engine.harvestFees(a.id, 1000);
-  assert.deepEqual(h.split, { bond: 500, operating: 300, creator: 150, treasury: 50 });
-  const g = engine.getAgent(a.id);
-  assert.equal(g.bond.token_qty, 500);          // $500 at $1 TWAP
-  assert.equal(g.bond.capacity_usdg, 125);      // 500 * 0.5 / 2
-  assert.equal(g.operating_usdg, 300);          // spend-only USDG
-  assert.equal(g.totals.creator_paid, 150);
-  assert.equal(engine.state.treasury.balance, 50);
+    stake: 100, compute: 5,
+  }, owner);
+  assert.equal(a.bond.stake_usdt, 100); assert.equal(a.bond.backing_usdt, 100);
+  assert.equal(a.bond.capacity_usdt, 50);       // 100 / 2
+  assert.equal(a.compute.balance, 5); assert.equal(a.operating_usdt, 5);
+  assert.equal(engine.balance(owner).balance, 0, 'stake and compute came out of the owner key');
   // the linked provider's usable stake == capacity (reuses reservation machinery)
-  assert.equal(engine.state.providers[g.provider_id].stake, 125);
-
-  // price halves → capacity halves, no liquidation
-  const d = engine.setAgentPrice(a.id, { twap_usdg: 0.5 });
-  assert.equal(d.bond.capacity_usdg, 62.5);
-
-  // below the liquidity floor → zero capacity
-  assert.equal(engine.setAgentPrice(a.id, { pool_liquidity_usdg: 10 }).bond.capacity_usdg, 0);
-  engine.setAgentPrice(a.id, { pool_liquidity_usdg: 5000, twap_usdg: 1 }); // restore
-
-  // unbond 300 tokens → only 200 remain backing quotes → capacity 200*0.5/2 = 50
-  const u = engine.requestUnbond(a.id, 300);
-  assert.ok(u.unbonding.release_at > Date.now());
-  assert.equal(engine.getAgent(a.id).bond.capacity_usdg, 50);
+  assert.equal(engine.state.providers[a.provider_id].stake, 50);
+  // more stake
+  engine.deposit(owner, 50);
+  const more = engine.addStake(a.id, 20, { key: owner });
+  assert.equal(more.bond.stake_usdt, 120); assert.equal(more.bond.capacity_usdt, 60); assert.equal(more.totals.staked_in, 120);
+  assert.equal(engine.balance(owner).balance, 30);
+  assert.throws(() => engine.addStake(a.id, 1, { key: engine.createKey('x') }), (e) => e.code === 'not_owner');
+  // fund compute from the owner key
+  const fed = engine.fundCompute(a.id, 10, { key: owner });
+  assert.equal(fed.compute.balance, 15); assert.equal(fed.compute.funded_total, 15);
+  // unstake 40 → only 80 backs quotes → capacity 40
+  const u = engine.requestUnbond(a.id, 40, { key: owner });
+  assert.ok(u.unbonding.release_at > Date.now()); assert.equal(u.unbonding.usdt, 40);
+  assert.equal(engine.getAgent(a.id).bond.capacity_usdt, 40);
+  // without an owner key (seeds, tests) the stake is granted up to the sandbox cap
+  const seeded = engine.launchAgent({ name: 'seed', stake: 5000 });
+  assert.equal(seeded.bond.stake_usdt, 1000);
 });
 
-test('end-to-end: a launched agent settles verified work and routes its revenue', async () => {
+test('end-to-end: an agent settles verified work and routes its revenue to the owner key, the stake and the treasury', async () => {
   const good = await fakeProvider({ result: 42 });
   try {
     const engine = createEngine(FAST);
-    engine.state.providers = {}; // isolate: only the launched agent quotes
+    engine.state.providers = {}; // isolate: only the agent quotes
+    const owner = engine.createKey('owner', { owner: '0xowner' });
+    engine.deposit(owner, 20);
     const a = engine.launchAgent({
       owner: '0xowner', name: 'calc-agent', endpoint_url: good.url,
       offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } },
-      twap_usdg: 1, pool_liquidity_usdg: 5000,
-    });
-    engine.harvestFees(a.id, 100); // bond 50 tokens → capacity 12.5, plenty for a $0.02 task
-
+      stake: 20, compute: 5,                                  // capacity 10, plenty for a $0.02 task; compute under the threshold
+    }, owner);
+    const ownerBefore = engine.balance(owner).balance;
     const buyer = engine.createKey('buyer');
     engine.deposit(buyer, 1);
     const { task } = engine.createTask(buyer, {
@@ -81,19 +83,22 @@ test('end-to-end: a launched agent settles verified work and routes its revenue'
     const done = await waitTerminal(engine, task.id);
     assert.equal(done.status, 'settled');
 
-    // revenue routed: price 0.02 → fee 0.001 (burn/treasury 0.0005 each),
-    // net 0.019 → owner 0.0152, buyback 0.0019, bond top-up 0.0019.
+    // revenue routed: price → fee 5% to the treasury, net → owner 90% (minus the
+    // 10% compute top-up while the balance is under the threshold), stake 10%.
     const g = engine.getAgent(a.id);
-    const price = done.settlement.price;
+    const price = done.settlement.price, net = price * 0.95;
     assert.ok(price <= 0.02);
-    assert.ok(near(g.totals.owner_paid, price * 0.95 * 0.80), 'owner gets 80% of net');
-    assert.ok(near(g.totals.buyback, price * 0.95 * 0.10), 'buyback 10% of net');
-    assert.ok(near(g.totals.burned, price * 0.05 * 0.50), 'burn = half the protocol fee');
-    assert.ok(g.totals.bond_topped_up > 0, 'net bond share tops the bond up');
+    assert.ok(near(g.totals.treasury_paid, price * 0.05), 'the whole fee goes to the treasury');
+    assert.ok(near(g.totals.bond_topped_up, net * 0.10), 'net stake share tops the stake up');
+    assert.ok(near(g.bond.stake_usdt, 20 + net * 0.10));
+    assert.ok(near(g.compute.topped_up_total, net * 0.10), 'compute topped up from the owner share');
+    assert.ok(near(g.totals.owner_paid, net * 0.90 - net * 0.10), 'owner gets 90% of net less the top-up');
+    assert.ok(near(engine.balance(owner).balance - ownerBefore, g.totals.owner_paid), 'and it lands in the owner key');
+    assert.ok(!('buyback' in g.totals) && !('burned' in g.totals));
   } finally { good.close(); }
 });
 
-test('a bad outcome slashes the agent token bond (not flat USDG) and funds insurance', async () => {
+test('a bad outcome slashes the agent stake, capped, and funds insurance', async () => {
   const bad = await fakeProvider({ error: 'boom' }); // provider abandons → slash at 1.5x
   try {
     const engine = createEngine(FAST);
@@ -101,9 +106,8 @@ test('a bad outcome slashes the agent token bond (not flat USDG) and funds insur
     const a = engine.launchAgent({
       owner: '0xowner', name: 'calc', endpoint_url: bad.url,
       offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } },
-      twap_usdg: 1, pool_liquidity_usdg: 5000,
+      stake: 50,
     });
-    engine.harvestFees(a.id, 100); // bond 50 tokens
     const before = engine.getAgent(a.id);
     const insBefore = engine.state.insurance.funded;
 
@@ -118,14 +122,12 @@ test('a bad outcome slashes the agent token bond (not flat USDG) and funds insur
     assert.equal(done.status, 'refunded');
 
     const after = engine.getAgent(a.id);
-    const burnedTokens = before.bond.token_qty - after.bond.token_qty;
-    assert.ok(burnedTokens > 0, 'bond was slashed in platform token, not flat stake');
-    assert.ok(after.totals.slashed_usdg > 0, 'slash recorded in USDG');
-    // TWAP is $1, so USDG slashed == tokens burned, and it is within the caps.
-    assert.ok(near(burnedTokens, after.totals.slashed_usdg), 'token burn priced at TWAP');
-    assert.ok(after.totals.slashed_usdg <= before.bond.raw_value_usdg * 0.2, 'within the rolling cap');
+    const slashed = before.bond.stake_usdt - after.bond.stake_usdt;
+    assert.ok(slashed > 0, 'the stake was slashed');
+    assert.ok(near(slashed, after.totals.slashed_usdt));
+    assert.ok(after.totals.slashed_usdt <= before.bond.stake_usdt * 0.2, 'within the rolling cap');
     assert.ok(engine.state.insurance.funded > insBefore, 'the slash capitalizes insurance');
-    assert.ok(after.bond.capacity_usdg < before.bond.capacity_usdg, 'capacity reprices down');
+    assert.ok(after.bond.capacity_usdt < before.bond.capacity_usdt, 'capacity reprices down');
   } finally { bad.close(); }
 });
 
@@ -137,9 +139,8 @@ test('reputation is counterparty-weighted: self-dealing earns zero, a real buyer
     const a = engine.launchAgent({
       owner: '0xowner', name: 'calc', endpoint_url: good.url,
       offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } },
-      twap_usdg: 1, pool_liquidity_usdg: 5000,
+      stake: 1000,
     });
-    engine.harvestFees(a.id, 1000); // ample bond
     const providerTrack = () => engine.state.providers[engine.getAgent(a.id).provider_id].track;
     const settleOnce = async (buyer) => {
       engine.deposit(buyer, 1);

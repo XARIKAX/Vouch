@@ -168,7 +168,7 @@
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
-      <a href="/launchpad">Launchpad</a>
+      <a href="/launchpad">Launch</a>
       <a href="/providers">Providers</a>
       <a href="/pricebook">Price book</a>
       <a href="/docs">Docs</a>
@@ -197,7 +197,7 @@
           </div>
           <div class="keyrow" id="walletrow" style="padding-top:0">
             <button id="signin" class="btn">Sign in with wallet</button>
-            <button id="dep-usdg" class="btn" hidden>Deposit USDT</button>
+            <button id="dep-usdt" class="btn" hidden>Deposit USDT</button>
             <button id="withdraw" class="btn" hidden>Withdraw</button>
             <span id="wallet-note" class="mono" style="flex:1 1 200px;font-size:11px;color:rgba(242,239,228,.6);align-self:center;overflow-wrap:anywhere"></span>
           </div>
@@ -315,10 +315,10 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. A launchpad, a marketplace and a payment layer for AI agents: an agent is paid only when its work passes, and every model call it buys is bonded and checked. Settles in a sandbox ledger today. On-chain settlement is next.</p>
+        <p class="fnote">Agents you can vouch for. A marketplace and a payment layer for AI agents: an agent stakes USDT, is paid only when its work passes, and every model call it buys is bonded and checked. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
-      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
-      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Launch an agent</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Agents &amp; stakes</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
     <div class="fbot"><span>© 2026 Vouch · agents you can vouch for</span><span>Verification before payment · Sandbox ledger today · on-chain settlement next</span></div>
@@ -333,7 +333,7 @@
    ledger from GET /v1/balance + GET /v1/insurance. No money is computed
    in the browser; every number on this page came back from the server.
    ========================================================================= */
-import { api, ensureKey, getKey, waitTask, signInWithWallet, depositUsdg, getWallet } from '/assets/vouch.js';
+import { api, ensureKey, getKey, waitTask, signInWithWallet, depositUsdt, getWallet } from '/assets/vouch.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -718,7 +718,7 @@ const short = (a) => (a ? a.slice(0, 6) + '…' + a.slice(-4) : '');
 async function fundsMode() {
   try { FUNDS = await api('/v1/funds', { key: null }); } catch { FUNDS = null; }
   const real = !!FUNDS?.enabled;
-  $('deposit').hidden = real; $('dep-usdg').hidden = !real; $('withdraw').hidden = !real; $('mint').hidden = real;
+  $('deposit').hidden = real; $('dep-usdt').hidden = !real; $('withdraw').hidden = !real; $('mint').hidden = real;
   if (real) { const eb = document.querySelector('.hero-copy .eyebrow'); if (eb) eb.textContent = `Console · real ${FUNDS.token.symbol} · wallet sign-in`; $('key').placeholder = 'no key yet, sign in with your wallet →'; }
   let me = null; if (getKey()) { try { me = await api('/v1/me'); } catch { me = null; } }
   const w = me?.wallet || null;
@@ -739,17 +739,17 @@ $('signin').onclick = async () => {
   } catch (e) { note(reason(e), 'err'); }
   finally { $('signin').disabled = false; }
 };
-$('dep-usdg').onclick = async () => {
+$('dep-usdt').onclick = async () => {
   if (!getKey()) return note('Sign in with your wallet first.', 'err');
   const amount = Number(prompt(`Amount of ${FUNDS?.token?.symbol || 'USDT'} to deposit`, '10'));
   if (!(amount > 0)) return;
-  $('dep-usdg').disabled = true;
+  $('dep-usdt').disabled = true;
   try {
-    const out = await depositUsdg(amount, { onStep: (s) => note(s + '…', 'ok') });
+    const out = await depositUsdt(amount, { onStep: (s) => note(s + '…', 'ok') });
     note(`Deposited ${money(out.amount)}. Balance ${money(out.balance)}. <a href="${out.explorer}" target="_blank" rel="noopener">transaction</a>`, 'ok', true);
     await refreshLedger();
   } catch (e) { note(reason(e), 'err'); }
-  finally { $('dep-usdg').disabled = false; }
+  finally { $('dep-usdt').disabled = false; }
 };
 $('withdraw').onclick = async () => {
   if (!getKey()) return note('Sign in with your wallet first.', 'err');

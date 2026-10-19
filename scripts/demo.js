@@ -145,13 +145,12 @@ try {
   const again = await call('POST', `/v1/tasks/${disputeTarget}/dispute`, { key: KEY, body: { reason: 'again' } });
   console.log(`  a second dispute on the same task → ${again.status} ${again.body.error?.code}`);
 
-  section('9. Launchpad: a queued token-bond slash behind the guardian');
+  section('9. Agents: a queued stake slash behind the guardian');
   const { body: agent } = await call('POST', '/v1/agents', {
     key: KEY,
-    body: { symbol: 'DEMO', name: 'demo-agent', owner: '0xdemo', twap_usdg: 1, pool_liquidity_usdg: 5000,
+    body: { name: 'demo-agent', owner: '0xdemo', stake: 1,
       endpoint_url: 'http://localhost:1/task', offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 1000 } } },
   });
-  await call('POST', `/v1/agents/${agent.id}/harvest`, { key: KEY, body: { fee_amount: 100 } });
   await call('POST', '/v1/admin/guardian', { headers: { 'X-Admin-Token': process.env.VOUCH_ADMIN_TOKEN }, body: { paused: true } });
   const { body: agentTask } = await call('POST', '/v1/tasks', {
     key: KEY,
@@ -161,10 +160,10 @@ try {
   if (agentTask.quote?.provider === agent.provider_id) {
     await waitTerminal(KEY, agentTask.id);
     const paused = (await call('GET', `/v1/agents/${agent.id}`)).body;
-    console.log(`  guardian paused: bond ${paused.bond.token_qty} tokens, pending slash $${paused.pending_slash_usdg}`);
+    console.log(`  guardian paused: stake $${paused.bond.stake_usdt}, pending slash $${paused.pending_slash_usdt}`);
     await call('POST', '/v1/admin/guardian', { headers: { 'X-Admin-Token': process.env.VOUCH_ADMIN_TOKEN }, body: { paused: false } });
     const resumed = (await call('GET', `/v1/agents/${agent.id}`)).body;
-    console.log(`  guardian resumed: bond ${resumed.bond.token_qty} tokens, slashed $${resumed.totals.slashed_usdg}, pending $${resumed.pending_slash_usdg}`);
+    console.log(`  guardian resumed: stake $${resumed.bond.stake_usdt}, slashed $${resumed.totals.slashed_usdt}, pending $${resumed.pending_slash_usdt}`);
   } else {
     console.log(`  (another provider won the quote: ${agentTask.quote?.provider ?? agentTask.error?.code}; skipping)`);
     await call('POST', '/v1/admin/guardian', { headers: { 'X-Admin-Token': process.env.VOUCH_ADMIN_TOKEN }, body: { paused: false } });

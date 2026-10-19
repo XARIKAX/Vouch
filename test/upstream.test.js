@@ -119,9 +119,9 @@ test('gateway: a call on a house model is proxied to the aggregator with the ope
     engine.cfg.adminToken = 'adm';
     const info = (await call('GET', '/v1/inference/upstream', { headers: { 'X-Admin-Token': 'adm' } })).body;
     assert.equal(info.name, 'MockRouter'); assert.equal(info.margin, 0.1);
-    // two buyer calls, plus at most one treasury-paid canary the gateway may have slipped in
-    assert.ok(info.budget.calls_today >= 2 && info.budget.calls_today <= 3, String(info.budget.calls_today));
-    assert.ok(info.budget.today_usd > 0 && info.budget.today_usd < r.body.vouch.cost * 3);
+    // two buyer calls, plus up to one treasury-paid canary per call the gateway may have slipped in
+    assert.ok(info.budget.calls_today >= 2 && info.budget.calls_today <= 4, String(info.budget.calls_today));
+    assert.ok(info.budget.today_usd > 0 && info.budget.today_usd < r.body.vouch.cost * 4);
     // a spent house budget takes the house out of routing with a stated reason
     engine.state.inference.upstream.spend.usd = 5;
     const blocked = await call('POST', '/v1/chat/completions', { key: buyer.token, body: chat('openai/gpt-4o') });

@@ -2,71 +2,68 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { snapshotParams, validateParams, LAUNCHPAD_DEFAULTS } from '../src/launchpad-config.js';
 import {
-  splitFees, bondCapacity, bondValue, reservationFor, canReserve,
-  protocolFeeSplit, netPayoutSplit, slashPlan, trackWeight,
+  bondCapacity, haircutValue, reservationFor, canReserve,
+  protocolFeeSplit, netPayoutSplit, topUpFromRevenue, inferenceFeeSplit, inferenceNetSplit, slashPlan, trackWeight,
 } from '../src/launchpad.js';
 
 const P = snapshotParams();
 
 test('params: every share group sums to 1 and is snapshotted immutable', () => {
   validateParams(P);
-  assert.throws(() => Object.assign(P.feeSplit, { bond: 0.9 })); // frozen
+  assert.throws(() => Object.assign(P.netSplit, { owner: 0.9 })); // frozen
   const snap = snapshotParams();
   assert.notEqual(snap, LAUNCHPAD_DEFAULTS); // a copy, not the live default
+  assert.throws(() => snapshotParams({ netSplit: { owner: 0.5, bond: 0.1 } }), /sum to 1/);
+  assert.throws(() => snapshotParams({ topUp: { share: 0.5, shareCap: 0.3, threshold: 20 } }), /topUp\.share/);
 });
 
-// --- the brief's worked example, as the end-to-end fixture ---------------
-test('worked example: $100k volume at 1% → fee split 500/300/150/50', () => {
-  const fees = Math.round(100000 * P.poolSwapFee * 1e6) / 1e6; // $1,000
-  assert.equal(fees, 1000);
-  const s = splitFees(fees, P);
-  assert.deepEqual(s, { bond: 500, operating: 300, creator: 150, treasury: 50 });
-  assert.equal(s.bond + s.operating + s.creator + s.treasury, fees); // sums exactly
+// --- the worked examples, as the end-to-end fixture ---------------------
+test('worked example: $500 staked → $250 of open-quote capacity; the stake counts at face value', () => {
+  assert.equal(haircutValue(500, P), 500);
+  assert.equal(bondCapacity(500, P), 250);        // 500 / 2
 });
 
-test('worked example: $500 bond → $125 of open-quote capacity', () => {
-  // bond staked = $500 of token value; haircut 50%; reserve 200% per quote.
-  assert.equal(bondCapacity(500, P), 125);        // 500 * 0.5 / 2
-});
-
-test('worked example: $200 settled → fee $10 (5/5), net $190 → 152/19/19', () => {
+test('worked example: $200 settled → fee $10 to the treasury, net $190 → 171 / 19, top-up 19 out of the owner share', () => {
   const fee = protocolFeeSplit(200, P);
   assert.equal(fee.fee, 10);
-  assert.equal(fee.burn, 5);
-  assert.equal(fee.treasury, 5);
+  assert.equal(fee.burn, 0);
+  assert.equal(fee.treasury, 10);
   assert.equal(fee.net, 190);
   const net = netPayoutSplit(fee.net, P);
-  assert.deepEqual(net, { owner: 152, buyback: 19, bond: 19 });
-  assert.equal(net.owner + net.buyback + net.bond, fee.net); // sums exactly
+  assert.deepEqual(net, { owner: 171, bond: 19 });
+  assert.equal(net.owner + net.bond, fee.net); // sums exactly
+  const tu = topUpFromRevenue({ net: fee.net, ownerShare: net.owner, balance: 5 }, P.topUp);
+  assert.deepEqual(tu, { topUp: 19, owner: 152 });
+  assert.deepEqual(topUpFromRevenue({ net: 190, ownerShare: 171, balance: 25 }, P.topUp), { topUp: 0, owner: 171 }, 'over the threshold nothing moves');
 });
 
-// --- invariants from "Done means" ----------------------------------------
-test('no reservation can exceed bond value after haircut', () => {
-  // $500 raw bond → $250 haircut value → supports quotes whose 200% ≤ $250.
-  assert.equal(reservationFor(125, P), 250);
-  assert.ok(canReserve({ rawValueUsdg: 500, reservedHaircut: 0, quotedPrice: 125 }, P));
-  assert.ok(!canReserve({ rawValueUsdg: 500, reservedHaircut: 0, quotedPrice: 125.01 }, P));
-  // a filled bond rejects the next quote
-  assert.ok(!canReserve({ rawValueUsdg: 500, reservedHaircut: 250, quotedPrice: 0.01 }, P));
+test('worked example: $10 of inference → fee $0.30 to the treasury, net $9.70 → 9.506 / 0.194 for an agent seller', () => {
+  const f = inferenceFeeSplit(10, P);
+  assert.deepEqual(f, { price: 10, fee: 0.3, burn: 0, treasury: 0.3, net: 9.7 });
+  assert.deepEqual(inferenceNetSplit(f.net, P), { owner: 9.506, bond: 0.194 });
 });
 
-test('token bond is worthless below the liquidity floor', () => {
-  assert.equal(bondValue({ tokenQty: 1000, twapUsdg: 1, poolLiquidityUsdg: 10 }, P), 0);
-  assert.equal(bondValue({ tokenQty: 1000, twapUsdg: 1, poolLiquidityUsdg: 5000 }, P), 1000);
+// --- invariants ----------------------------------------------------------
+test('no reservation can exceed the stake', () => {
+  // $500 staked → supports quotes whose 200% ≤ $500.
+  assert.equal(reservationFor(250, P), 500);
+  assert.ok(canReserve({ stakeUsdt: 500, reserved: 0, quotedPrice: 250 }, P));
+  assert.ok(!canReserve({ stakeUsdt: 500, reserved: 0, quotedPrice: 250.01 }, P));
+  // a filled stake rejects the next quote
+  assert.ok(!canReserve({ stakeUsdt: 500, reserved: 500, quotedPrice: 0.01 }, P));
 });
 
 test('no slash exceeds 200% of price, and the rolling cap bites', () => {
-  // dispute slash at 2x on a $10 task = $20, within a healthy bond.
-  const a = slashPlan({ priceUsdg: 10, multiple: 2, twapUsdg: 2, bondRawValueUsdg: 1000, slashedInWindowUsdg: 0 }, P);
-  assert.equal(a.amountUsdg, 20);
-  assert.equal(a.tokenQty, 10);          // $20 / $2 TWAP
+  // dispute slash at 2x on a $10 task = $20, within a healthy stake.
+  const a = slashPlan({ priceUsdt: 10, multiple: 2, stakeUsdt: 1000, slashedInWindowUsdt: 0 }, P);
+  assert.equal(a.amountUsdt, 20);
   assert.ok(!a.capped);
   // a verifier asking for 5x is clamped to 2x
-  const b = slashPlan({ priceUsdg: 10, multiple: 5, twapUsdg: 2, bondRawValueUsdg: 1000, slashedInWindowUsdg: 0 }, P);
-  assert.equal(b.amountUsdg, 20);        // clamped to maxSlashMultiple
-  // rolling cap: 20% of a $100 bond = $20/24h; already $15 used → only $5 left
-  const c = slashPlan({ priceUsdg: 10, multiple: 2, twapUsdg: 1, bondRawValueUsdg: 100, slashedInWindowUsdg: 15 }, P);
-  assert.equal(c.amountUsdg, 5);
+  const b = slashPlan({ priceUsdt: 10, multiple: 5, stakeUsdt: 1000, slashedInWindowUsdt: 0 }, P);
+  assert.equal(b.amountUsdt, 20);        // clamped to maxSlashMultiple
+  // rolling cap: 20% of a $100 stake = $20/24h; already $15 used → only $5 left
+  const c = slashPlan({ priceUsdt: 10, multiple: 2, stakeUsdt: 100, slashedInWindowUsdt: 15 }, P);
+  assert.equal(c.amountUsdt, 5);
   assert.equal(c.capped, true);
 });
 

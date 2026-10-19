@@ -147,7 +147,7 @@ Before real traffic:
    `node -e "console.log(require('crypto').generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))"`.
 5. **On-chain settlement** of task escrow is not available yet: the engine
    settles on a sandbox ledger. Real USDT deposits and withdrawals on Solana
-   and pump.fun token launches are available; see `ONCHAIN.md`.
+   are available; see `ONCHAIN.md`.
 
 ## Environment variables
 
@@ -168,10 +168,7 @@ Before real traffic:
 | `VOUCH_MODEL_SLA_MS` | Minimum deadline the built-in text providers quote when they execute through a real model (a buyer's `deadline_ms` below it gets a 409 with the nearest quote) | `20000` |
 | `VOUCH_GRADER_URL` | Custom webhook grader | unset |
 | `VOUCH_CHAIN_RPC` | Solana JSON-RPC endpoint: verifying launches, reading curves, checking transfers, sending payouts. Use a dedicated provider in production | `https://api.mainnet-beta.solana.com` |
-| `VOUCH_CHAIN_EXPLORER` / `VOUCH_PUMP_PROGRAM` | Override the explorer and the pump.fun program id | `https://solscan.io` / pump.fun mainnet |
-| `VOUCH_PUBLIC_URL` | This deployment's public origin; token metadata URIs point here | `https://www.vouchagents.com` |
-| `VOUCH_CREATOR_FEE_RECIPIENT` | The creator set on every launch prepared here; its creator vault collects the fees (the future on-chain bond vault) | unset → the launcher's wallet |
-| `VOUCH_SOL_USD` / `VOUCH_SOL_USD_URL` / `VOUCH_SOL_USD_PATH` | A fixed SOL rate, or a JSON URL of your choice read every minute with a dot path to the number; without one SOL-paired bonds have no USD value | unset |
+| `VOUCH_CHAIN_EXPLORER` | Explorer used for transaction links | `https://solscan.io` |
 | `VOUCH_REAL_FUNDS` | `1` with a treasury address switches the deployment to real USDT on Solana: no faucet, simulated deposits off, on-chain deposits and withdrawals on | unset (sandbox credits) |
 | `VOUCH_TREASURY_ADDRESS` | The Solana wallet that receives deposits and pays withdrawals | unset |
 | `VOUCH_TREASURY_KEY` | Secret key of the treasury wallet (base58 as wallets export it) for automatic payouts; without it withdrawals wait for an operator payout confirmed through `/v1/admin/withdrawals` | unset |

@@ -324,50 +324,26 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, engine.insuranceStats(), rl);
     }],
 
-    // Launchpad: launched agents (token-wrapped, supply-side providers).
-    // Launching needs a Bearer key (recorded as owner_key_id); harvest, unbond,
-    // withdraw and the sandbox price feed are owner-only (or admin). Reads are
-    // public analytics.
+    // Agents: supply-side providers with a USDT stake behind them. Launching
+    // needs a Bearer key (recorded as owner_key_id) and takes the stake from
+    // that key's account; stake, compute, unstake and withdraw are owner-only
+    // (or admin). Reads are public analytics.
     ['POST', /^\/v1\/agents$/, async (req, res) => {
       adminGate(req);
       const key = auth(req);
       const rl = limit(key);
       const body = await readBody(req);
-      send(res, 201, engine.launchAgent(body, key), rl);
+      send(res, 201, engine.launchAgent(body, key), { ...rl, ...escrowHeader(key) });
     }],
 
     ['GET', /^\/v1\/agents$/, async (req, res) => {
       const rl = limit(keyOrAnon(req));
-      await engine.refreshStaleChains();
       send(res, 200, { agents: engine.listAgents() }, rl);
     }],
 
-    ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId], q) => {
+    ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId]) => {
       const rl = limit(keyOrAnon(req));
-      // ?refresh=1 re-reads the curve now (after a claim or a trade) instead of
-      // waiting out the one-minute cache.
-      await engine.refreshAgentChain(agentId, { force: q?.get('refresh') === '1' });
       send(res, 200, engine.getAgent(agentId), rl);
-    }],
-
-    // The launcher's wallet sent the pump.fun launch: hand over the transaction
-    // signature and the engine verifies it on-chain. 202 while still pending.
-    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/launch\/confirm$/, async (req, res, [agentId]) => {
-      const actor = agentActor(req);
-      const rl = limit(actor.key ?? anonKey(req));
-      const body = await readBody(req);
-      const out = await engine.confirmLaunch(agentId, body.tx_hash ?? body.signature ?? body.txHash, actor);
-      send(res, out.pending ? 202 : 200, out, rl);
-    }],
-    // The token JSON pump.fun reads from the metadata URI of a launch prepared here (public).
-    ['GET', /^\/v1\/agents\/([a-z0-9_]+)\/token\.json$/, async (req, res, [agentId]) => {
-      const rl = limit(keyOrAnon(req));
-      send(res, 200, engine.agentTokenMetadata(agentId), rl);
-    }],
-    // The claim a creator's wallet signs to collect the token's creator fees (public: it is only an instruction).
-    ['GET', /^\/v1\/agents\/([a-z0-9_]+)\/claim$/, async (req, res, [agentId]) => {
-      const rl = limit(keyOrAnon(req));
-      send(res, 200, engine.agentClaimIntent(agentId), rl);
     }],
 
     // The browser's chain calls, forwarded to the configured RPC so its URL
@@ -388,31 +364,26 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, json, rl);
     }],
 
-    // What a wallet needs to launch on pump.fun: cluster, RPC, program, explorer, costs.
-    ['GET', /^\/v1\/launchpad\/(?:pump|venue)$/, async (req, res) => {
-      const rl = limit(keyOrAnon(req));
-      const c = engine.cfg.chain;
-      send(res, 200, {
-        venue: 'pump', network: c.network, cluster: c.cluster, rpc: '/v1/chain/rpc', explorer: c.explorer, site: c.site, program: c.program,
-        pair: { symbol: c.pair.symbol, decimals: c.pair.decimals }, token_decimals: c.tokenDecimals,
-        estimated_cost_sol: c.estimatedCostSol, graduation_sol: c.graduationSol,
-        creator_fee_recipient: c.creatorFeeRecipient ?? 'launcher wallet', sol_usd: c.solUsd ?? null, sol_usd_source: c.solUsd ? 'fixed' : c.solUsdUrl ? 'url' : null,
-        limits: c.limits,
-      }, rl);
-    }],
-
-    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/harvest$/, async (req, res, [agentId]) => {
+    // Owner adds stake (more capacity, more slashable) or funds the agent's compute balance.
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/stake$/, async (req, res, [agentId]) => {
       const actor = agentActor(req);
       const rl = limit(actor.key ?? anonKey(req));
       const body = await readBody(req);
-      send(res, 200, engine.harvestFees(agentId, body.fee_amount ?? body.fee, actor), rl);
+      send(res, 200, engine.addStake(agentId, body.amount ?? body.stake, actor), rl);
     }],
-
-    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/unbond$/, async (req, res, [agentId]) => {
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/compute$/, async (req, res, [agentId]) => {
       const actor = agentActor(req);
       const rl = limit(actor.key ?? anonKey(req));
       const body = await readBody(req);
-      send(res, 202, engine.requestUnbond(agentId, body.token_qty ?? body.tokenQty, actor), rl);
+      send(res, 200, engine.fundCompute(agentId, body.amount, actor), rl);
+    }],
+
+    // Unstake with the cooldown; /unbond stays as an alias.
+    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/(?:unstake|unbond)$/, async (req, res, [agentId]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      send(res, 202, engine.requestUnbond(agentId, body.amount ?? body.usdt ?? body.token_qty ?? body.tokenQty, actor), rl);
     }],
 
     ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/withdraw$/, async (req, res, [agentId]) => {
@@ -422,16 +393,7 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, engine.withdrawUnbonded(agentId, actor), rl);
     }],
 
-    // Sandbox price feed: move an agent token's TWAP / pool liquidity so you can
-    // watch bond capacity reprice (and shrink) without a live pool.
-    ['POST', /^\/v1\/agents\/([a-z0-9_]+)\/price$/, async (req, res, [agentId]) => {
-      const actor = agentActor(req);
-      const rl = limit(actor.key ?? anonKey(req));
-      const body = await readBody(req);
-      send(res, 200, engine.setAgentPrice(agentId, body, actor), rl);
-    }],
-
-    // Guardian: pause / resume token-bond slash execution. Admin only.
+    // Guardian: pause / resume agent slash execution. Admin only.
     ['GET', /^\/v1\/admin\/guardian$/, async (req, res) => {
       adminOnly(req);
       send(res, 200, engine.guardianStatus());

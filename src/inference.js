@@ -214,7 +214,6 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
     }
     const f = inferenceFeeSplit(cost, params);
     state.treasury.balance = money(state.treasury.balance + f.treasury);
-    state.treasury.burned = money(state.treasury.burned + f.burn);
     // the provider's net is held, then released; it stays slashable meanwhile
     p.earningsHeld ??= [];
     p.earningsHeld.push({ amount: f.net, release_at: now + params.inference.payoutHoldMs, offer: o.id });
@@ -224,11 +223,11 @@ export function createInference({ state, cfg, persist, money, id, track, applySl
     if (a) {
       split = inferenceNetSplit(f.net, a.params);
       a.ownerPaid = money(a.ownerPaid + split.owner);
-      a.buyback = money(a.buyback + split.buyback); state.treasury.buyback = money(state.treasury.buyback + split.buyback);
-      const twap = a.token.twapUsdg, bondTokens = twap > 0 ? money(split.bond / twap) : 0;
-      a.bond.tokenQty = money(a.bond.tokenQty + bondTokens); a.bondToppedUp = money(a.bondToppedUp + split.bond);
-      a.burned = money(a.burned + f.burn); a.treasuryPaid = money(a.treasuryPaid + f.treasury);
-      a.ledger.push({ ts: now, kind: 'inference_revenue', price: cost, fee: f.fee, burn: f.burn, treasury: f.treasury, net: f.net, ...split, bondTokens, twap });
+      const owner = a.ownerKeyId ? state.accounts[a.ownerKeyId] : null;
+      if (owner && split.owner > 0) { owner.balance = money(owner.balance + split.owner); owner.history.push({ ts: now, kind: 'agent_inference_revenue', amount: split.owner, agent: a.id, tx: id('call') }); }
+      a.bond.usdt = money(a.bond.usdt + split.bond); a.bondToppedUp = money(a.bondToppedUp + split.bond);
+      a.treasuryPaid = money(a.treasuryPaid + f.treasury);
+      a.ledger.push({ ts: now, kind: 'inference_revenue', price: cost, fee: f.fee, treasury: f.treasury, net: f.net, ...split });
       // track: distinct paying buyers weigh, same-owner traffic does not
       const buyerOwner = key ? state.keys[key.id]?.owner ?? (key.agentId ? state.agents[key.agentId]?.owner : null) : null;
       const sameOwner = !!(a.owner && buyerOwner && buyerOwner === a.owner);

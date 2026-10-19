@@ -160,7 +160,7 @@ export async function depositToken(amount, { onStep = () => {} } = {}) {
     await new Promise((r) => setTimeout(r, 3000));
   }
 }
-export const depositUsdg = depositToken;
+export const depositUsdt = depositToken;
 
 // Poll a task until it reaches a terminal state (settled / refunded) or the timeout.
 // A just-created task can take a moment to become visible to other serverless

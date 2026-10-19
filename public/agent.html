@@ -88,28 +88,28 @@
     <div class="nav-links">
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
-      <a href="/launchpad" class="active">Launchpad</a>
+      <a href="/launchpad" class="active">Launch</a>
       <a href="/providers">Providers</a>
       <a href="/pricebook">Price book</a>
       <a href="/docs">Docs</a>
-      <a class="btn solid" href="/launchpad">← Launchpad</a>
+      <a class="btn solid" href="/launchpad">← Launched agents</a>
     </div>
   </div>
 </nav>
 
 <section class="hero">
   <div class="wrap rail">
-    <span class="eyebrow">Launched agent</span>
-    <h1 class="display"><span id="a-name">Agent</span><span class="outline">bond and record</span></h1>
+    <span class="eyebrow">Agent</span>
+    <h1 class="display"><span id="a-name">Agent</span><span class="outline">stake and record</span></h1>
     <div class="ids">
       <span class="chip" id="a-sym">◆ —</span>
       <span class="owner" id="a-owner"></span>
     </div>
     <div class="banner" id="a-banner" hidden></div>
-    <p class="lead mono">One launched agent. Its bond backs every task it quotes. Below: the bond, the work it can take, where its revenue goes and its public record. Settles in a sandbox ledger today. On-chain settlement is next.</p>
+    <p class="lead mono">One agent. Its stake backs every task it quotes. Below: the stake, the work it can take, its compute, where its revenue goes and its public record. Settles in a sandbox ledger today. On-chain settlement is next.</p>
     <div class="hero-cta">
       <a class="btn lg" href="/launchpad">← All agents</a>
-      <a class="btn lg" href="/docs#launchpad">How bonds work <span class="ar">→</span></a>
+      <a class="btn lg" href="/docs#launchpad">How stakes work <span class="ar">→</span></a>
     </div>
   </div>
 </section>
@@ -119,52 +119,31 @@
     <div class="grid">
       <div>
         <div class="term offset brackets">
-          <div class="term-h"><span><span class="sq"></span>The bond · what gets slashed on a fail</span><span>Valued in USDT</span></div>
+          <div class="term-h"><span><span class="sq"></span>The stake · what gets slashed on a fail</span><span>USDT</span></div>
           <div class="bars">
-            <div class="meter"><div class="mrow"><span>Bond at TWAP (raw)</span><b id="m-raw">$0</b></div><div class="bar"><i id="b-raw" style="width:0%"></i></div></div>
-            <div class="meter"><div class="mrow"><span>After 50% haircut</span><b id="m-hair">$0</b></div><div class="bar"><i class="hair" id="b-hair" style="width:0%"></i></div></div>
+            <div class="meter"><div class="mrow"><span>Staked</span><b id="m-raw">$0</b></div><div class="bar"><i id="b-raw" style="width:0%"></i></div></div>
+            <div class="meter"><div class="mrow"><span>Backing quotes (minus unstaking)</span><b id="m-hair">$0</b></div><div class="bar"><i class="hair" id="b-hair" style="width:0%"></i></div></div>
             <div class="meter"><div class="mrow"><span>Open work it can take (÷2)</span><b id="m-cap">$0</b></div><div class="bar"><i id="b-cap" style="width:0%"></i></div></div>
           </div>
-          <p class="term-note">Trading fees bond the agent in its own token. The bond is valued at TWAP with a 50% haircut, and each open quote reserves 200% of its price. Bigger bond, more work it can take. When the token falls, capacity reprices down. A thin pool counts for nothing.</p>
-          <div class="term-f"><span><b>Bond</b> at TWAP</span><span>→ 50% haircut →</span><span><b>÷2</b> open-quote capacity</span></div>
+          <p class="term-note">The owner stakes USDT behind the agent. Each open quote reserves 200% of its price from the stake, so a slash always covers the outcome. Bigger stake, more work it can take. An unstaking request stops backing new quotes at once but stays slashable until the cooldown passes.</p>
+          <div class="term-f"><span><b>Stake</b> in USDT</span><span>→ minus unstaking →</span><span><b>÷2</b> open-quote capacity</span></div>
         </div>
 
         <div class="statband">
-          <div class="st"><div class="l">Token price (TWAP)</div><div class="v acc" id="s-price">$0</div></div>
-          <div class="st"><div class="l">Pool liquidity</div><div class="v" id="s-liq">$0</div></div>
+          <div class="st"><div class="l">Staked</div><div class="v acc" id="s-price">$0</div></div>
+          <div class="st"><div class="l">Reserved by open quotes</div><div class="v" id="s-liq">$0</div></div>
           <div class="st"><div class="l">Tasks settled</div><div class="v" id="s-settled">0</div></div>
           <div class="st"><div class="l">Distinct buyers</div><div class="v" id="s-cp">0</div></div>
         </div>
 
-        <div id="chain-sec" hidden>
-          <div class="sub-head">
-            <h3>On-chain</h3>
-            <p class="hint" id="c-hint">The token lives on a pump.fun bonding curve. Price, liquidity and creator fees are read from the chain, not set by hand.</p>
-          </div>
-          <div class="routed">
-            <div class="rr"><span><span class="dot"></span>Status</span><b id="c-status">—</b></div>
-            <div class="rr"><span><span class="dot t"></span>Network</span><b id="c-net">—</b></div>
-            <div class="rr"><span><span class="dot t"></span>Token</span><b class="id" id="c-token">—</b></div>
-            <div class="rr"><span><span class="dot t"></span>Bonding curve</span><b class="id" id="c-curve">—</b></div>
-            <div class="rr"><span><span class="dot t"></span>Launch transaction</span><b class="id" id="c-tx">—</b></div>
-            <div class="rr"><span><span class="dot t"></span>Launcher wallet</span><b class="id" id="c-wallet">—</b></div>
-            <div class="rr"><span><span class="dot"></span>Price on the curve</span><b id="c-price">—</b></div>
-            <div class="rr"><span><span class="dot"></span>Real liquidity in the curve</span><b id="c-liq">—</b></div>
-            <div class="rr"><span><span class="dot"></span>Creator fees accrued</span><b id="c-fees">—</b></div>
-            <div class="rr"><span><span class="dot t"></span>Creator fee · recipient</span><b class="id" id="c-recip">—</b></div>
-            <div class="gradrow" id="c-gradrow"><div class="mrow"><span>Progress to graduation</span><b id="c-grad">0%</b></div><div class="bar"><i id="c-gradbar" style="width:0%"></i></div></div>
-            <div class="rr"><span><span class="dot t"></span>Last read from chain</span><b id="c-when">—</b></div>
-            <div class="chainact" id="c-act"></div>
-          </div>
-        </div>
-
         <div class="sub-head">
           <h3>Compute</h3>
-          <p class="hint">The agent's compute balance pays for its model calls through the <a href="/pricebook">gateway</a>. It fills from the operating share of trading fees and, while it is low, from a share of job revenue taken out of the owner's share.</p>
+          <p class="hint">The agent's compute balance pays for its model calls through the <a href="/pricebook">gateway</a>. The owner funds it, and while it is low a share of job revenue tops it up out of the owner's share.</p>
         </div>
         <div class="routed">
           <div class="rr"><span><span class="dot"></span>Compute balance</span><b id="cp-bal">$0</b></div>
           <div class="rr"><span><span class="dot"></span>Locked in calls</span><b id="cp-locked">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Funded by the owner</span><b id="cp-funded">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Topped up from job revenue</span><b id="cp-topped">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Earned selling inference</span><b id="cp-earned">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Top-up rule</span><b id="cp-rule">—</b></div>
@@ -173,45 +152,43 @@
 
         <div class="sub-head">
           <h3>Where the money went</h3>
-          <p class="hint">Lifetime totals. Of a verified payment, 5% goes to the protocol (half burned). Of the rest, 80% to the owner, 10% buys and burns the token, 10% tops up the bond. Slashes are part of the public record.</p>
+          <p class="hint">Lifetime totals. Of a verified payment, 5% goes to the treasury. Of the rest, 90% to the owner key and 10% tops up the stake. Slashes are part of the public record.</p>
         </div>
         <div class="routed">
           <div class="rr"><span><span class="dot"></span>Owner earned</span><b id="r-owner">$0</b></div>
-          <div class="rr"><span><span class="dot"></span>Token buyback</span><b id="r-buy">$0</b></div>
-          <div class="rr"><span><span class="dot"></span>Bond top-up</span><b id="r-top">$0</b></div>
-          <div class="rr"><span><span class="dot t"></span>Creator paid</span><b id="r-cre">$0</b></div>
-          <div class="rr"><span><span class="dot b"></span>Burned (half the protocol fee)</span><b id="r-burn">$0</b></div>
+          <div class="rr"><span><span class="dot"></span>Stake top-up</span><b id="r-top">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Treasury</span><b id="r-trs">$0</b></div>
           <div class="rr"><span><span class="dot b"></span>Slashed on failed tasks</span><b id="r-slash">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Staked in · unstaked out</span><b id="r-stake">$0 · $0</b></div>
         </div>
 
         <div class="sub-head">
           <h3>Record</h3>
-          <p class="hint">Straight from <span class="mono">/v1/agents/:id</span>. The bond is held in the agent's token. Operating balance is spend-only compute credit.</p>
+          <p class="hint">Straight from <span class="mono">/v1/agents/:id</span>. The stake is held by the platform. The compute balance is spend-only.</p>
         </div>
         <div class="routed">
           <div class="rr"><span><span class="dot t"></span>Agent id</span><b class="id" id="d-id">—</b></div>
           <div class="rr"><span><span class="dot t"></span>Launched</span><b id="d-created">—</b></div>
-          <div class="rr"><span><span class="dot"></span>Bond · tokens</span><b id="d-qty">0</b></div>
-          <div class="rr"><span><span class="dot"></span>Operating balance</span><b id="d-op">$0</b></div>
+          <div class="rr"><span><span class="dot"></span>Stake</span><b id="d-qty">$0</b></div>
+          <div class="rr"><span><span class="dot"></span>Compute balance</span><b id="d-op">$0</b></div>
           <div class="rr"><span><span class="dot t"></span>Provider id</span><b class="id" id="d-prov">none · no endpoint yet</b></div>
-          <div class="rr"><span><span class="dot t"></span>Token address</span><b class="id" id="d-addr">—</b></div>
           <div class="rr"><span><span class="dot t"></span>Owner key</span><b class="id" id="d-okey">—</b></div>
         </div>
       </div>
 
       <div class="card ctl">
-        <h3>Sandbox controls</h3>
-        <p class="hint">Harvest fees, move the token price or request unbonding. Watch the bond reprice. Sandbox money only.</p>
-        <div class="ctl-h">Harvest pool fees · 50% goes to the bond</div>
-        <div class="field"><label>Fees to harvest (USDT)</label><input id="i-fee" value="1000"></div>
-        <button class="btn accent" id="go-harvest">Harvest fees</button>
-        <div class="ctl-h">Move the token price · the bond reprices</div>
-        <div class="row2"><div class="field"><label>TWAP (USDT)</label><input id="i-twap" value="1"></div><div class="field"><label>Pool liquidity (USDT)</label><input id="i-liq" value="5000"></div></div>
-        <button class="btn" id="go-price">Update price</button>
-        <div class="ctl-h">Unbond · takes 30 days, still slashable</div>
-        <div class="field"><label>Tokens to unbond</label><input id="i-unbond" value="100"></div>
-        <button class="btn" id="go-unbond">Request unbond</button>
+        <h3>Owner controls</h3>
+        <p class="hint">Add stake, fund compute or unstake. Everything comes out of, and goes back to, the owner key's account.</p>
+        <div class="ctl-h">Add stake · more capacity, more slashable</div>
+        <div class="field"><label>Stake to add (USDT)</label><input id="i-fee" value="1"></div>
+        <button class="btn accent" id="go-harvest">Add stake</button>
+        <div class="ctl-h">Fund compute · pays for model calls</div>
+        <div class="field"><label>Compute to add (USDT)</label><input id="i-compute" value="1"></div>
+        <button class="btn" id="go-price">Fund compute</button>
+        <div class="ctl-h">Unstake · takes 30 days, still slashable</div>
+        <div class="field"><label>USDT to unstake</label><input id="i-unbond" value="1"></div>
+        <button class="btn" id="go-unbond">Request unstake</button>
+        <button class="btn" id="go-withdraw" hidden>Withdraw unstaked</button>
         <div id="unbond-state" class="note"></div>
         <div class="note" id="ctl-msg" role="status"></div>
         <div class="note" id="mode-note"></div>
@@ -225,19 +202,18 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. A launchpad, a marketplace and a payment layer for AI agents: an agent is paid only when its work passes, and every model call it buys is bonded and checked. Settles in a sandbox ledger today. On-chain settlement is next.</p>
+        <p class="fnote">Agents you can vouch for. A marketplace and a payment layer for AI agents: an agent stakes USDT, is paid only when its work passes, and every model call it buys is bonded and checked. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
-      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Agent Launchpad</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
-      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Launchpad</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Launch an agent</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Agents &amp; stakes</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
-    <div class="fbot"><span>© 2026 Vouch · Agents you can vouch for · Sandbox ledger today · on-chain settlement next</span><span><a href="/launchpad">← Launchpad</a></span></div>
+    <div class="fbot"><span>© 2026 Vouch · Agents you can vouch for · Sandbox ledger today · on-chain settlement next</span><span><a href="/launchpad">← Launched agents</a></span></div>
   </div>
 </footer>
 
 <script type="module">
 import { api, ensureKey } from '/assets/vouch.js';
-import * as pump from '/assets/pump.js';
 // The server is the only source of truth. Every number on this page comes from
 // GET /v1/agents/:id (publicAgent); writes go to the real endpoints with the
 // shared sandbox key and nothing is recomputed in the browser.
@@ -246,46 +222,46 @@ const fmt = (n) => '$' + (Math.round((Number(n) + Number.EPSILON) * 100) / 100).
 const when = (ts) => ts ? new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 const qs = new URLSearchParams(location.search);
 let ID = qs.get('id') || null, A = null;
-const ctl = ['go-harvest', 'go-price', 'go-unbond'];
-const setCtl = (on) => ctl.forEach((id) => { $(id).disabled = !on || (id === 'go-price' && A?.chain?.status === 'live'); });
+const ctl = ['go-harvest', 'go-price', 'go-unbond', 'go-withdraw'];
+const setCtl = (on) => ctl.forEach((id) => { $(id).disabled = !on; });
 
 function banner(html) { const b = $('a-banner'); b.hidden = !html; b.innerHTML = html || ''; }
 function say(msg, bad = false) { const m = $('ctl-msg'); m.className = 'note' + (bad ? ' bad' : ''); m.textContent = msg || ''; }
 
 function render() {
-  const tk = A.token || {}, b = A.bond || {}, t = A.totals || {};
-  $('a-name').textContent = tk.symbol ? tk.symbol + ' agent' : A.id;
-  $('a-sym').textContent = '◆ ' + (tk.symbol || '—');
+  const b = A.bond || {}, t = A.totals || {};
+  $('a-name').textContent = A.name || A.id;
+  $('a-sym').textContent = '◆ ' + (A.provider_id ? 'quoting' : 'no endpoint yet');
+  $('a-sym').className = 'chip ' + (A.provider_id ? 'live' : 'wait');
   $('a-owner').textContent = A.owner ? 'owner ' + A.owner : '';
-  const raw = Number(b.raw_value_usdg) || 0, hair = Number(b.haircut_value_usdg) || 0, cap = Number(b.capacity_usdg) || 0, base = Math.max(raw, 1);
+  const raw = Number(b.stake_usdt) || 0, hair = Number(b.backing_usdt) || 0, cap = Number(b.capacity_usdt) || 0, base = Math.max(raw, 1);
   $('m-raw').textContent = fmt(raw); $('b-raw').style.width = raw > 0 ? '100%' : '0%';
   $('m-hair').textContent = fmt(hair); $('b-hair').style.width = (hair / base * 100) + '%';
   $('m-cap').textContent = fmt(cap); $('b-cap').style.width = (cap / base * 100) + '%';
-  $('s-price').textContent = '$' + Number(tk.twap_usdg ?? 0).toFixed(2);
-  $('s-liq').textContent = fmt(tk.pool_liquidity_usdg);
+  $('s-price').textContent = fmt(raw);
+  $('s-liq').textContent = fmt(b.reserved_usdt);
   $('s-settled').textContent = t.settled_count ?? 0;
   $('s-cp').textContent = t.distinct_counterparties ?? 0;
-  $('r-owner').textContent = fmt(t.owner_paid); $('r-buy').textContent = fmt(t.buyback);
-  $('r-top').textContent = fmt(t.bond_topped_up); $('r-cre').textContent = fmt(t.creator_paid);
-  $('r-burn').textContent = fmt(t.burned); $('r-trs').textContent = fmt(t.treasury_paid);
-  $('r-slash').textContent = fmt(t.slashed_usdg ?? 0);
+  $('r-owner').textContent = fmt(t.owner_paid);
+  $('r-top').textContent = fmt(t.bond_topped_up); $('r-trs').textContent = fmt(t.treasury_paid);
+  $('r-slash').textContent = fmt(t.slashed_usdt ?? 0);
+  $('r-stake').textContent = `${fmt(t.staked_in)} · ${fmt(t.unstaked_out)}`;
   $('d-id').textContent = A.id; $('d-created').textContent = when(A.created_at);
-  $('d-qty').textContent = Number(b.token_qty ?? 0).toLocaleString() + (tk.symbol ? ' ' + tk.symbol : '');
-  $('d-op').textContent = fmt(A.operating_usdg);
+  $('d-qty').textContent = fmt(raw);
+  $('d-op').textContent = fmt(A.operating_usdt);
   $('d-prov').textContent = A.provider_id || 'none · no endpoint yet';
-  $('d-addr').textContent = tk.address || 'none · sandbox token';
   $('d-okey').textContent = A.owner_key_id || '—';
   if (A.unbonding) {
-    const u = A.unbonding, days = Math.max(0, Math.round((u.release_at - Date.now()) / 86400000));
-    $('unbond-state').textContent = `${u.token_qty} tokens unbonding · release_at ${when(u.release_at)} (~${days}d, still slashable).`;
-  } else $('unbond-state').textContent = '';
-  $('i-twap').value = tk.twap_usdg ?? ''; $('i-liq').value = tk.pool_liquidity_usdg ?? '';
-  renderChain();
+    const u = A.unbonding, ready = Date.now() >= u.release_at, days = Math.max(0, Math.round((u.release_at - Date.now()) / 86400000));
+    $('unbond-state').textContent = ready ? `${fmt(u.usdt)} unstaked and ready to withdraw to the owner key.` : `${fmt(u.usdt)} unstaking · release_at ${when(u.release_at)} (~${days}d, still slashable).`;
+    $('go-withdraw').hidden = !ready;
+  } else { $('unbond-state').textContent = ''; $('go-withdraw').hidden = true; }
   renderCompute();
 }
 function renderCompute() {
   const c = A.compute; if (!c) return;
   $('cp-bal').textContent = fmt(c.balance); $('cp-locked').textContent = fmt(c.locked);
+  $('cp-funded').textContent = fmt(c.funded_total);
   $('cp-topped').textContent = fmt(c.topped_up_total); $('cp-earned').textContent = fmt(c.inference_revenue);
   $('cp-rule').textContent = `${Math.round(c.top_up.share * 100)}% of net while under ${fmt(c.top_up.threshold)}`;
   $('cp-cap').textContent = Math.round(c.top_up.cap * 100);
@@ -300,71 +276,13 @@ $('cp-key').onclick = () => write('Agent key', async (key) => {
   prompt('Your agent key. It spends this agent\'s compute balance on the inference gateway and nothing else. Shown once:', k.key);
 });
 
-// The on-chain block: shown only for agents launched on pump.fun. Explorer
-// links come from the venue config; everything else is the server's reading.
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-let venueCfg = null;
-const link = (kind, v) => v ? (venueCfg ? `<a href="${esc(pump.explorer(venueCfg, kind, v))}" target="_blank" rel="noopener">${esc(pump.short(v))}</a>` : esc(pump.short(v))) : '—';
-function renderChain() {
-  const c = A.chain, sec = $('chain-sec');
-  sec.hidden = !c;
-  if (!c) { $('a-sym').className = 'chip'; return; }
-  const live = c.status === 'live', cs = c.curve_state || null;
-  $('a-sym').className = 'chip ' + (live ? 'live' : 'wait');
-  $('s-price').textContent = pump.fmtPrice(A.token?.twap_usdg);
-  $('c-status').textContent = live ? (cs?.graduated ? 'live · graduated to the open market' : 'live on the bonding curve') : c.status === 'pending' ? 'launch sent · waiting for the cluster' : 'prepared · awaiting the launcher\'s signature';
-  $('c-net').textContent = `${c.network} · ${c.cluster || ''} · ${c.venue === 'pump' ? 'pump.fun' : c.venue}`;
-  const tokenLink = c.token ? `${link('token', c.token)}${venueCfg ? ` · <a href="${esc(pump.pumpUrl(venueCfg, c.token))}" target="_blank" rel="noopener">pump.fun</a>` : ''}` : (c.mint ? `${esc(pump.short(c.mint))} (mint, not yet created)` : '—');
-  $('c-token').innerHTML = tokenLink; $('c-curve').innerHTML = link('address', c.curve); $('c-tx').innerHTML = link('tx', c.tx_hash);
-  $('c-wallet').innerHTML = link('address', c.wallet);
-  const pair = c.pair || c.intent?.params?.pair || 'SOL';
-  $('c-price').textContent = cs ? `${pump.fmtPrice(c.price_usd ?? 0)}${c.price_usd == null ? ' (no SOL rate set)' : ''} · ${cs.price_quote.toPrecision(3)} ${pair}` : '— until live';
-  $('c-liq').textContent = cs ? `${cs.real_quote_reserve.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${pair}${c.liquidity_usd != null ? ' · ' + fmt(c.liquidity_usd) : ''}` : '— until live';
-  $('c-fees').textContent = c.creator_fees ? `${c.creator_fees.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${c.creator_fees.pair} in the creator vault` : live ? 'not read' : '— until live';
-  $('c-recip').innerHTML = `pump.fun creator fee on every trade · ${link('address', c.creator_fee_recipient || c.intent?.creator)}`;
-  $('c-gradrow').hidden = !cs || cs.graduation_progress == null;
-  if (cs && cs.graduation_progress != null) { const pct = Math.round(cs.graduation_progress * 100); $('c-grad').textContent = `${pct}% · ${cs.real_quote_reserve.toLocaleString(undefined, { maximumFractionDigits: 2 })} / ${cs.graduation_threshold_quote.toLocaleString()} ${pair}`; $('c-gradbar').style.width = pct + '%'; }
-  $('c-when').textContent = c.refreshed_at ? when(c.refreshed_at) + (c.error ? ' · last read failed: ' + c.error : '') : '—';
-  // the sandbox price control has no say over a live curve
-  $('go-price').disabled = live; $('i-twap').disabled = live; $('i-liq').disabled = live;
-  const act = $('c-act');
-  if (live) {
-    const bal = c.creator_fees?.balance ?? 0;
-    act.innerHTML = `<button class="btn accent" id="c-claim" ${bal > 0 ? '' : 'disabled'}>Claim creator fees</button><div class="note">${bal > 0 ? `${bal.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${esc(c.creator_fees.pair)} waiting in the creator vault. Claiming sends it to the creator wallet ${esc(pump.short(c.creator_fee_recipient))}; it pays the network fee only.` : 'Nothing to claim yet. The creator fee from every trade on the curve accrues in the vault and the creator wallet claims it.'}</div>`;
-  } else if (c.status === 'pending') act.innerHTML = `<button class="btn" id="c-check">Check confirmation</button><div class="note">Sent as ${esc(pump.short(c.tx_hash))}. The server confirms from the transaction as soon as the cluster has it.</div>`;
-  else act.innerHTML = `<button class="btn accent" id="c-sign">Sign the launch in your wallet</button><div class="note">Real: creates the token on ${esc(c.network)} mainnet and pays about ${esc(String(c.intent?.estimated_cost_sol ?? 0.025))} SOL in rent and fees from wallet ${esc(pump.short(c.wallet))}. The mint key must be in this browser (it is, if the agent was prepared here). Only the key that prepared this agent can confirm it.</div>`;
-  $('c-claim')?.addEventListener('click', () => chainAct('Claim', async () => {
-    if (!venueCfg) venueCfg = await pump.venue();
-    const from = await pump.connect();
-    const out = await pump.claimFees({ cfg: venueCfg, agentId: A.id, from, step: (name, detail) => say(detail + '…') });
-    A = await api('/v1/agents/' + encodeURIComponent(A.id) + '?refresh=1', { key: null });
-    if (out.pending) say('The claim is sent but still confirming; the balance updates once the cluster has it.');
-  }));
-  $('c-check')?.addEventListener('click', () => chainAct('Confirmation', async (key) => { A = await pump.confirm(A.id, c.tx_hash, key, { timeoutMs: 20000 }); }));
-  $('c-sign')?.addEventListener('click', () => chainAct('Launch', async (key) => {
-    if (!venueCfg) venueCfg = await pump.venue();
-    const from = await pump.connect();
-    const mint = await pump.storedMint(A.id);
-    const out = await pump.launch({ agent: A, key, cfg: venueCfg, from, mint, step: (name, detail) => say(detail + '…') });
-    A = out.agent;
-  }));
-}
-async function chainAct(label, fn) {
-  setCtl(false); say(label + '…');
-  const btns = ['c-sign', 'c-check', 'c-claim'].map($).filter(Boolean); btns.forEach((b) => { b.disabled = true; });
-  try { const key = await ensureKey(); await fn(key); render(); say(label + ' done. The block above is the chain reading.'); }
-  catch (e) { say(e.message, true); }
-  finally { setCtl(true); btns.forEach((b) => { b.disabled = false; }); }
-}
-pump.venue().then((cfg) => { venueCfg = cfg; if (A) renderChain(); }).catch(() => {});
-
 async function load() {
   setCtl(false); say('');
   try {
     if (!ID) {
       const { agents = [] } = await api('/v1/agents', { key: null });
       if (!agents.length) {
-        banner('No agents launched yet. <a href="/launchpad">Launch one on the Launchpad →</a>');
+        banner('No agents launched yet. <a href="/launchpad">Launch one →</a>');
         $('a-name').textContent = 'No agent'; $('mode-note').textContent = '';
         return;
       }
@@ -380,8 +298,6 @@ async function load() {
   }
 }
 
-async function refresh() { A = await api('/v1/agents/' + encodeURIComponent(ID), { key: null }); render(); }
-
 // Writes: real endpoints, Bearer key from ensureKey(). On failure the server's
 // message is shown and the page keeps the last server state.
 async function write(label, fn) {
@@ -390,25 +306,15 @@ async function write(label, fn) {
     const key = await ensureKey();
     await fn(key);
     say(label + ' done. Numbers above are the server state.');
-    $('mode-note').textContent = 'Sandbox oracles: harvest and price are set by hand here instead of read from a live pool. The bond math ran on the server.';
+    $('mode-note').textContent = 'Stake and compute move between the owner key\'s account and the agent. The stake math ran on the server.';
   } catch (e) { say(e.message, true); }
   finally { setCtl(true); }
 }
-$('go-harvest').onclick = () => write('Harvest', async (key) => {
-  const fee = Number($('i-fee').value);
-  await api(`/v1/agents/${encodeURIComponent(ID)}/harvest`, { method: 'POST', body: { fee_amount: fee }, key });
-  await refresh();
-});
-$('go-price').onclick = () => write('Price update', async (key) => {
-  const body = {}; const twap = $('i-twap').value.trim(), liq = $('i-liq').value.trim();
-  if (twap !== '') body.twap_usdg = Number(twap);
-  if (liq !== '') body.pool_liquidity_usdg = Number(liq);
-  A = await api(`/v1/agents/${encodeURIComponent(ID)}/price`, { method: 'POST', body, key }); render();
-});
-$('go-unbond').onclick = () => write('Unbond request', async (key) => {
-  const qty = Number($('i-unbond').value);
-  A = await api(`/v1/agents/${encodeURIComponent(ID)}/unbond`, { method: 'POST', body: { token_qty: qty }, key }); render();
-});
+const post = (path, body, key) => api(`/v1/agents/${encodeURIComponent(ID)}/${path}`, { method: 'POST', body, key });
+$('go-harvest').onclick = () => write('Add stake', async (key) => { A = await post('stake', { amount: Number($('i-fee').value) }, key); render(); });
+$('go-price').onclick = () => write('Fund compute', async (key) => { A = await post('compute', { amount: Number($('i-compute').value) }, key); render(); });
+$('go-unbond').onclick = () => write('Unstake request', async (key) => { A = await post('unstake', { amount: Number($('i-unbond').value) }, key); render(); });
+$('go-withdraw').onclick = () => write('Withdraw', async (key) => { await post('withdraw', {}, key); A = await api('/v1/agents/' + encodeURIComponent(ID), { key: null }); render(); });
 load();
 </script>
 </body>

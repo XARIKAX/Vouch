@@ -2,9 +2,8 @@ import { id, txHash, hash01, money, clamp, sha256, sleep } from './util.js';
 import { CAPABILITIES, validateInput } from './catalog.js';
 import { seedProviders, runExecutor } from './providers.js';
 import { modelBacked } from './execute-claude.js';
-import { pumpConfig, buildLaunchIntent, buildClaimIntent, tokenMetadata, verifyLaunch, readCurve, readCreatorFees, solUsd } from './chain/pump.js';
 import { createRpc } from './chain/rpc.js';
-import { fundsConfig, verifyDeposit, verifyPayout, sendToken, depositInstructions, toUnits, fromUnits } from './chain/funds.js';
+import { chainConfig, fundsConfig, verifyDeposit, verifyPayout, sendToken, depositInstructions, toUnits, fromUnits } from './chain/funds.js';
 import { verifyMessage } from './chain/ed25519.js';
 import { isPubkey } from './chain/base58.js';
 import { createSpend } from './spend.js';
@@ -12,7 +11,7 @@ import { verify, gradeRubric, validateAcceptance } from './verification.js';
 import { createStore } from './store.js';
 import { createAttestor, canonical } from './attest.js';
 import { snapshotParams } from './launchpad-config.js';
-import { splitFees, bondValue, bondCapacity, protocolFeeSplit, netPayoutSplit, slashPlan, slashBase, trackWeight, topUpFromRevenue } from './launchpad.js';
+import { bondCapacity, protocolFeeSplit, netPayoutSplit, slashPlan, trackWeight, topUpFromRevenue } from './launchpad.js';
 import { createInference } from './inference.js';
 import { upstreamConfig, createUpstream } from './upstream.js';
 import { ApiError } from './errors.js';
@@ -58,10 +57,8 @@ export function createEngine(cfg = {}) {
     cachePriceRate: 0.1,   // cache-hit price as a fraction of the cheapest quote
     attestKey: process.env.VOUCH_ATTEST_KEY || null,
     allowPrivateWebhooks: false, // let webhook_url / acceptance.webhook point at private hosts (tests)
-    // Token launches on pump.fun (Solana). The engine only prepares and
-    // verifies; wallets sign. `chain` carries the RPC, program, explorer.
-    chain: pumpConfig(),
-    chainRefreshMs: 60 * 1000,   // how often a live agent's price is re-read from its curve
+    // Solana: the RPC, cluster and explorer real funds settle on.
+    chain: chainConfig(),
     // Real funds: USDT deposits to the treasury and withdrawals back to the
     // account's wallet. Off (sandbox credits) until VOUCH_REAL_FUNDS=1 and a
     // treasury address are set.
@@ -93,7 +90,8 @@ export function createEngine(cfg = {}) {
   state.insurance ??= { balance: 0, funded: 0, claims: [] };
   state.cache ??= {}; // verified-output cache: fingerprint -> { output, attestation, ... }
   state.agents ??= {};   // launchpad: agentId -> launched-agent record
-  state.treasury ??= { balance: 0, burned: 0, buyback: 0 }; // protocol treasury (USDT)
+  state.treasury ??= { balance: 0 }; // protocol treasury (USDT)
+  state.treasury.balance ??= 0;
   state.launchpad ??= { paused: false, pending_slashes: [] }; // guardian + queued token-bond slashes
   state.launchpad.pending_slashes ??= [];
   state.attest ??= {};   // attestation key material: generated key persisted here, plus every public key ever used
@@ -642,8 +640,8 @@ export function createEngine(cfg = {}) {
     }
     const entry = { ts: Date.now(), kind: 'settle', amount: -task.quote.price, task: task.id, tx: txHash() };
     acct.history.push(entry);
-    // Launchpad: if this provider is a launched agent, route its revenue
-    // (protocol fee + owner/buyback/bond). Non-launchpad providers are untouched.
+    // If this provider is an agent, route its revenue (protocol fee, then
+    // owner / stake top-up). Plain providers are untouched.
     if (agent) routeAgentRevenue(agent, task.quote.price, task.id);
     return entry.tx;
   }
@@ -656,17 +654,16 @@ export function createEngine(cfg = {}) {
     return creditAccount(task.keyId, locked, { kind: 'refund', task: task.id, reason });
   }
 
-  // Slash `priceUsdg * multiple` off a provider's collateral. A launched agent
-  // is slashed in its platform token at TWAP, capped (per-verdict max multiple
-  // and a rolling-window cap, both from slashPlan) and QUEUED behind the
-  // pending-slash delay with a guardian freeze; its token-bond capacity
-  // reprices when the slash executes. A normal provider is slashed flat off
-  // its USDT stake immediately. Either way the slashed USDT value capitalizes
-  // the insurance pool when funds move.
-  function applySlash(p, priceUsdg, multiple, meta = {}) {
+  // Slash `price * multiple` off a provider's collateral. An agent's stake is
+  // slashed capped (per-verdict max multiple and a rolling-window cap, both
+  // from slashPlan) and QUEUED behind the pending-slash delay with a guardian
+  // freeze; its capacity reprices when the slash executes. A plain provider
+  // is slashed flat off its stake immediately. Either way the slashed USDT
+  // capitalizes the insurance pool when funds move.
+  function applySlash(p, priceUsdt, multiple, meta = {}) {
     const agent = p.agentId ? state.agents[p.agentId] : null;
-    if (agent) return queueAgentSlash(agent, priceUsdg, multiple, meta);
-    const amount = money(priceUsdg * multiple);
+    if (agent) return queueAgentSlash(agent, priceUsdt, multiple, meta);
+    const amount = money(priceUsdt * multiple);
     p.stake = money(Math.max(0, p.stake - amount));
     state.insurance.balance = money(state.insurance.balance + amount);
     state.insurance.funded = money(state.insurance.funded + amount);
@@ -1199,22 +1196,19 @@ export function createEngine(cfg = {}) {
       }));
   }
 
-  // ---- launchpad: launched agents, token bond, revenue routing ------------
-  // An "agent" here is a supply-side, token-wrapped provider (distinct from the
-  // demand-side API keys also called "agents"). Its slashable bond is the
-  // platform token, valued in USDT. A launched agent's linked provider reuses
-  // the existing reservation machinery: we set provider.stake to the agent's
-  // bond *capacity* (haircut value / reservationMultiple), so the engine's
-  // 1x-price reservation is exactly the brief's 200%-of-price against haircut.
+  // ---- agents: supply-side agents with a USDT stake, revenue routing ------
+  // An "agent" here is a supply-side provider with a USDT stake behind it
+  // (distinct from the demand-side API keys also called "agents"). The stake
+  // is its slashable collateral. Its linked provider reuses the existing
+  // reservation machinery: provider.stake is set to the agent's capacity
+  // (backing stake / reservationMultiple), so the engine's 1x-price
+  // reservation is exactly the brief's 200%-of-price against the stake.
 
+  // The stake that backs new quotes: what is staked minus what is unstaking.
   function agentRawBond(agent) {
-    return bondValue({
-      tokenQty: Math.max(0, agent.bond.tokenQty - (agent.unbonding?.tokenQty ?? 0)),
-      twapUsdg: agent.token.twapUsdg,
-      poolLiquidityUsdg: agent.token.poolLiquidityUsdg,
-    }, agent.params);
+    return money(Math.max(0, agent.bond.usdt - (agent.unbonding?.usdt ?? 0)));
   }
-  // Keep the linked provider's usable stake in sync with bond capacity.
+  // Keep the linked provider's usable stake in sync with capacity.
   function syncAgentCapacity(agent) {
     if (!agent.providerId) return;
     const p = state.providers[agent.providerId];
@@ -1228,7 +1222,7 @@ export function createEngine(cfg = {}) {
 
   const publicPendingSlash = (ps) => ({
     id: ps.id, agent_id: ps.agent_id, task_id: ps.task_id, reason: ps.reason,
-    price_usdg: ps.price_usdg, multiple: ps.multiple, amount_usdg: ps.amount_usdg, token_qty: ps.token_qty,
+    price_usdt: ps.price_usdt, multiple: ps.multiple, amount_usdt: ps.amount_usdt,
     capped: ps.capped, queued_at: ps.queued_at, execute_after: ps.execute_after, status: ps.status,
     executed_at: ps.executed_at ?? null,
   });
@@ -1237,29 +1231,24 @@ export function createEngine(cfg = {}) {
   function publicAgent(a) {
     const raw = agentRawBond(a);
     const pending = pendingFor(a.id);
+    const prov = a.providerId ? state.providers[a.providerId] : null;
     return {
       id: a.id, owner: a.owner, owner_key_id: a.ownerKeyId ?? null, name: a.name ?? null, created_at: a.createdAt,
-      token: { symbol: a.token.symbol, address: a.token.address, twap_usdg: a.token.twapUsdg, pool_liquidity_usdg: a.token.poolLiquidityUsdg },
-      bond: { token_qty: a.bond.tokenQty, raw_value_usdg: raw, haircut_value_usdg: money(raw * a.params.bondHaircut), capacity_usdg: bondCapacity(raw, a.params) },
-      operating_usdg: state.accounts[a.id]?.balance ?? 0,
+      bond: { stake_usdt: a.bond.usdt, backing_usdt: raw, capacity_usdt: bondCapacity(raw, a.params), reserved_usdt: prov?.stakeReserved ?? 0 },
+      operating_usdt: state.accounts[a.id]?.balance ?? 0,
       provider_id: a.providerId,
-      unbonding: a.unbonding ? { token_qty: a.unbonding.tokenQty, requested_at: a.unbonding.requestedAt, release_at: a.unbonding.releaseAt } : null,
-      pending_slash_usdg: money(pending.reduce((s, p) => s + p.amount_usdg, 0)),
+      unbonding: a.unbonding ? { usdt: a.unbonding.usdt, requested_at: a.unbonding.requestedAt, release_at: a.unbonding.releaseAt } : null,
+      pending_slash_usdt: money(pending.reduce((s, p) => s + p.amount_usdt, 0)),
       pending_slashes: pending.map(publicPendingSlash),
       totals: {
-        creator_paid: a.creatorPaid, owner_paid: a.ownerPaid, buyback: a.buyback,
-        burned: a.burned, treasury_paid: a.treasuryPaid, bond_topped_up: a.bondToppedUp,
-        slashed_usdg: a.slashedUsdg ?? 0, settled_count: a.settledCount ?? 0,
+        owner_paid: a.ownerPaid, treasury_paid: a.treasuryPaid, bond_topped_up: a.bondToppedUp,
+        staked_in: a.stakedIn ?? 0, unstaked_out: a.unstakedOut ?? 0,
+        slashed_usdt: a.slashedUsdt ?? 0, settled_count: a.settledCount ?? 0,
         distinct_counterparties: Object.keys(a.counterparties ?? {}).length,
       },
       params: a.params,
-      chain: a.chain ? publicChain(a.chain) : null,
-      compute: { balance: state.accounts[a.id]?.balance ?? 0, locked: state.accounts[a.id]?.locked ?? 0, top_up: { ...topUpRule(a), cap: a.params.topUp.shareCap, set_at: a.topUp?.set_at ?? null }, topped_up_total: a.toppedUpCompute ?? 0, inference_revenue: a.ledger.filter((e) => e.kind === 'inference_revenue').reduce((s, e) => money(s + e.net), 0) },
+      compute: { balance: state.accounts[a.id]?.balance ?? 0, locked: state.accounts[a.id]?.locked ?? 0, top_up: { ...topUpRule(a), cap: a.params.topUp.shareCap, set_at: a.topUp?.set_at ?? null }, topped_up_total: a.toppedUpCompute ?? 0, funded_total: a.fundedCompute ?? 0, inference_revenue: a.ledger.filter((e) => e.kind === 'inference_revenue').reduce((s, e) => money(s + e.net), 0) },
     };
-  }
-  function publicChain(c) {
-    const { intent, ...rest } = c;
-    return { ...rest, intent: intent ? { venue: intent.venue, network: intent.network, cluster: intent.cluster, explorer: intent.explorer, site: intent.site, program: intent.program, fee_payer: intent.fee_payer, mint: intent.mint, creator: intent.creator, bonding_curve: intent.bonding_curve, creator_vault: intent.creator_vault, signers: intent.signers, instructions: intent.instructions, estimated_cost_sol: intent.estimated_cost_sol, cost_note: intent.cost_note, params: intent.params } : null };
   }
 
   function mustAgent(agentId) {
@@ -1277,10 +1266,35 @@ export function createEngine(cfg = {}) {
     throw new ApiError(403, 'not_owner', 'Only the key that launched this agent (or an admin) may do that.', { owner_key_id: agent.ownerKeyId ?? null });
   }
 
+  // Money the owner puts behind an agent (stake or compute) comes out of the
+  // owner key's own account: in the sandbox that is faucet credit, with real
+  // funds it is deposited USDT. Internal callers with no key are trusted and
+  // the amount is granted, capped like the provider faucet.
+  function takeFromOwner(ownerKey, amount, kind, agentId) {
+    const amt = money(Number(amount));
+    if (!(amt >= 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', `${kind} must be a non-negative USDT amount`);
+    if (amt === 0) return 0;
+    if (!ownerKey) return Math.min(amt, cfg.launchpadParams?.maxSandboxStake ?? snapshotParams().maxSandboxStake);
+    const acct = rollDay(state.accounts[ownerKey.id]);
+    if (!acct) throw new ApiError(402, 'insufficient_balance', 'The owner key has no account to fund this from.');
+    const available = money(acct.balance - acct.locked);
+    if (amt > available + 1e-9) throw new ApiError(402, 'insufficient_balance', `Available balance is ${available}; ${kind} of ${amt} needs more. ${cfg.funds.enabled ? 'Deposit USDT first.' : 'Use the faucet first.'}`, { available, required: amt });
+    acct.balance = money(acct.balance - amt);
+    acct.history.push({ ts: Date.now(), kind, amount: -amt, agent: agentId, tx: txHash() });
+    return amt;
+  }
+  function giveToOwner(ownerKeyId, amount, kind, agentId) {
+    const acct = ownerKeyId ? state.accounts[ownerKeyId] : null;
+    if (!acct || !(amount > 0)) return;
+    acct.balance = money(acct.balance + amount);
+    acct.history.push({ ts: Date.now(), kind, amount, agent: agentId, tx: txHash() });
+  }
+
   // One transaction: create the agent, snapshot its (immutable, platform-set)
-  // params, and optionally register its provider endpoint. Cannot quote until
-  // it has an endpoint and bond capacity. Risk params in the request body are
-  // ignored: they come from launchpad-config only.
+  // params, take its stake from the owner, and optionally register its
+  // provider endpoint. It cannot quote until it has an endpoint and capacity.
+  // Risk params in the request body are ignored: they come from
+  // launchpad-config only.
   function launchAgent(body = {}, ownerKey = null) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ApiError(400, 'invalid_input', 'body must be a JSON object');
     const params = snapshotParams();
@@ -1290,147 +1304,62 @@ export function createEngine(cfg = {}) {
     if (body.endpoint_url || body.offers) {
       prov = registerProvider({ name: body.name ?? `agent ${agentId}`, endpoint_url: body.endpoint_url, offers: body.offers, stake: 0, protocol: body.protocol });
     }
+    const stake = takeFromOwner(ownerKey, body.stake ?? body.stake_usdt ?? 0, 'stake', agentId);
+    const compute = takeFromOwner(ownerKey, body.compute ?? 0, 'compute', agentId);
     const agent = {
       id: agentId, owner: body.owner ?? ownerKey?.owner ?? 'owner', ownerKeyId: ownerKey?.id ?? null,
       name: typeof body.name === 'string' ? body.name : null, createdAt: Date.now(),
-      token: {
-        symbol: typeof body.symbol === 'string' && body.symbol ? body.symbol.slice(0, 12) : params.platformToken.symbol,
-        address: body.token_address ?? null,
-        twapUsdg: Number(body.twap_usdg) > 0 ? Number(body.twap_usdg) : 1,
-        poolLiquidityUsdg: Math.max(0, Number(body.pool_liquidity_usdg) || 0),
-      },
-      bond: { tokenQty: Math.max(0, Number(body.initial_bond_tokens) || 0) },
+      bond: { usdt: stake }, stakedIn: stake, unstakedOut: 0,
       providerId: null, params,
-      creatorPaid: 0, ownerPaid: 0, buyback: 0, burned: 0, treasuryPaid: 0, bondToppedUp: 0,
-      ledger: [], unbonding: null,
+      ownerPaid: 0, treasuryPaid: 0, bondToppedUp: 0, fundedCompute: compute,
+      ledger: [{ ts: Date.now(), kind: 'launch', stake, compute }], unbonding: null,
     };
-    // A real launch on pump.fun: prepare the instruction for the launcher's
-    // wallet. The token has no price until the launch is confirmed on-chain.
-    if (body.launch && typeof body.launch === 'object') {
-      if (body.launch.venue && body.launch.venue !== 'pump') throw new ApiError(400, 'invalid_input', 'launch.venue must be "pump"');
-      let intent;
-      try {
-        intent = buildLaunchIntent({ ...body.launch, agent_id: agentId, symbol: agent.token.symbol, name: agent.name ?? body.launch.name, description: body.launch.description ?? body.description, logo: body.launch.logo ?? body.logo }, cfg.chain);
-      } catch (e) { throw new ApiError(400, e.code === 'invalid_input' ? 'invalid_input' : 'launch_error', e.message); }
-      agent.token.twapUsdg = 0; agent.token.poolLiquidityUsdg = 0;
-      agent.chain = { venue: 'pump', network: cfg.chain.network, cluster: cfg.chain.cluster, status: 'awaiting_signature', created_at: Date.now(), intent, wallet: body.launch.wallet, mint: intent.mint };
-    }
     if (prov) { prov.agentId = agentId; agent.providerId = prov.id; }
-    state.accounts[agentId] = newAccount(0, []);
+    state.accounts[agentId] = newAccount(compute, compute > 0 ? [{ ts: Date.now(), kind: 'compute_funded', amount: compute, tx: txHash() }] : []);
     state.agents[agentId] = agent;
     syncAgentCapacity(agent);
     persist();
     return publicAgent(agent);
   }
 
-  // The launcher's wallet sent the transaction: verify the receipt, record
-  // the token and curve, start pricing from the curve. Owner-only.
-  async function confirmLaunch(agentId, txHash, actor) {
+  // The owner adds stake: more capacity, more slashable. Owner-only.
+  function addStake(agentId, amount, actor) {
     const agent = mustAgent(agentId);
     assertAgentActor(agent, actor);
-    if (!agent.chain) throw new ApiError(409, 'not_a_chain_launch', 'This agent was not launched on-chain.');
-    if (agent.chain.status === 'live') return publicAgent(agent);
-    const rpc = createRpc(cfg.chain.rpc);
-    let launch;
-    try { launch = await verifyLaunch(rpc, txHash, cfg.chain); }
-    catch (e) { throw new ApiError(e.code === 'invalid_input' ? 400 : e.code ? 409 : 502, e.code ?? 'chain_unreachable', e.message); }
-    if (!launch) { agent.chain.status = 'pending'; agent.chain.tx_hash = txHash; persist(); return { ...publicAgent(agent), pending: true }; }
-    if (agent.chain.wallet && launch.deployer !== agent.chain.wallet) {
-      throw new ApiError(409, 'wrong_wallet', 'The launch was sent from a different wallet than the one this agent was prepared for.', { expected: agent.chain.wallet, deployer: launch.deployer });
-    }
-    if (agent.chain.mint && launch.token !== agent.chain.mint) {
-      throw new ApiError(409, 'wrong_mint', 'The transaction created a different token than the one this agent was prepared with.', { expected: agent.chain.mint, token: launch.token });
-    }
-    agent.chain = { ...agent.chain, status: 'live', tx_hash: txHash, confirmed_at: Date.now(), ...launch, pair: cfg.chain.pair.symbol, creator_fee_recipient: launch.creator ?? agent.chain.intent?.creator ?? null };
-    agent.token.address = launch.token;
-    persist();
-    await refreshAgentChain(agentId, { force: true });
-    return publicAgent(agent);
-  }
-  // The token JSON pump.fun reads from the metadata URI of a launch prepared here.
-  function agentTokenMetadata(agentId) {
-    const agent = mustAgent(agentId);
-    if (!agent.chain?.intent?.params) throw new ApiError(404, 'not_found', 'This agent has no on-chain token.');
-    return tokenMetadata(agent.chain.intent.params);
-  }
-  // The claim the creator's wallet signs to collect accrued creator fees.
-  function agentClaimIntent(agentId) {
-    const agent = mustAgent(agentId);
-    const creator = agent.chain?.creator_fee_recipient ?? agent.chain?.intent?.creator;
-    if (!creator) throw new ApiError(409, 'not_a_chain_launch', 'This agent was not launched on-chain.');
-    return { ...buildClaimIntent(creator, cfg.chain), claimable: agent.chain.creator_fees ?? null };
-  }
-
-  // Re-read price, liquidity and creator fees from the curve; swallow RPC
-  // failures (the last good reading stays, with the error noted).
-  async function refreshAgentChain(agentId, { force = false } = {}) {
-    const agent = state.agents[agentId];
-    if (!agent?.chain || agent.chain.status !== 'live') return null;
-    if (!force && agent.chain.refreshed_at && Date.now() - agent.chain.refreshed_at < cfg.chainRefreshMs) return agent.chain.curve_state ?? null;
-    const rpc = createRpc(cfg.chain.rpc);
-    try {
-      const curve = await readCurve(rpc, agent.chain.curve, cfg.chain);
-      let fees = null;
-      try { if (agent.chain.creator_fee_recipient) fees = await readCreatorFees(rpc, agent.chain.creator_fee_recipient, cfg.chain); } catch { /* optional */ }
-      const usd = await solUsd(cfg.chain);
-      agent.chain.curve_state = curve;          // `curve` stays the curve account's address
-      agent.chain.sol_usd = usd;
-      agent.chain.creator_fees = fees;
-      // curve tokens are priced in millionths of a cent: keep significant digits, not 6 decimals
-      agent.chain.price_usd = usd != null ? Number((curve.price_quote * usd).toPrecision(12)) : null;
-      agent.chain.liquidity_usd = usd != null ? money(curve.real_quote_reserve * usd) : null;
-      agent.chain.refreshed_at = Date.now();
-      agent.chain.error = null;
-      // the sandbox bond is valued from the real curve from now on
-      agent.token.twapUsdg = agent.chain.price_usd ?? 0;
-      agent.token.poolLiquidityUsdg = agent.chain.liquidity_usd ?? 0;
-      syncAgentCapacity(agent);
-      persist();
-    } catch (e) {
-      agent.chain.error = String(e.message).slice(0, 200);
-      agent.chain.refreshed_at = Date.now();
-      persist();
-    }
-    return agent.chain.curve_state ?? null;
-  }
-  async function refreshStaleChains() {
-    const live = Object.values(state.agents).filter((a) => a.chain?.status === 'live' && (!a.chain.refreshed_at || Date.now() - a.chain.refreshed_at >= cfg.chainRefreshMs));
-    await Promise.allSettled(live.slice(0, 10).map((a) => refreshAgentChain(a.id)));
-  }
-
-  // Harvest `feeAmount` of pool fees and split per the agent's snapshot — bond
-  // staked, operating credited (spend-only USDT), creator and treasury paid.
-  function harvestFees(agentId, feeAmount, actor) {
-    const agent = mustAgent(agentId);
-    assertAgentActor(agent, actor);
-    const amt = Number(feeAmount);
-    if (!(amt > 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', 'feeAmount must be positive');
-    if (!(agent.token.twapUsdg > 0)) throw new ApiError(400, 'invalid_input', 'the token has no price (TWAP is 0); the bond share cannot be staked');
-    const s = splitFees(amt, agent.params);
-    agent.bond.tokenQty = money(agent.bond.tokenQty + s.bond / agent.token.twapUsdg);
-    const acct = state.accounts[agentId];
-    acct.balance = money(acct.balance + s.operating);
-    acct.history.push({ ts: Date.now(), kind: 'harvest_operating', amount: s.operating, tx: txHash() });
-    agent.creatorPaid = money(agent.creatorPaid + s.creator);
-    agent.treasuryPaid = money(agent.treasuryPaid + s.treasury);
-    state.treasury.balance = money(state.treasury.balance + s.treasury);
-    agent.ledger.push({ ts: Date.now(), kind: 'harvest', fee: amt, ...s });
+    const amt = Number(amount);
+    if (!(amt > 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', 'amount must be a positive USDT amount');
+    const taken = takeFromOwner(actor?.key ?? (agent.ownerKeyId ? state.keys[agent.ownerKeyId] : null), amt, 'stake', agentId);
+    agent.bond.usdt = money(agent.bond.usdt + taken);
+    agent.stakedIn = money((agent.stakedIn ?? 0) + taken);
+    agent.ledger.push({ ts: Date.now(), kind: 'stake', amount: taken });
     syncAgentCapacity(agent);
     persist();
-    return { agent: agentId, fee: amt, split: s, bond_capacity_usdg: bondCapacity(agentRawBond(agent), agent.params) };
+    return publicAgent(agent);
+  }
+  // The owner funds the agent's compute balance (its model calls). Owner-only.
+  function fundCompute(agentId, amount, actor) {
+    const agent = mustAgent(agentId);
+    assertAgentActor(agent, actor);
+    const amt = Number(amount);
+    if (!(amt > 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', 'amount must be a positive USDT amount');
+    const taken = takeFromOwner(actor?.key ?? (agent.ownerKeyId ? state.keys[agent.ownerKeyId] : null), amt, 'compute', agentId);
+    const acct = state.accounts[agentId];
+    acct.balance = money(acct.balance + taken);
+    acct.history.push({ ts: Date.now(), kind: 'compute_funded', amount: taken, tx: txHash() });
+    agent.fundedCompute = money((agent.fundedCompute ?? 0) + taken);
+    agent.ledger.push({ ts: Date.now(), kind: 'compute', amount: taken });
+    persist();
+    return publicAgent(agent);
   }
 
-  // On a launched agent's settled task: protocol fee (burn/treasury) out of the
-  // payout, then net routed owner / token-buyback / bond top-up.
+  // On an agent's settled task: the protocol fee out of the payout, then the
+  // net routed owner / stake top-up, with the compute top-up out of the
+  // owner's share while the compute balance is low.
   function routeAgentRevenue(agent, settledPrice, taskId = null) {
     const f = protocolFeeSplit(settledPrice, agent.params);
     state.treasury.balance = money(state.treasury.balance + f.treasury);
-    state.treasury.burned = money(state.treasury.burned + f.burn);
-    agent.burned = money(agent.burned + f.burn);
     agent.treasuryPaid = money(agent.treasuryPaid + f.treasury);
     const net = netPayoutSplit(f.net, agent.params);
-    // compute top-up: while the compute balance is low, a share of net moves
-    // into it from the owner's share; buyback and bond are untouched
     const acct = state.accounts[agent.id];
     const rule = topUpRule(agent);
     const tu = topUpFromRevenue({ net: f.net, ownerShare: net.owner, balance: acct?.balance ?? 0 }, rule);
@@ -1440,13 +1369,10 @@ export function createEngine(cfg = {}) {
       agent.toppedUpCompute = money((agent.toppedUpCompute ?? 0) + tu.topUp);
     }
     agent.ownerPaid = money(agent.ownerPaid + tu.owner);
-    agent.buyback = money(agent.buyback + net.buyback);
-    state.treasury.buyback = money(state.treasury.buyback + net.buyback);
-    const twap = agent.token.twapUsdg;
-    const bondTokens = twap > 0 ? money(net.bond / twap) : 0;
-    agent.bond.tokenQty = money(agent.bond.tokenQty + bondTokens);
+    giveToOwner(agent.ownerKeyId, tu.owner, 'agent_revenue', agent.id);
+    agent.bond.usdt = money(agent.bond.usdt + net.bond);
     agent.bondToppedUp = money(agent.bondToppedUp + net.bond);
-    agent.ledger.push({ ts: Date.now(), kind: 'revenue', taskId, price: f.price, fee: f.fee, burn: f.burn, treasury: f.treasury, net: f.net, owner: tu.owner, buyback: net.buyback, bond: net.bond, top_up: tu.topUp, bondTokens, twap });
+    agent.ledger.push({ ts: Date.now(), kind: 'revenue', taskId, price: f.price, fee: f.fee, treasury: f.treasury, net: f.net, owner: tu.owner, bond: net.bond, top_up: tu.topUp });
     syncAgentCapacity(agent);
   }
   // The owner-set top-up rule, within the cap; defaults from the launch snapshot.
@@ -1476,78 +1402,71 @@ export function createEngine(cfg = {}) {
   }
 
   // An upheld dispute unwinds the revenue a settled task routed: owner,
-  // buyback, bond top-up, burn and treasury all come back off the books.
+  // stake top-up and treasury all come back off the books.
   function reverseAgentRevenue(agent, task) {
     const rev = agent.ledger.find((e) => e.kind === 'revenue' && e.taskId === task.id && !e.reversed);
     if (!rev) return null;
     rev.reversed = true;
     agent.ownerPaid = money(agent.ownerPaid - rev.owner);
-    agent.buyback = money(agent.buyback - rev.buyback);
+    const acct = agent.ownerKeyId ? state.accounts[agent.ownerKeyId] : null;
+    if (acct && rev.owner > 0) { acct.balance = money(acct.balance - rev.owner); acct.history.push({ ts: Date.now(), kind: 'agent_revenue_reversed', amount: -rev.owner, agent: agent.id, tx: txHash() }); }
     agent.bondToppedUp = money(agent.bondToppedUp - rev.bond);
-    agent.bond.tokenQty = money(Math.max(0, agent.bond.tokenQty - (rev.bondTokens ?? 0)));
-    agent.burned = money(agent.burned - rev.burn);
+    agent.bond.usdt = money(Math.max(0, agent.bond.usdt - rev.bond));
     agent.treasuryPaid = money(agent.treasuryPaid - rev.treasury);
     state.treasury.balance = money(state.treasury.balance - rev.treasury);
-    state.treasury.burned = money(state.treasury.burned - rev.burn);
-    state.treasury.buyback = money(state.treasury.buyback - rev.buyback);
-    agent.ledger.push({ ts: Date.now(), kind: 'revenue_reversed', taskId: task.id, price: rev.price, owner: rev.owner, buyback: rev.buyback, bond: rev.bond, burn: rev.burn, treasury: rev.treasury });
+    agent.ledger.push({ ts: Date.now(), kind: 'revenue_reversed', taskId: task.id, price: rev.price, owner: rev.owner, bond: rev.bond, treasury: rev.treasury });
     syncAgentCapacity(agent);
     return rev;
   }
 
-  // Queue a slash of a launched agent's token bond for a bad outcome. Sized in
-  // USDT off the FULL bond at TWAP (unbonding tokens included, no liquidity
-  // floor), taken in platform token, and double-capped: a single verdict can
-  // never exceed maxSlashMultiple x price, and no more than rollingSlashCap of
-  // bond value can be slashed within a rolling window. Funds move only after
-  // pendingSlashMs (instantly in fast mode) and never while the guardian has
-  // paused. Returns the USDT value queued.
-  function queueAgentSlash(agent, priceUsdg, multiple, meta = {}) {
+  // Queue a slash of an agent's stake for a bad outcome. Sized off the FULL
+  // stake (an unstaking request included: nothing in flight escapes it) and
+  // double-capped: a single verdict can never exceed maxSlashMultiple x price,
+  // and no more than rollingSlashCap of the stake can be slashed within a
+  // rolling window. Funds move only after pendingSlashMs (instantly in fast
+  // mode) and never while the guardian has paused. Returns the USDT queued.
+  function queueAgentSlash(agent, priceUsdt, multiple, meta = {}) {
     const now = Date.now();
     const windowMs = agent.params.rollingSlashWindowMs;
     agent.slashWindow = (agent.slashWindow ?? []).filter((e) => now - e.ts < windowMs);
-    const slashedInWindowUsdg = money(agent.slashWindow.reduce((a, e) => a + e.amountUsdg, 0));
-    const plan = slashPlan({
-      priceUsdg, multiple,
-      twapUsdg: agent.token.twapUsdg,
-      bondRawValueUsdg: slashBase({ tokenQty: agent.bond.tokenQty, twapUsdg: agent.token.twapUsdg }),
-      slashedInWindowUsdg,
-    }, agent.params);
-    agent.slashWindow.push({ ts: now, amountUsdg: plan.amountUsdg });
+    const slashedInWindowUsdt = money(agent.slashWindow.reduce((a, e) => a + e.amountUsdt, 0));
+    const plan = slashPlan({ priceUsdt, multiple, stakeUsdt: agent.bond.usdt, slashedInWindowUsdt }, agent.params);
+    agent.slashWindow.push({ ts: now, amountUsdt: plan.amountUsdt });
     const delay = cfg.fast ? 0 : agent.params.pendingSlashMs; // fast mode: funds move at once (unless paused)
     const ps = {
       id: id('slh'), agent_id: agent.id, provider_id: agent.providerId, task_id: meta.taskId ?? null, reason: meta.reason ?? null,
-      price_usdg: priceUsdg, multiple, amount_usdg: plan.amountUsdg, token_qty: plan.tokenQty, capped: plan.capped,
+      price_usdt: priceUsdt, multiple, amount_usdt: plan.amountUsdt, capped: plan.capped,
       queued_at: now, execute_after: now + delay, status: 'pending',
     };
     state.launchpad.pending_slashes.push(ps);
-    agent.ledger.push({ ts: now, kind: 'slash_queued', slash_id: ps.id, price: priceUsdg, multiple, ...plan, execute_after: ps.execute_after });
+    agent.ledger.push({ ts: now, kind: 'slash_queued', slash_id: ps.id, price: priceUsdt, multiple, ...plan, execute_after: ps.execute_after });
     if (delay > 0) {
       const t = setTimeout(() => { if (processPendingSlashes() > 0) persist(); }, delay);
       t.unref?.();
     }
     processPendingSlashes(); // applies now in fast mode (unless the guardian paused)
-    return plan.amountUsdg;
+    return plan.amountUsdt;
   }
 
   function executePendingSlash(ps) {
     const agent = state.agents[ps.agent_id];
     if (!agent) { ps.status = 'void'; return; }
-    const qty = Math.min(ps.token_qty, agent.bond.tokenQty);
-    agent.bond.tokenQty = money(agent.bond.tokenQty - qty);
-    // The slash eats into an unbonding request first: nothing in flight escapes it.
-    if (agent.unbonding && agent.unbonding.tokenQty > agent.bond.tokenQty) agent.unbonding.tokenQty = agent.bond.tokenQty;
-    agent.slashedUsdg = money((agent.slashedUsdg ?? 0) + ps.amount_usdg);
-    state.insurance.balance = money(state.insurance.balance + ps.amount_usdg);
-    state.insurance.funded = money(state.insurance.funded + ps.amount_usdg);
+    const taken = money(Math.min(ps.amount_usdt, agent.bond.usdt));
+    agent.bond.usdt = money(agent.bond.usdt - taken);
+    // The slash eats into an unstaking request first: nothing in flight escapes it.
+    if (agent.unbonding && agent.unbonding.usdt > agent.bond.usdt) agent.unbonding.usdt = agent.bond.usdt;
+    agent.slashedUsdt = money((agent.slashedUsdt ?? 0) + taken);
+    state.insurance.balance = money(state.insurance.balance + taken);
+    state.insurance.funded = money(state.insurance.funded + taken);
     ps.status = 'executed';
     ps.executed_at = Date.now();
-    agent.ledger.push({ ts: ps.executed_at, kind: 'slash', slash_id: ps.id, price: ps.price_usdg, multiple: ps.multiple, amountUsdg: ps.amount_usdg, tokenQty: qty, capped: ps.capped });
+    ps.taken_usdt = taken;
+    agent.ledger.push({ ts: ps.executed_at, kind: 'slash', slash_id: ps.id, price: ps.price_usdt, multiple: ps.multiple, amountUsdt: taken, capped: ps.capped });
     syncAgentCapacity(agent);
   }
 
   // Execute every due pending slash. Called on queue, on unpause, on boot and
-  // lazily from the launchpad reads so serverless deployments (no timers) make
+  // lazily from the agent reads so serverless deployments (no timers) make
   // progress too. Returns how many executed.
   function processPendingSlashes() {
     if (state.launchpad.paused) return 0;
@@ -1572,7 +1491,7 @@ export function createEngine(cfg = {}) {
     return {
       paused: !!state.launchpad.paused,
       pending_slashes: pending.length,
-      pending_slash_usdg: money(pending.reduce((s, p) => s + p.amount_usdg, 0)),
+      pending_slash_usdt: money(pending.reduce((s, p) => s + p.amount_usdt, 0)),
       queue: pending.map(publicPendingSlash),
     };
   }
@@ -1584,55 +1503,43 @@ export function createEngine(cfg = {}) {
     return guardianStatus();
   }
 
-  // Owner requests unbonding; the amount can't back new quotes and stays
+  // Owner requests unstaking; the amount can't back new quotes and stays
   // slashable until the cooldown passes. A second request adds to the first
   // and restarts the cooldown for the combined amount. Public event.
-  function requestUnbond(agentId, tokenQty, actor) {
+  function requestUnbond(agentId, amount, actor) {
     const agent = mustAgent(agentId);
     assertAgentActor(agent, actor);
-    const add = Number(tokenQty) || 0;
-    if (!(add > 0)) throw new ApiError(400, 'invalid_input', 'tokenQty must be positive');
-    const qty = Math.min(money((agent.unbonding?.tokenQty ?? 0) + add), agent.bond.tokenQty);
-    if (!(qty > 0)) throw new ApiError(409, 'nothing_to_unbond', 'The bond holds no tokens.');
+    const add = Number(amount) || 0;
+    if (!(add > 0)) throw new ApiError(400, 'invalid_input', 'amount must be positive');
+    const usdt = Math.min(money((agent.unbonding?.usdt ?? 0) + add), agent.bond.usdt);
+    if (!(usdt > 0)) throw new ApiError(409, 'nothing_to_unbond', 'The agent has no stake.');
     const now = Date.now();
-    agent.unbonding = { tokenQty: qty, requestedAt: now, releaseAt: now + agentDelay(agent.params.unbondingCooldownMs) };
-    agent.ledger.push({ ts: now, kind: 'unbond_request', tokenQty: qty, release_at: agent.unbonding.releaseAt });
+    agent.unbonding = { usdt, requestedAt: now, releaseAt: now + agentDelay(agent.params.unbondingCooldownMs) };
+    agent.ledger.push({ ts: now, kind: 'unstake_request', usdt, release_at: agent.unbonding.releaseAt });
     syncAgentCapacity(agent);
     persist();
     return publicAgent(agent);
   }
 
-  // After the cooldown the owner withdraws the unbonded tokens. The amount is
-  // whatever survived slashing in the meantime.
+  // After the cooldown the owner withdraws the unstaked USDT back to the
+  // owner key's account. The amount is whatever survived slashing meanwhile.
   function withdrawUnbonded(agentId, actor) {
     const agent = mustAgent(agentId);
     assertAgentActor(agent, actor);
-    if (!agent.unbonding) throw new ApiError(409, 'nothing_unbonding', 'No unbonding request is open for this agent.');
+    if (!agent.unbonding) throw new ApiError(409, 'nothing_unbonding', 'No unstaking request is open for this agent.');
     if (Date.now() < agent.unbonding.releaseAt) {
-      throw new ApiError(409, 'unbond_cooldown', 'The unbonding cooldown has not passed yet.', { release_at: agent.unbonding.releaseAt });
+      throw new ApiError(409, 'unbond_cooldown', 'The unstaking cooldown has not passed yet.', { release_at: agent.unbonding.releaseAt });
     }
     processPendingSlashes();
-    const qty = money(Math.min(agent.unbonding.tokenQty, agent.bond.tokenQty));
-    agent.bond.tokenQty = money(agent.bond.tokenQty - qty);
+    const usdt = money(Math.min(agent.unbonding.usdt, agent.bond.usdt));
+    agent.bond.usdt = money(agent.bond.usdt - usdt);
     agent.unbonding = null;
-    agent.withdrawnTokens = money((agent.withdrawnTokens ?? 0) + qty);
-    agent.ledger.push({ ts: Date.now(), kind: 'unbond_withdraw', tokenQty: qty });
+    agent.unstakedOut = money((agent.unstakedOut ?? 0) + usdt);
+    giveToOwner(actor?.key?.id ?? agent.ownerKeyId, usdt, 'unstake', agent.id);
+    agent.ledger.push({ ts: Date.now(), kind: 'unstake_withdraw', usdt });
     syncAgentCapacity(agent);
     persist();
-    return { ...publicAgent(agent), withdrawn_token_qty: qty };
-  }
-
-  // Sandbox price feed: move an agent token's TWAP / liquidity. A price drop
-  // shrinks capacity (no liquidation); open tasks continue.
-  function setAgentPrice(agentId, { twap_usdg, pool_liquidity_usdg } = {}, actor) {
-    const agent = mustAgent(agentId);
-    assertAgentActor(agent, actor);
-    if (agent.chain?.status === 'live') throw new ApiError(409, 'chain_priced', 'This token is priced from its on-chain curve; the sandbox price feed is disabled for it.');
-    if (twap_usdg !== undefined) agent.token.twapUsdg = Math.max(0, Number(twap_usdg) || 0);
-    if (pool_liquidity_usdg !== undefined) agent.token.poolLiquidityUsdg = Math.max(0, Number(pool_liquidity_usdg) || 0);
-    syncAgentCapacity(agent);
-    persist();
-    return publicAgent(agent);
+    return { ...publicAgent(agent), withdrawn_usdt: usdt };
   }
 
   function getAgent(agentId) {
@@ -2088,8 +1995,7 @@ export function createEngine(cfg = {}) {
     openDispute, getDispute, registerProvider,
     listProviders, getProvider, insuranceStats, getAttestation, attestorKey,
     verifyOutput, createWorkflow, getWorkflow,
-    launchAgent, harvestFees, requestUnbond, withdrawUnbonded, setAgentPrice, getAgent, listAgents,
-    confirmLaunch, refreshAgentChain, refreshStaleChains, agentTokenMetadata, agentClaimIntent,
+    launchAgent, addStake, fundCompute, requestUnbond, withdrawUnbonded, getAgent, listAgents,
     guardianStatus, setGuardian, processPendingSlashes,
   };
 }

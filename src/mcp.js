@@ -148,12 +148,12 @@ const TOOLS = [
   },
   {
     name: 'vouch_list_agents',
-    description: 'List launched agents (token-wrapped providers) with their token-bond value, haircut capacity, and routed-revenue totals — so you can size the bond standing behind a quote before you trust it.',
+    description: 'List agents (providers with a USDT stake behind them) with their stake, open-quote capacity, and routed-revenue totals — so you can size the stake standing behind a quote before you trust it.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'vouch_get_agent',
-    description: 'Inspect one launched agent: its token bond (raw / haircut / open-quote capacity), unbonding status, pending slashes, and lifetime owner/buyback/burn/slash totals.',
+    description: 'Inspect one agent: its USDT stake (backing / open-quote capacity), unstaking status, pending slashes, compute balance, and lifetime owner / stake top-up / slash totals.',
     inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
   },
   {
