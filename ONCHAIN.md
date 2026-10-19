@@ -1,10 +1,9 @@
 # On-chain: what is real today, and the settlement design
 
 > **Status, plainly:** task escrow, provider stake and slashing settle in a
-> sandbox ledger inside `src/engine.js`. Three things touch Solana for real:
-> wallet sign-in, USDT deposits and withdrawals (when a deployment turns real
-> funds on), and agent tokens launched on pump.fun. The escrow program is
-> not written. Settles in a sandbox ledger today. On-chain settlement is next.
+> sandbox ledger inside `src/engine.js`. Two things touch Solana for real:
+> wallet sign-in and USDT deposits and withdrawals (when a deployment turns
+> real funds on). The escrow program is not written. Settles in a sandbox ledger today. On-chain settlement is next.
 
 The chain is **Solana**. The settlement asset is **USDT** (the SPL mint
 `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB`, 6 decimals). Everything
@@ -16,40 +15,26 @@ chain-side runs with zero dependencies in `src/chain/`:
 | `ed25519.js` | Signing and verification through Node's crypto; the on-curve check program-derived addresses need |
 | `solana.js` | PDAs, associated token accounts, system and SPL token instructions, signing a compiled message |
 | `rpc.js` | The JSON-RPC calls used: transactions, accounts, balances, blockhash, send |
-| `pump.js` | pump.fun: the `create` instruction, launch verification, bonding-curve reads, creator vault reads, the `collect_creator_fee` claim |
 | `funds.js` | USDT: deposit and payout verification from token balance changes, treasury-signed payouts |
 | `../../public/assets/solmsg.js` | The legacy message compiler, shared with the browser |
 
 The browser side (`public/assets/sol.js`) discovers wallets through the
 Wallet Standard (Phantom, Solflare, Backpack and others register themselves),
 compiles server-prepared instructions with a fresh blockhash, simulates
-them, co-signs with a mint key generated in the browser, and hands the
-transaction to the wallet to sign and send. Vouch never sees a private key.
+them, and hands the transaction to the wallet to sign and send. Vouch never
+sees a private key, and the browser reaches the RPC only through
+`POST /v1/chain/rpc`, so the RPC URL and any key in it stay on the server.
 
 ## What is on-chain today
 
-### Token launches on pump.fun
+### Agent stakes
 
-- `POST /v1/agents` with a `launch` object prepares the exact pump.fun
-  `create` instruction: the agent's name and symbol, a metadata URI that
-  points back at `GET /v1/agents/{id}/token.json` (served here, so no
-  third-party upload), and the creator who earns the curve's creator fee
-  (the launcher's wallet unless `VOUCH_CREATOR_FEE_RECIPIENT` names another
-  address). The mint is a keypair the launcher generated; it co-signs.
-- `POST /v1/agents/{id}/launch/confirm` reads the confirmed transaction,
-  requires a `create` on the pump.fun program from the expected wallet with
-  the expected mint, and records the mint and the bonding-curve PDA.
-- From then on the engine decodes the bonding curve account (virtual and
-  real reserves, completion) to price the bond in SOL, converts with the SOL
-  rate from `VOUCH_SOL_USD` or `VOUCH_SOL_USD_URL`, and reads the creator
-  vault for accrued fees. `GET /v1/agents/{id}/claim` returns the
-  `collect_creator_fee` instruction the creator's wallet signs.
-- The program-derived addresses and instruction discriminators are checked
-  in `test/solana.test.js` against pump.fun's published values.
-
-pump.fun's creator fee is fixed by the protocol, not chosen per launch. The
-launchpad's "fees bond the agent" economics therefore run on whatever that
-fee pays, plus the job-revenue routing that does not depend on it.
+An agent's stake and compute balance are USDT debited from its owner's
+account in the engine ledger. With real funds on, that account is deposited
+USDT, so a stake is real money the owner put in; it is held by the treasury
+like every other balance until the escrow program exists. Verified work
+credits the owner's share back to the same account, where it can be
+withdrawn. Slashes move stake into the insurance pool in the ledger.
 
 ### USDT deposits and withdrawals
 
@@ -78,7 +63,8 @@ way. See `DEPLOYMENT.md`.
 ```
 
 - **Custody moves on-chain.** A program holds the task's escrow in USDT and
-  the provider's reserved stake for the lifetime of the task. The engine
+  the provider's reserved stake (an agent's USDT stake) for the lifetime of
+  the task. The engine
   never touches funds; it instructs.
 - **The engine is the verifier oracle.** Verification stays off-chain. The
   engine signs a verdict `(taskId, pass, receiptHash)` with an ed25519 key;
@@ -102,7 +88,7 @@ way. See `DEPLOYMENT.md`.
 - `src/engine.js` swaps its internal `lockEscrow` / `settleEscrow` /
   `slashProvider` calls for calls to the settlement adapter.
 - `src/settlement.js` gains a Solana backend beside `mockChain()`: the
-  program's instructions encoded like `src/chain/pump.js` encodes pump.fun's,
+  program's instructions encoded with the helpers in `src/chain/solana.js`,
   sent through `src/chain/rpc.js`.
 - Env: `VOUCH_ESCROW_PROGRAM`, `VOUCH_VERIFIER_KEY`. Absent, the sandbox
   ledger stays.

@@ -62,59 +62,61 @@ test('full HTTP loop: key → deposit → offers → task → settled', async ()
   }
 });
 
-test('launchpad HTTP: launch → harvest → price-drop → unbond over /v1/agents (owner-gated)', async () => {
+test('agents HTTP: launch with a stake → add stake → unstake over /v1/agents (owner-gated)', async () => {
   const { server, call } = await boot();
   try {
     const KEY = (await call('POST', '/v1/keys', { body: { name: 'launcher' } })).body.key;
     const OTHER = (await call('POST', '/v1/keys', { body: { name: 'stranger' } })).body.key;
 
-    // Launch requires a Bearer key and records who launched.
-    const anon = await call('POST', '/v1/agents', { body: { symbol: 'CALC' } });
+    // Launch requires a Bearer key and records who launched; the stake comes out of that key.
+    const anon = await call('POST', '/v1/agents', { body: { name: 'calc' } });
     assert.equal(anon.status, 401);
+    const broke = await call('POST', '/v1/agents', { key: KEY, body: { owner: '0xowner', name: 'calc', stake: 500 } });
+    assert.equal(broke.status, 402); assert.equal(broke.body.error.code, 'insufficient_balance');
     const launched = await call('POST', '/v1/agents', {
-      key: KEY, body: { owner: '0xowner', symbol: 'CALC', twap_usdg: 1, pool_liquidity_usdg: 5000 },
+      key: KEY, body: { owner: '0xowner', name: 'calc', stake: 2 },
     });
     assert.equal(launched.status, 201);
     const id = launched.body.id;
     assert.match(id, /^agt_/);
     const me = (await call('GET', '/v1/me', { key: KEY })).body;
     assert.equal(launched.body.owner_key_id, me.key_id);
-    assert.equal(typeof launched.body.pending_slash_usdg, 'number');
+    assert.equal(launched.body.bond.stake_usdt, 2); assert.equal(launched.body.bond.capacity_usdt, 1);
+    assert.equal(typeof launched.body.pending_slash_usdt, 'number');
+    assert.equal((await call('GET', '/v1/balance', { key: KEY })).body.balance, 3, 'the faucet 5 minus the stake');
 
     const list = await call('GET', '/v1/agents');
     assert.ok(list.body.agents.some((a) => a.id === id));
 
     // Writes: the owner's key works; another key and no key are 403 not_owner.
-    const stranger = await call('POST', `/v1/agents/${id}/harvest`, { key: OTHER, body: { fee_amount: 1000 } });
+    const stranger = await call('POST', `/v1/agents/${id}/stake`, { key: OTHER, body: { amount: 1 } });
     assert.equal(stranger.status, 403);
     assert.equal(stranger.body.error.code, 'not_owner');
-    const nobody = await call('POST', `/v1/agents/${id}/price`, { body: { twap_usdg: 0.5 } });
+    const nobody = await call('POST', `/v1/agents/${id}/unstake`, { body: { amount: 1 } });
     assert.equal(nobody.status, 403);
     assert.equal(nobody.body.error.code, 'not_owner');
 
-    const harvested = await call('POST', `/v1/agents/${id}/harvest`, { key: KEY, body: { fee_amount: 1000 } });
-    assert.equal(harvested.status, 200);
-    assert.deepEqual(harvested.body.split, { bond: 500, operating: 300, creator: 150, treasury: 50 });
+    const more = await call('POST', `/v1/agents/${id}/stake`, { key: KEY, body: { amount: 1 } });
+    assert.equal(more.status, 200);
+    assert.equal(more.body.bond.stake_usdt, 3); assert.equal(more.body.bond.capacity_usdt, 1.5); // 3 / 2
 
-    const got = await call('GET', `/v1/agents/${id}`);
-    assert.equal(got.body.bond.capacity_usdg, 125); // 500 * 0.5 / 2
+    const fed = await call('POST', `/v1/agents/${id}/compute`, { key: KEY, body: { amount: 1 } });
+    assert.equal(fed.status, 200); assert.equal(fed.body.compute.balance, 1);
 
-    const priced = await call('POST', `/v1/agents/${id}/price`, { key: KEY, body: { twap_usdg: 0.5 } });
-    assert.equal(priced.body.bond.capacity_usdg, 62.5); // capacity halves with price
+    const unstake = await call('POST', `/v1/agents/${id}/unstake`, { key: KEY, body: { amount: 1 } });
+    assert.equal(unstake.status, 202);
+    assert.ok(unstake.body.unbonding.release_at > Date.now()); assert.equal(unstake.body.unbonding.usdt, 1);
+    assert.equal(unstake.body.bond.capacity_usdt, 1);
+    assert.equal((await call('POST', `/v1/agents/${id}/unbond`, { key: KEY, body: { amount: 0.5 } })).status, 202, 'the old path is an alias');
 
-    const unbond = await call('POST', `/v1/agents/${id}/unbond`, { key: KEY, body: { token_qty: 100 } });
-    assert.equal(unbond.status, 202);
-    assert.ok(unbond.body.unbonding.release_at > Date.now());
-
-    // The admin token substitutes for the owner key.
+    // The admin token substitutes for the owner key; the stake still comes from the owner key.
     process.env.VOUCH_ADMIN_TOKEN = 'adm-token';
     try {
-      const res = await fetch(`${(await call('GET', '/health')).headers.get('x-noop') ?? ''}`.length ? '' : `${server.address().port}`).catch(() => null);
-      void res;
-      const asAdmin = await fetch(`http://localhost:${server.address().port}/v1/agents/${id}/price`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Token': 'adm-token' }, body: JSON.stringify({ twap_usdg: 1 }),
+      const asAdmin = await fetch(`http://localhost:${server.address().port}/v1/agents/${id}/stake`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Token': 'adm-token' }, body: JSON.stringify({ amount: 1 }),
       });
       assert.equal(asAdmin.status, 200);
+      assert.equal((await call('GET', '/v1/balance', { key: KEY })).body.balance, 0);
     } finally { delete process.env.VOUCH_ADMIN_TOKEN; }
   } finally {
     server.close();

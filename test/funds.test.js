@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { createEngine } from '../src/engine.js';
 import { createApp } from '../server.js';
-import { fundsConfig, toUnits, parseTokenMovement, USDT } from '../src/chain/funds.js';
-import { pumpConfig } from '../src/chain/pump.js';
+import { fundsConfig, chainConfig, toUnits, parseTokenMovement, USDT } from '../src/chain/funds.js';
+
 import { randomKeypair, sign, verify } from '../src/chain/ed25519.js';
 import { encodeBase58 } from '../src/chain/base58.js';
 import { associatedTokenAddress, PROGRAMS, fromBase64 } from '../src/chain/solana.js';
@@ -42,7 +42,7 @@ function fakeChain() {
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ url: `http://127.0.0.1:${server.address().port}`, txs, sent, close: () => server.close() })));
 }
-const realCfg = (url, extra = {}) => ({ fast: true, chain: pumpConfig({ VOUCH_CHAIN_RPC: url }), funds: fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: TREASURY.address, ...extra }) });
+const realCfg = (url, extra = {}) => ({ fast: true, chain: chainConfig({ VOUCH_CHAIN_RPC: url }), funds: fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: TREASURY.address, ...extra }) });
 
 test('funds: config derives the treasury token account, refuses a key that is not the treasury\'s, and defaults to USDT', () => {
   const f = fundsConfig({ VOUCH_REAL_FUNDS: '1', VOUCH_TREASURY_ADDRESS: TREASURY.address, VOUCH_TREASURY_KEY: TREASURY_SECRET });
@@ -182,7 +182,7 @@ test('funds: a failed automatic payout gives the balance back', async () => {
     const key = e.authenticate(e.authVerify(USER.address, signMsg(message, USER)).key);
     const dep = sig(0xaa); chain.txs[dep] = transferTx(USER.address, TREASURY.address, 10_000000n);
     await e.confirmDeposit(key, dep);
-    e.cfg.chain = pumpConfig({ VOUCH_CHAIN_RPC: 'http://127.0.0.1:1' });   // unreachable node for the send
+    e.cfg.chain = chainConfig({ VOUCH_CHAIN_RPC: 'http://127.0.0.1:1' });   // unreachable node for the send
     await assert.rejects(e.requestWithdrawal(key, 5), /could not be sent/);
     assert.equal(e.balance(key).balance, 10, 'refunded');
     assert.equal(e.listWithdrawals(key)[0].status, 'failed');

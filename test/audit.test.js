@@ -203,10 +203,10 @@ test('launchpad: a slash is queued behind the guardian; pause holds it, unpause 
   try {
     const KEY = (await call('POST', '/v1/keys', { body: {} })).body.key;
     const launched = await call('POST', '/v1/agents', {
-      key: KEY, body: { name: 'calc', owner: '0xo', twap_usdg: 1, pool_liquidity_usdg: 5000, endpoint_url: bad.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } } },
+      key: KEY, body: { name: 'calc', owner: '0xo', stake: 2, endpoint_url: bad.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } } },
     });
     const id = launched.body.id;
-    await call('POST', `/v1/agents/${id}/harvest`, { key: KEY, body: { fee_amount: 100 } }); // bond 50 tokens
+    assert.equal(launched.body.bond.stake_usdt, 2);
     engine.state.providers = Object.fromEntries(Object.entries(engine.state.providers).filter(([pid]) => pid === launched.body.provider_id));
 
     assert.equal((await call('POST', '/v1/admin/guardian', { body: { paused: true } })).status, 403, 'admin token required');
@@ -214,7 +214,7 @@ test('launchpad: a slash is queued behind the guardian; pause holds it, unpause 
     assert.equal(paused.status, 200);
     assert.equal(paused.body.paused, true);
 
-    const bondBefore = (await call('GET', `/v1/agents/${id}`)).body.bond.token_qty;
+    const bondBefore = (await call('GET', `/v1/agents/${id}`)).body.bond.stake_usdt;
     const insBefore = engine.state.insurance.funded;
     const t = await call('POST', '/v1/tasks', { key: KEY, body: { capability: 'math.eval', input: { expression: '1' }, budget: 0.03, deadline_ms: 5000 } });
     assert.equal(t.body.quote.provider, launched.body.provider_id);
@@ -222,8 +222,8 @@ test('launchpad: a slash is queued behind the guardian; pause holds it, unpause 
     assert.equal(done.status, 'refunded');
 
     const held = (await call('GET', `/v1/agents/${id}`)).body;
-    assert.equal(held.bond.token_qty, bondBefore, 'no token moved while paused');
-    assert.ok(held.pending_slash_usdg > 0, 'slash is queued');
+    assert.equal(held.bond.stake_usdt, bondBefore, 'no stake moved while paused');
+    assert.ok(held.pending_slash_usdt > 0, 'slash is queued');
     assert.equal(held.pending_slashes[0].status, 'pending');
     assert.equal(engine.state.insurance.funded, insBefore, 'insurance not credited yet');
     assert.equal(engine.state.launchpad.pending_slashes.length, 1);
@@ -233,53 +233,53 @@ test('launchpad: a slash is queued behind the guardian; pause holds it, unpause 
     const resumed = await call('POST', '/v1/admin/guardian', { headers: { 'X-Admin-Token': 'guardian-secret' }, body: { paused: false } });
     assert.equal(resumed.body.paused, false);
     const after = (await call('GET', `/v1/agents/${id}`)).body;
-    assert.ok(after.bond.token_qty < bondBefore, 'token burned on unpause');
-    assert.equal(after.pending_slash_usdg, 0);
-    assert.ok(after.totals.slashed_usdg > 0);
+    assert.ok(after.bond.stake_usdt < bondBefore, 'stake taken on unpause');
+    assert.equal(after.pending_slash_usdt, 0);
+    assert.ok(after.totals.slashed_usdt > 0);
     assert.ok(engine.state.insurance.funded > insBefore, 'insurance credited when funds moved');
     assert.equal(engine.state.launchpad.pending_slashes[0].status, 'executed');
     assert.equal((await call('POST', '/v1/admin/guardian', { headers: { 'X-Admin-Token': 'guardian-secret' }, body: { paused: 'yes' } })).status, 400);
   } finally { server.close(); bad.close(); delete process.env.VOUCH_ADMIN_TOKEN; }
 });
 
-test('launchpad: unbonding everything (or a thin pool) does not make a slash free', async () => {
+test('launchpad: unstaking everything does not make a slash free', async () => {
   const bad = await fakeProvider({ error: 'boom' }, 40);
   try {
     const engine = createEngine(FAST);
     engine.state.providers = {};
-    const a = engine.launchAgent({ owner: '0xo', name: 'calc', endpoint_url: bad.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, twap_usdg: 1, pool_liquidity_usdg: 5000 });
-    engine.harvestFees(a.id, 100); // 50 tokens
+    const a = engine.launchAgent({ owner: '0xo', name: 'calc', endpoint_url: bad.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 50 });
     const buyer = engine.createKey('b');
     const { task } = engine.createTask(buyer, { capability: 'math.eval', input: { expression: '1' }, budget: 0.03, deadline_ms: 5000 });
-    // While the task is in flight the owner tries to pull the whole bond and the pool drains.
+    // While the task is in flight the owner tries to pull the whole stake.
     engine.requestUnbond(a.id, 50);
-    engine.setAgentPrice(a.id, { pool_liquidity_usdg: 0 });
-    assert.equal(engine.getAgent(a.id).bond.capacity_usdg, 0);
+    assert.equal(engine.getAgent(a.id).bond.capacity_usdt, 0);
     const done = await waitTerminal(engine, task.id);
     assert.equal(done.status, 'refunded');
     const g = engine.getAgent(a.id);
-    assert.ok(g.totals.slashed_usdg > 0, 'slash sized off the full bond at TWAP');
-    assert.ok(g.bond.token_qty < 50);
-    assert.ok(g.unbonding.token_qty <= g.bond.token_qty, 'the slash ate into the unbonding request');
+    assert.ok(g.totals.slashed_usdt > 0, 'slash sized off the full stake');
+    assert.ok(g.bond.stake_usdt < 50);
+    assert.ok(g.unbonding.usdt <= g.bond.stake_usdt, 'the slash ate into the unstaking request');
   } finally { bad.close(); }
 });
 
-test('launchpad: a second unbond request adds to the first; withdraw works only after the cooldown (fast mode shortens it)', async () => {
+test('launchpad: a second unstake request adds to the first; withdraw works only after the cooldown (fast mode shortens it) and lands in the owner key', async () => {
   const engine = createEngine(FAST);
-  const a = engine.launchAgent({ owner: '0xo', twap_usdg: 1, pool_liquidity_usdg: 5000, initial_bond_tokens: 100 });
-  engine.requestUnbond(a.id, 10);
-  const u = engine.requestUnbond(a.id, 20);
-  assert.equal(u.unbonding.token_qty, 30);
-  assert.throws(() => engine.withdrawUnbonded(a.id), (e) => e.code === 'unbond_cooldown');
+  const owner = engine.createKey('owner');
+  engine.deposit(owner, 100);
+  const a = engine.launchAgent({ owner: '0xo', stake: 100 }, owner);
+  assert.equal(engine.balance(owner).balance, 5);
+  engine.requestUnbond(a.id, 10, { key: owner });
+  const u = engine.requestUnbond(a.id, 20, { key: owner });
+  assert.equal(u.unbonding.usdt, 30);
+  assert.throws(() => engine.withdrawUnbonded(a.id, { key: owner }), (e) => e.code === 'unbond_cooldown');
   await sleep(150);
-  const w = engine.withdrawUnbonded(a.id);
-  assert.equal(w.withdrawn_token_qty, 30);
-  assert.equal(w.bond.token_qty, 70);
+  const w = engine.withdrawUnbonded(a.id, { key: owner });
+  assert.equal(w.withdrawn_usdt, 30);
+  assert.equal(w.bond.stake_usdt, 70);
   assert.equal(w.unbonding, null);
-  assert.throws(() => engine.withdrawUnbonded(a.id), (e) => e.code === 'nothing_unbonding');
-  // TWAP 0 harvest is rejected rather than silently losing the bond share.
-  engine.setAgentPrice(a.id, { twap_usdg: 0 });
-  assert.throws(() => engine.harvestFees(a.id, 10), (e) => e.status === 400);
+  assert.equal(w.totals.unstaked_out, 30);
+  assert.equal(engine.balance(owner).balance, 35, 'the unstaked USDT is back in the owner key');
+  assert.throws(() => engine.withdrawUnbonded(a.id, { key: owner }), (e) => e.code === 'nothing_unbonding');
   // Owner-only over the engine when an actor is supplied.
   const other = engine.createKey('other');
   assert.throws(() => engine.requestUnbond(a.id, 1, { key: other, admin: false }), (e) => e.code === 'not_owner');
@@ -294,37 +294,32 @@ test('launchpad: a launch with an invalid endpoint leaves no orphan account', ()
 });
 
 // ---- upheld dispute on a launched agent reverses routed revenue ------------------
-test('an upheld dispute against a launched agent reverses owner/buyback/bond/burn/treasury for that task', async () => {
+test('an upheld dispute against an agent reverses owner/stake/treasury for that task', async () => {
   const good = await fakeProvider({ result: 42 });
   const hook = await jsonServer((body) => ({ pass: !body.context }));
   try {
     const engine = createEngine({ ...FAST, allowPrivateWebhooks: true });
     engine.state.providers = {};
-    const a = engine.launchAgent({ owner: '0xo', name: 'calc', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, twap_usdg: 1, pool_liquidity_usdg: 5000 });
-    engine.harvestFees(a.id, 1000);
+    const a = engine.launchAgent({ owner: '0xo', name: 'calc', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 1000 });
     const treasuryBefore = clone(engine.state.treasury);
     const totalsBefore = engine.getAgent(a.id).totals;
-    const bondBefore = engine.getAgent(a.id).bond.token_qty;
+    const bondBefore = engine.getAgent(a.id).bond.stake_usdt;
     const buyer = engine.createKey('b', { owner: '0xbuyer' });
     engine.deposit(buyer, 1);
     const { task } = engine.createTask(buyer, { capability: 'math.eval', input: { expression: '6*7' }, acceptance: { webhook: hook.url }, budget: 0.03, deadline_ms: 5000 });
     assert.equal((await waitTerminal(engine, task.id)).status, 'settled');
     assert.ok(engine.getAgent(a.id).totals.owner_paid > totalsBefore.owner_paid);
-    assert.ok(engine.getAgent(a.id).bond.token_qty > bondBefore, 'bond topped up by net share');
+    assert.ok(engine.getAgent(a.id).bond.stake_usdt > bondBefore, 'stake topped up by net share');
 
     const d = engine.openDispute(buyer, task.id, { reason: 'wrong' });
     await engine.drain();
     assert.equal(engine.getDispute(buyer, d.id).status, 'upheld');
     const totals = engine.getAgent(a.id).totals;
     assert.equal(totals.owner_paid, totalsBefore.owner_paid);
-    assert.equal(totals.buyback, totalsBefore.buyback);
     assert.equal(totals.bond_topped_up, totalsBefore.bond_topped_up);
-    assert.equal(totals.burned, totalsBefore.burned);
     assert.equal(totals.treasury_paid, totalsBefore.treasury_paid);
     assert.equal(engine.state.treasury.balance, treasuryBefore.balance);
-    assert.equal(engine.state.treasury.burned, treasuryBefore.burned);
-    assert.equal(engine.state.treasury.buyback, treasuryBefore.buyback);
-    assert.ok(totals.slashed_usdg > 0, 'and the bond was slashed for the bad outcome');
+    assert.ok(totals.slashed_usdt > 0, 'and the stake was slashed for the bad outcome');
     assert.ok(engine.state.agents[a.id].ledger.some((e) => e.kind === 'revenue_reversed' && e.taskId === task.id));
   } finally { good.close(); hook.close(); }
 });
@@ -403,8 +398,7 @@ test('rubric-only (and schema-only) settlements earn a launched agent reduced re
   try {
     const engine = createEngine(FAST);
     engine.state.providers = {};
-    const a = engine.launchAgent({ owner: '0xo', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, twap_usdg: 1, pool_liquidity_usdg: 5000 });
-    engine.harvestFees(a.id, 1000);
+    const a = engine.launchAgent({ owner: '0xo', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 1000 });
     const pid = engine.getAgent(a.id).provider_id;
     const buyer = engine.createKey('b', { owner: '0xb' });
     const t0 = engine.state.providers[pid].track;

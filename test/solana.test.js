@@ -1,5 +1,5 @@
 // The Solana primitives: base58, ed25519 signing and the curve check,
-// program-derived addresses against pump.fun's published ones, the legacy
+// program-derived addresses, the legacy
 // message compiler round-tripped through the parser, SPL instructions.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,6 @@ import { encodeBase58, decodeBase58, isPubkey } from '../src/chain/base58.js';
 import { isOnCurve, randomKeypair, sign, verify, verifyMessage, keypairFromSecret } from '../src/chain/ed25519.js';
 import { PROGRAMS, findProgramAddress, associatedTokenAddress, anchorDiscriminator, borshString, ix, signTransaction, toBase64, fromBase64 } from '../src/chain/solana.js';
 import { compileMessage, serializeMessage, parseTransaction, compactU16, readCompactU16, u64le, readU64le } from '../public/assets/solmsg.js';
-import { pda, DISC, PUMP } from '../src/chain/pump.js';
 import { USDT } from '../src/chain/funds.js';
 
 test('base58: the system program is 32 zero bytes, USDT\'s mint round-trips, junk is refused', () => {
@@ -41,19 +40,16 @@ test('ed25519: sign and verify, wallet-style base58 and hex signatures, a 64-byt
   assert.equal(isOnCurve(decodeBase58(associatedTokenAddress(kp.address, USDT.mint))), false);
 });
 
-test('program-derived addresses match pump.fun\'s published ones; discriminators match the IDL', () => {
-  assert.equal(pda.global(), '4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf');
-  assert.equal(pda.mintAuthority(), 'TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM');
-  assert.equal(pda.eventAuthority(), 'Ce6TQqeHC9p8KetsN6JsjHK7UTZk7nasjjnr7XxXp9F1');
-  assert.deepEqual([...DISC.create], [24, 30, 200, 40, 5, 28, 7, 119]);
-  assert.deepEqual([...DISC.buy], [102, 6, 61, 18, 1, 218, 235, 234]);
-  assert.deepEqual([...DISC.sell], [51, 230, 133, 164, 1, 127, 131, 173]);
-  assert.deepEqual([...anchorDiscriminator('collect_creator_fee')], [20, 22, 86, 123, 198, 28, 219, 132]);
-  const { address, bump } = findProgramAddress(['global'], PUMP.program);
-  assert.equal(address, pda.global()); assert.ok(bump >= 0 && bump <= 255);
-  // a curve PDA depends on the mint; the ATA on owner and mint
+test('program-derived addresses: deterministic, off the curve, with a bump; Anchor discriminators', () => {
+  const prog = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+  const { address, bump } = findProgramAddress(['global'], prog);
+  assert.equal(address, findProgramAddress(['global'], prog).address); assert.ok(bump >= 0 && bump <= 255);
+  assert.equal(isOnCurve(decodeBase58(address)), false);
+  assert.notEqual(findProgramAddress(['a'], prog).address, findProgramAddress(['b'], prog).address);
+  assert.throws(() => findProgramAddress([new Uint8Array(33)], prog), /32 bytes/);
+  // sha256("global:create")[0..8], the Anchor convention
+  assert.deepEqual([...anchorDiscriminator('create')], [24, 30, 200, 40, 5, 28, 7, 119]);
   const mint = randomKeypair().address;
-  assert.notEqual(pda.bondingCurve(mint), pda.bondingCurve(randomKeypair().address));
   assert.equal(associatedTokenAddress(mint, USDT.mint), associatedTokenAddress(mint, USDT.mint));
   assert.deepEqual([...borshString('ab')], [2, 0, 0, 0, 97, 98]);
 });

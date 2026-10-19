@@ -58,14 +58,14 @@ test('worked example: top-up from the owner share, then spend, fee and the sourc
   const f = protocolFeeSplit(200, p);
   assert.equal(f.fee, 10); assert.equal(f.net, 190);
   const net = netPayoutSplit(f.net, p);
-  assert.deepEqual(net, { owner: 152, buyback: 19, bond: 19 });
+  assert.deepEqual(net, { owner: 171, bond: 19 });
   const tu = topUpFromRevenue({ net: f.net, ownerShare: net.owner, balance: 5 }, { share: p.topUp.share, threshold: p.topUp.threshold });
-  assert.equal(tu.topUp, 19); assert.equal(tu.owner, 133);
+  assert.equal(tu.topUp, 19); assert.equal(tu.owner, 152);
   // over the threshold: nothing moves
-  assert.deepEqual(topUpFromRevenue({ net: 190, ownerShare: 152, balance: 25 }, { share: 0.1, threshold: 20 }), { topUp: 0, owner: 152 });
+  assert.deepEqual(topUpFromRevenue({ net: 190, ownerShare: 171, balance: 25 }, { share: 0.1, threshold: 20 }), { topUp: 0, owner: 171 });
   const spend = inferenceFeeSplit(10, p);
-  assert.deepEqual(spend, { price: 10, fee: 0.3, burn: 0.15, treasury: 0.15, net: 9.7 });
-  assert.deepEqual(inferenceNetSplit(spend.net, p), { owner: 9.312, buyback: 0.194, bond: 0.194 });
+  assert.deepEqual(spend, { price: 10, fee: 0.3, burn: 0, treasury: 0.3, net: 9.7 });
+  assert.deepEqual(inferenceNetSplit(spend.net, p), { owner: 9.506, bond: 0.194 });
 });
 
 test('ledger: a settled job tops up a launched agent\'s compute balance from the owner share, within the owner-set rule', async () => {
@@ -74,7 +74,8 @@ test('ledger: a settled job tops up a launched agent\'s compute balance from the
     const engine = createEngine(FAST);
     engine.state.providers = {};
     const owner = engine.createKey('o');
-    const a = engine.launchAgent({ owner: '0xo', name: 'calc', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, twap_usdg: 1, pool_liquidity_usdg: 5000, initial_bond_tokens: 100 }, owner);
+    engine.deposit(owner, 100);
+    const a = engine.launchAgent({ owner: '0xo', name: 'calc', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 100 }, owner);
     assert.equal(engine.getAgent(a.id).compute.balance, 0);
     assert.deepEqual(engine.getAgent(a.id).compute.top_up.share, 0.1);
     // the owner may raise the share up to the cap, not past it
@@ -91,7 +92,7 @@ test('ledger: a settled job tops up a launched agent\'s compute balance from the
     const after = engine.getAgent(a.id);
     const price = engine.state.tasks[task.id].quote.price, net = price * 0.95;
     assert.ok(Math.abs(after.compute.balance - net * 0.2) < 1e-6, 'top-up is 20% of net');
-    assert.ok(Math.abs((after.totals.owner_paid - before) - (net * 0.8 - net * 0.2)) < 1e-6, 'taken from the owner share only');
+    assert.ok(Math.abs((after.totals.owner_paid - before) - (net * 0.9 - net * 0.2)) < 1e-6, 'taken from the owner share only');
     assert.ok(after.ledger === undefined || true);
     const ev = engine.state.agents[a.id].ledger.find((e) => e.kind === 'top_up_rule');
     assert.ok(ev && ev.share === 0.2, 'rule changes are public events');
@@ -170,15 +171,16 @@ test('gateway: an agent key spends the compute balance; empty balance fails clea
     const p = provider(engine, up.url, pk);
     engine.postInferenceOffer(p.id, OFFER({ endpoint_url: up.url }), { key: pk });
     const owner = engine.createKey('o');
-    const a = engine.launchAgent({ owner: '0xo', symbol: 'CALC', twap_usdg: 1, pool_liquidity_usdg: 5000 }, owner);
+    const a = engine.launchAgent({ owner: '0xo', name: 'CALC' }, owner);
     const ak = engine.createAgentKey(a.id, {}, { key: owner });
     // empty compute balance: a clear error, nothing billed, no negative balance
     const empty = await call('POST', '/v1/chat/completions', { key: ak.key, body: chat() });
     assert.equal(empty.status, 402); assert.equal(empty.body.error.code, 'compute_balance_empty');
     assert.equal(up.seen.length, 0, 'the upstream was never called');
     assert.equal(engine.getAgent(a.id).compute.balance, 0);
-    // fill the compute balance from trading fees, then call
-    engine.harvestFees(a.id, 100, { key: owner });                      // 30% operating → $30
+    // the owner funds the compute balance from its own key, then the agent calls
+    engine.deposit(owner, 30);
+    engine.fundCompute(a.id, 30, { key: owner });
     assert.equal(engine.getAgent(a.id).compute.balance, 30);
     const ok = await call('POST', '/v1/chat/completions', { key: ak.key, body: chat() });
     assert.equal(ok.status, 200);
@@ -344,12 +346,12 @@ test('api + mcp: price book, usage, top-up rule and agent keys over HTTP', async
     const offers = await call('GET', '/v1/inference/offers?model=test-llm-7b');
     assert.equal(offers.body.offers.length, 1);
     const owner = engine.createKey('o');
-    const a = engine.launchAgent({ owner: '0xo', symbol: 'SRC', twap_usdg: 1, pool_liquidity_usdg: 5000 }, owner);
+    const a = engine.launchAgent({ owner: '0xo', name: 'SRC' }, owner);
     const rule = await call('POST', `/v1/agents/${a.id}/top-up`, { key: owner.token, body: { threshold: 50, share: 0.25 } });
     assert.equal(rule.status, 200); assert.equal(rule.body.compute.top_up.threshold, 50);
     const ak = await call('POST', `/v1/agents/${a.id}/keys`, { key: owner.token, body: { per_call_cap: 0.5 } });
     assert.equal(ak.status, 201); assert.ok(ak.body.key.startsWith('vch_'));
-    engine.harvestFees(a.id, 10, { key: owner });
+    engine.fundCompute(a.id, 3, { key: owner });
     const r = await call('POST', '/v1/inference/chat/completions', { key: ak.body.key, body: chat() });
     assert.equal(r.status, 200);
     const usage = await call('GET', '/v1/inference/usage', { key: ak.body.key });

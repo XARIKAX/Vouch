@@ -93,13 +93,13 @@ test('POST /v1/agents ignores body.params; risk params are platform-set', async 
     const KEY = await mint();
     const r = await call('POST', '/v1/agents', {
       key: KEY,
-      body: { symbol: 'EVIL', params: { bondHaircut: 1, rollingSlashCap: 0.0001, maxSlashMultiple: 0.1, feeSplit: { bond: 1, operating: 0, creator: 0, treasury: 0 } } },
+      body: { name: 'EVIL', params: { reservationMultiple: 1, rollingSlashCap: 0.0001, maxSlashMultiple: 0.1, netSplit: { owner: 1, bond: 0 } } },
     });
     assert.equal(r.status, 201);
-    assert.equal(r.body.params.bondHaircut, 0.5);
+    assert.equal(r.body.params.reservationMultiple, 2);
     assert.equal(r.body.params.rollingSlashCap, 0.2);
     assert.equal(r.body.params.maxSlashMultiple, 2);
-    assert.deepEqual(r.body.params.feeSplit, { bond: 0.5, operating: 0.3, creator: 0.15, treasury: 0.05 });
+    assert.deepEqual(r.body.params.netSplit, { owner: 0.9, bond: 0.1 });
   } finally { server.close(); }
 });
 

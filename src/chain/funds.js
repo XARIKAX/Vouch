@@ -15,6 +15,17 @@ import { associatedTokenAddress, ix, signTransaction, toBase64 } from './solana.
 
 export const USDT = Object.freeze({ symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', decimals: 6 });
 
+// The chain real funds settle on: Solana mainnet, with the RPC and explorer
+// overridable per deployment. The RPC URL may carry a provider key and is
+// never returned by a public route.
+export function chainConfig(env = process.env) {
+  return {
+    network: 'Solana', cluster: env.VOUCH_CHAIN_CLUSTER || 'mainnet-beta',
+    rpc: env.VOUCH_CHAIN_RPC || 'https://api.mainnet-beta.solana.com',
+    explorer: env.VOUCH_CHAIN_EXPLORER || 'https://solscan.io',
+  };
+}
+
 export function fundsConfig(env = process.env) {
   const treasury = isPubkey(env.VOUCH_TREASURY_ADDRESS) ? env.VOUCH_TREASURY_ADDRESS : null;
   let treasuryKey = null;
