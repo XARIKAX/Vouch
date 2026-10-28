@@ -49,12 +49,15 @@ contract CreditRegistryTest is Test {
     function test_onlyAttesterRecordsWork() public {
         vm.expectRevert(CreditRegistry.NotAttester.selector);
         reg.recordSettlement(agentId, "t1", 1);
-        vm.prank(pool);
+        vm.prank(makeAddr("stranger"));
         vm.expectRevert(CreditRegistry.NotAttester.selector);
         reg.recordSlash(agentId, "t1", 1);
+        // the bound pool may forward a settlement attestation
+        vm.prank(pool);
+        reg.recordSettlement(agentId, "t0", uint128(20 * USDG));
         vm.prank(attester);
         reg.recordSettlement(agentId, "t1", uint128(20 * USDG));
-        assertEq(reg.score(agentId), 4 + 5);
+        assertEq(reg.score(agentId), 8 + 10);
     }
 
     function test_onlyPoolRecordsLoans() public {

@@ -60,8 +60,10 @@ contract CreditRegistry {
         emit PoolBound(pool_);
     }
 
+    /// @dev Work events come from the attester, or from the pool forwarding the
+    /// attester's settlement attestation (one transaction for both facts).
     modifier onlyAttester() {
-        if (msg.sender != attester) revert NotAttester();
+        if (msg.sender != attester && (msg.sender != pool || pool == address(0))) revert NotAttester();
         _;
     }
 

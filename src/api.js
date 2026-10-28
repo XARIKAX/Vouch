@@ -368,6 +368,41 @@ export function createApi(engine, { buckets } = {}) {
       const body = await readBody(req);
       send(res, 200, await engine.linkIdentity(who, body, actor), rl);
     }],
+    // Phase 2: the pool. Reads are public; borrow, repay and payout are owner-only.
+    ['GET', /^\/v1\/credit\/pool$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, await engine.creditPool(), rl);
+    }],
+    ['GET', /^\/v1\/credit\/loans\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, await engine.creditLoans(who), rl);
+    }],
+    ['GET', /^\/v1\/credit\/settlements\/([A-Za-z0-9_]+)$/, async (req, res, [ref]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, await engine.creditSettlement(ref), rl);
+    }],
+    ['GET', /^\/v1\/credit\/quote\/([A-Za-z0-9_]+)\/([A-Za-z0-9_]+)$/, async (req, res, [who, ref]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, await engine.creditQuote(who, ref), rl);
+    }],
+    ['POST', /^\/v1\/credit\/borrow\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      send(res, 201, await engine.creditBorrow(who, body, actor), rl);
+    }],
+    ['POST', /^\/v1\/credit\/repay\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      send(res, 200, await engine.creditRepay(who, body, actor), rl);
+    }],
+    ['POST', /^\/v1\/credit\/payout\/([A-Za-z0-9_]+)$/, async (req, res, [ref]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      await readBody(req);
+      send(res, 200, await engine.creditPayout(ref, actor), rl);
+    }],
 
     ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId]) => {
       const rl = limit(keyOrAnon(req));

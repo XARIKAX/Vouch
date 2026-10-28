@@ -168,7 +168,35 @@ export function createEngine(cfg = {}) {
   // settlement flow (src/credit). Settlements, slashes and dispute losses are
   // recorded below as they happen; linked ERC-8004 identities get the same
   // events posted on-chain by the attester.
-  const credit = createCredit({ state, persist, cfg, track: (p) => track(p) });
+  const credit = createCredit({
+    state, persist, cfg, track: (p) => track(p),
+    // Money the credit layer moves in the engine ledger: an on-chain payout or
+    // repayment is paid by the treasury in USDG and debited from the owner's
+    // account here (an agent's owner key; a plain provider's earnings).
+    ledger: {
+      debit(subject, amount, kind, meta = {}) {
+        const p = state.providers[subject];
+        const agent = p?.agentId ? state.agents[p.agentId] : null;
+        const amt = money(Number(amount));
+        if (!(amt > 0) || !Number.isFinite(amt)) throw new ApiError(400, 'invalid_input', 'amount must be a positive USDT amount');
+        if (agent) {
+          if (!agent.ownerKeyId) throw new ApiError(409, 'no_owner_key', 'This agent has no owner key to pay from.');
+          takeFromOwner(state.keys[agent.ownerKeyId], amt, kind, agent.id);
+          return { from: 'owner_key', key_id: agent.ownerKeyId, amount: amt };
+        }
+        if (!p) throw new ApiError(404, 'not_found', `No provider ${subject}.`);
+        if (p.earnings + 1e-9 < amt) throw new ApiError(402, 'insufficient_balance', `Provider earnings are ${p.earnings}; ${kind} of ${amt} needs more.`, { available: p.earnings, required: amt });
+        p.earnings = money(p.earnings - amt);
+        return { from: 'provider_earnings', provider_id: p.id, amount: amt, ...meta };
+      },
+      refund(subject, amount, kind) {
+        const p = state.providers[subject];
+        const agent = p?.agentId ? state.agents[p.agentId] : null;
+        if (agent) giveToOwner(agent.ownerKeyId, money(Number(amount)), kind, agent.id);
+        else if (p) p.earnings = money(p.earnings + Number(amount));
+      },
+    },
+  });
 
   async function drain() {
     while (inflight.size) await Promise.allSettled([...inflight]);
@@ -624,7 +652,6 @@ export function createEngine(cfg = {}) {
     p.earnings = money(p.earnings + task.quote.price);
     p.stakeReserved = money(Math.max(0, p.stakeReserved - task.quote.stake_reserved));
     p.settledCount++;
-    credit.record('settlement', p.id, task.id, task.quote.price, { task_id: task.id });
     // Reputation bump. Non-launchpad providers keep the flat bump. Launched
     // agents earn it weighted by the counterparty: self-dealing (same owner
     // wallet on both sides) earns zero, rubric-only work earns reduced weight,
@@ -652,7 +679,14 @@ export function createEngine(cfg = {}) {
     acct.history.push(entry);
     // If this provider is an agent, route its revenue (protocol fee, then
     // owner / stake top-up). Plain providers are untouched.
+    const ownerBefore = agent?.ownerPaid ?? 0;
     if (agent) routeAgentRevenue(agent, task.quote.price, task.id);
+    // Credit record: the verified settlement, for the amount that will reach
+    // the agent (its owner's net share; a plain provider's full price). Its
+    // payout is pending until the dispute window closes, which is what an
+    // advance can be drawn against.
+    const proceeds = agent ? money(agent.ownerPaid - ownerBefore) : task.quote.price;
+    credit.record('settlement', p.id, task.id, proceeds, { task_id: task.id, price: task.quote.price, payout_at: Date.now() + cfg.disputeWindowMs });
     return entry.tx;
   }
 
@@ -2001,6 +2035,15 @@ export function createEngine(cfg = {}) {
   const upstream = createUpstream({ state, cfg, inference, persist, money });
   inference.attachHouse(upstream);
 
+  // Credit writes (borrow, repay, payout, identity) are owner-only: the key
+  // that registered the provider, the agent's owner key, or an admin.
+  function creditActorCheck(x, actor) {
+    const subject = credit.resolve(x);
+    const p = state.providers[subject];
+    if (p) assertProviderActor(p, actor); else assertAgentActor(mustAgent(subject), actor);
+    return actor;
+  }
+
   return {
     cfg, state, drain, flush, inference, upstream,
     syncUpstream: (o) => upstream.sync(o), upstreamInfo: (o) => upstream.info(o), ensureUpstreamFresh: () => upstream.ensureFresh(track),
@@ -2017,9 +2060,16 @@ export function createEngine(cfg = {}) {
     guardianStatus, setGuardian, processPendingSlashes,
     credit,
     creditScore: (x) => credit.summary(credit.resolve(x)),
-    creditReport: (x) => credit.report(credit.resolve(x)),
+    creditReport: async (x) => credit.report(credit.resolve(x)),
     creditLine: (x) => credit.line(credit.resolve(x)),
     creditStatus: () => credit.status(),
+    creditPool: () => credit.poolInfo(),
+    creditLoans: async (x) => credit.loans(credit.resolve(x)),
+    creditSettlement: async (ref) => credit.settlement(ref),
+    creditQuote: async (x, ref) => credit.quoteAdvance(credit.resolve(x), ref),
+    creditBorrow: async (x, body, actor) => credit.borrow(credit.resolve(x), body, creditActorCheck(x, actor)),
+    creditRepay: async (x, body, actor) => credit.repay(credit.resolve(x), body, creditActorCheck(x, actor)),
+    creditPayout: async (ref, actor) => credit.payout(ref, (subject) => creditActorCheck(subject, actor)),
     linkIdentity: async (x, body, actor) => {
       const subject = credit.resolve(x);
       const p = state.providers[subject];
