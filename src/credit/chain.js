@@ -59,6 +59,19 @@ export const POOL_ABI = [
   'function isOverdue(bytes32 loanId) view returns (bool)',
   'function exposure(uint256 agentId) view returns (uint256)',
   'function loansOf(uint256 agentId) view returns (bytes32[])',
+  'function quoteLoan(uint256 agentId, uint128 amount, uint16 termDays) view returns (uint128 fee, uint16 feeBps, uint256 score, uint256 line, uint256 room)',
+  'function fundTaskEscrow(uint256 agentId, bytes32 taskRef, uint128 amount, uint16 termDays) returns (bytes32 loanId)',
+  'function settleTaskEscrow(bytes32 taskRef) returns (uint128 amount)',
+  'function refundTaskEscrow(bytes32 taskRef) returns (uint128 amount)',
+  'function fundStake(uint256 agentId, uint128 amount, uint16 termDays) returns (bytes32 loanId)',
+  'function slashHeldStake(bytes32 loanId, uint128 amount)',
+  'function releaseStake(bytes32 loanId, uint128 amount) returns (uint128 released)',
+  'function held(bytes32 loanId) view returns (uint128)',
+  'function escrowLoan(bytes32 taskRef) view returns (bytes32)',
+  'function escrowHeld() view returns (uint256)', 'function stakeHeld() view returns (uint256)',
+  'error EscrowTaken(bytes32 taskRef)', 'error WrongKind(bytes32 loanId)', 'error NothingHeld(bytes32 loanId)',
+  'event EscrowFunded(uint256 indexed agentId, bytes32 indexed loanId, bytes32 indexed taskRef, uint128 principal, uint128 fee, uint64 dueAt)',
+  'event StakeFunded(uint256 indexed agentId, bytes32 indexed loanId, uint128 principal, uint128 fee, uint64 dueAt)',
   'function loans(bytes32) view returns (uint256 agentId, uint8 kind, uint8 status, uint128 principal, uint128 remainingPrincipal, uint128 fee, uint128 feePaid, uint64 borrowedAt, uint64 dueAt, uint16 termDays, uint16 feeBps, bytes32 settlementId, address borrower, uint128 reserveCovered, uint128 lenderLoss)',
   'error NotAttester()', 'error NotBorrower()', 'error BadAmount()', 'error InsufficientLiquidity()', 'error UnknownAgent(uint256 agentId)',
   'error UnknownSettlement(bytes32 settlementId)', 'error SettlementClosed(bytes32 settlementId)', 'error SettlementAlreadyAdvanced(bytes32 settlementId)',
@@ -125,6 +138,12 @@ export async function createCreditChain(cfg) {
   const fromUnits = (u) => Number(u) / 1e6;
   const nextNonce = async () => Number(await provider.send('eth_getTransactionCount', [signer.address, 'pending']));
   const mustWrite = () => { if (!signer) throw new Error('no attester key configured'); };
+  // simulate, then send: a revert surfaces as its decoded custom error instead of a bare receipt failure
+  const send = async (contract, fn, args) => {
+    await contract[fn].staticCall(...args);
+    const tx = await contract[fn](...args, { nonce: await nextNonce() });
+    return tx.wait();
+  };
   const mustPool = () => { if (!pool) throw new Error('no credit pool deployed on this chain'); };
   // the pool pulls settlement proceeds and repayments from the attester: approve once
   let approved = false;
@@ -134,10 +153,11 @@ export async function createCreditChain(cfg) {
     if (a < 10n ** 30n) { const tx = await usdg.approve(pool.target, ethers.MaxUint256, { nonce: await nextNonce() }); await tx.wait(); }
     approved = true;
   };
-  const loanView = (loanId, l) => ({
+  // owed_usd is cash owed: principal the pool does not still hold, plus the unpaid fee (the contract's owedOn)
+  const loanView = (loanId, l, heldU = 0n) => ({
     loan_id: loanId, agent_id: String(l.agentId), kind: LOAN_KIND[Number(l.kind)], status: LOAN_STATUS[Number(l.status)],
     principal_usd: fromUnits(l.principal), remaining_principal_usd: fromUnits(l.remainingPrincipal), fee_usd: fromUnits(l.fee), fee_paid_usd: fromUnits(l.feePaid),
-    owed_usd: fromUnits(l.remainingPrincipal + (l.fee - l.feePaid)),
+    owed_usd: fromUnits(l.remainingPrincipal - heldU + (l.fee - l.feePaid)),
     borrowed_at: Number(l.borrowedAt), due_at: Number(l.dueAt), term_days: Number(l.termDays), fee_bps_30d: Number(l.feeBps),
     settlement_id: l.settlementId, borrower: l.borrower, reserve_covered_usd: fromUnits(l.reserveCovered), lender_loss_usd: fromUnits(l.lenderLoss),
   });
@@ -179,16 +199,13 @@ export async function createCreditChain(cfg) {
       const fn = { settlement: 'recordSettlement', slash: 'recordSlash', dispute_loss: 'recordDisputeLoss' }[event.kind];
       if (!fn) throw new Error(`event kind ${event.kind} is not posted by the attester`);
       if (await this.recorded(KIND_KEY[event.kind], agentId, event.ref)) { const e = new Error('AlreadyRecorded'); e.already = true; throw e; }
-      // explicit nonce from the node, so sequential posts never reuse one
-      const nonce = await nextNonce();
-      let tx;
+      let receipt;
       if (event.kind === 'settlement' && pool) {
         const payoutAt = Math.max(Math.floor((event.payout_at ?? Date.now()) / 1000), Math.floor(Date.now() / 1000) + 60);
-        tx = await pool.attestSettlement(BigInt(agentId), refOf(event.ref), toUnits(event.amount), BigInt(payoutAt), { nonce });
+        receipt = await send(pool, 'attestSettlement', [BigInt(agentId), refOf(event.ref), toUnits(event.amount), BigInt(payoutAt)]);
       } else {
-        tx = await registry[fn](BigInt(agentId), refOf(event.ref), toUnits(event.amount), { nonce });
+        receipt = await send(registry, fn, [BigInt(agentId), refOf(event.ref), toUnits(event.amount)]);
       }
-      const receipt = await tx.wait();
       return receipt.hash;
     },
 
@@ -203,6 +220,7 @@ export async function createCreditChain(cfg) {
       return {
         address: pool.target, usdg: cfg.record.usdg,
         lender_cash_usd: fromUnits(cash), outstanding_usd: fromUnits(out), lender_assets_usd: fromUnits(assets), reserve_usd: fromUnits(res), protocol_fees_usd: fromUnits(fees),
+        escrow_held_usd: fromUnits(await pool.escrowHeld()), stake_held_usd: fromUnits(await pool.stakeHeld()),
         total_shares: shares.toString(), share_price: shares > 0n ? Number(assets) / Number(shares) : 1,
         split: { lenders_bps: Number(lb), reserve_bps: Number(rb), protocol_bps: Number(pb) },
         loan_usd: { min: fromUnits(minL), max: fromUnits(maxL) }, advance_bps: Number(adv), grace_seconds: Number(grace),
@@ -222,8 +240,7 @@ export async function createCreditChain(cfg) {
     },
     async advance(agentId, ref) {
       mustWrite(); mustPool();
-      const tx = await pool.advance(BigInt(agentId), refOf(ref), { nonce: await nextNonce() });
-      const receipt = await tx.wait();
+      const receipt = await send(pool, 'advance', [BigInt(agentId), refOf(ref)]);
       const log = receipt.logs.map((l) => { try { return pool.interface.parseLog(l); } catch { return null; } }).find((l) => l?.name === 'Advanced');
       const loanId = log?.args?.loanId ?? null;
       return { tx: receipt.hash, loan_id: loanId, principal_usd: log ? fromUnits(log.args.principal) : null, fee_usd: log ? fromUnits(log.args.fee) : null, due_at: log ? Number(log.args.dueAt) : null, borrower: log?.args?.borrower ?? null };
@@ -231,34 +248,54 @@ export async function createCreditChain(cfg) {
     async settleProceeds(ref) {
       mustWrite(); mustPool();
       await ensureAllowance();
-      const tx = await pool.settleProceeds(refOf(ref), { nonce: await nextNonce() });
-      const receipt = await tx.wait();
+      const receipt = await send(pool, 'settleProceeds', [refOf(ref)]);
       const log = receipt.logs.map((l) => { try { return pool.interface.parseLog(l); } catch { return null; } }).find((l) => l?.name === 'ProceedsSettled');
       return { tx: receipt.hash, proceeds_usd: log ? fromUnits(log.args.proceeds) : null, repaid_usd: log ? fromUnits(log.args.repaid) : null, forwarded_usd: log ? fromUnits(log.args.forwarded) : null, to: log?.args?.to ?? null };
     },
     async voidSettlement(ref) {
       mustWrite(); mustPool();
-      const tx = await pool.voidSettlement(refOf(ref), { nonce: await nextNonce() });
-      return (await tx.wait()).hash;
+      return (await send(pool, 'voidSettlement', [refOf(ref)])).hash;
     },
     async repay(loanId, amountUsd) {
       mustWrite(); mustPool();
       await ensureAllowance();
-      const tx = await pool.repay(loanId, toUnits(amountUsd), { nonce: await nextNonce() });
-      const receipt = await tx.wait();
+      const receipt = await send(pool, 'repay', [loanId, toUnits(amountUsd)]);
       return { tx: receipt.hash, loan: await this.loan(loanId) };
     },
     async markDefault(loanId) {
       mustWrite(); mustPool();
-      const tx = await pool.markDefault(loanId, { nonce: await nextNonce() });
-      return (await tx.wait()).hash;
+      return (await send(pool, 'markDefault', [loanId])).hash;
     },
     async loan(loanId) {
       mustPool();
       const l = await pool.loans(loanId);
       if (Number(l.status) === 0) return null;
-      return { ...loanView(loanId, l), overdue: await pool.isOverdue(loanId) };
+      const [overdue, heldU] = await Promise.all([pool.isOverdue(loanId), pool.held(loanId)]);
+      return { ...loanView(loanId, l, heldU), held_usd: fromUnits(heldU), overdue };
     },
+    // ---- sized loans: task escrow and stake (the principal never leaves the pool) ----
+    async quoteLoan(agentId, amountUsd, termDays) {
+      mustPool();
+      const q = await pool.quoteLoan(BigInt(agentId), toUnits(amountUsd), termDays);
+      return { amount_usd: Number(amountUsd), term_days: termDays, fee_usd: fromUnits(q.fee), fee_bps_30d: Number(q.feeBps), score: Number(q.score), credit_line_usd: fromUnits(q.line), room_usd: fromUnits(q.room) };
+    },
+    async fundTaskEscrow(agentId, ref, amountUsd, termDays) {
+      mustWrite(); mustPool();
+      const receipt = await send(pool, 'fundTaskEscrow', [BigInt(agentId), refOf(ref), toUnits(amountUsd), termDays]);
+      const log = receipt.logs.map((l) => { try { return pool.interface.parseLog(l); } catch { return null; } }).find((l) => l?.name === 'EscrowFunded');
+      return { tx: receipt.hash, loan_id: log?.args?.loanId ?? null, principal_usd: log ? fromUnits(log.args.principal) : null, fee_usd: log ? fromUnits(log.args.fee) : null, due_at: log ? Number(log.args.dueAt) : null };
+    },
+    async fundStake(agentId, amountUsd, termDays) {
+      mustWrite(); mustPool();
+      const receipt = await send(pool, 'fundStake', [BigInt(agentId), toUnits(amountUsd), termDays]);
+      const log = receipt.logs.map((l) => { try { return pool.interface.parseLog(l); } catch { return null; } }).find((l) => l?.name === 'StakeFunded');
+      return { tx: receipt.hash, loan_id: log?.args?.loanId ?? null, principal_usd: log ? fromUnits(log.args.principal) : null, fee_usd: log ? fromUnits(log.args.fee) : null, due_at: log ? Number(log.args.dueAt) : null };
+    },
+    async settleTaskEscrow(ref) { mustWrite(); mustPool(); return (await send(pool, 'settleTaskEscrow', [refOf(ref)])).hash; },
+    async refundTaskEscrow(ref) { mustWrite(); mustPool(); return (await send(pool, 'refundTaskEscrow', [refOf(ref)])).hash; },
+    async slashHeldStake(loanId, amountUsd) { mustWrite(); mustPool(); return (await send(pool, 'slashHeldStake', [loanId, toUnits(amountUsd)])).hash; },
+    async releaseStake(loanId, amountUsd) { mustWrite(); mustPool(); return (await send(pool, 'releaseStake', [loanId, toUnits(amountUsd)])).hash; },
+    async escrowLoanOf(ref) { mustPool(); const id_ = await pool.escrowLoan(refOf(ref)); return id_ === ethers.ZeroHash ? null : id_; },
     async loansOf(agentId) {
       mustPool();
       const ids = await pool.loansOf(BigInt(agentId));

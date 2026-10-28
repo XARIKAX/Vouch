@@ -72,6 +72,9 @@ export function createEngine(cfg = {}) {
     // gateway. Off until VOUCH_UPSTREAM_URL and VOUCH_UPSTREAM_KEY (or
     // OPENROUTER_API_KEY) are set.
     upstream: upstreamConfig(),
+    // Vouch Credit: the stake a quote reserves is discounted by the provider's
+    // credit tier (fraction off, by tier 0..3). VOUCH_CREDIT_STAKE_DISCOUNT='{"2":0.1,"3":0.25}'
+    creditStakeDiscount: { 0: 0, 1: 0, 2: 0.10, 3: 0.25, ...parseJsonEnv(process.env.VOUCH_CREDIT_STAKE_DISCOUNT) },
     ...cfg,
   };
 
@@ -195,8 +198,47 @@ export function createEngine(cfg = {}) {
         if (agent) giveToOwner(agent.ownerKeyId, money(Number(amount)), kind, agent.id);
         else if (p) p.earnings = money(p.earnings + Number(amount));
       },
+      // the owner key behind a subject (an agent's owner key, a provider's registering key)
+      ownerKey(subject) {
+        const p = state.providers[subject];
+        const agent = p?.agentId ? state.agents[p.agentId] : null;
+        const keyId = agent?.ownerKeyId ?? p?.ownerKeyId ?? null;
+        return keyId ? state.keys[keyId] ?? null : null;
+      },
+      credit(keyId, amount, kind, meta = {}) { return creditAccount(keyId, money(Number(amount)), { kind, ...meta }); },
+      // a task funded by an escrow loan: preview with a pinned id, then post it for real
+      previewTask(key, body, taskId) { return createTask(key, body, { taskId, preview: true }); },
+      postTask(key, body, taskId, creditTag) { return createTask(key, body, { taskId, credit: creditTag }); },
+      // borrowed stake: mirrored into the agent's bond and tracked per loan
+      addBorrowedStake(subject, loanId, amount) {
+        const agent = agentOf(subject);
+        if (!agent) throw new ApiError(409, 'not_an_agent', 'Only a launched agent can borrow stake.');
+        agent.borrowed ??= { usdt: 0, loans: {} };
+        agent.borrowed.usdt = money(agent.borrowed.usdt + amount);
+        agent.borrowed.loans[loanId] = money((agent.borrowed.loans[loanId] ?? 0) + amount);
+        agent.bond.usdt = money(agent.bond.usdt + amount);
+        agent.ledger.push({ ts: Date.now(), kind: 'stake_borrowed', loan_id: loanId, usdt: amount });
+        syncAgentCapacity(agent);
+        return agent.bond.usdt;
+      },
+      // fromBond=false when the bond was already reduced (a slash): only the tracking moves
+      takeBorrowedStake(subject, loanId, amount, why, fromBond = true) {
+        const agent = agentOf(subject);
+        if (!agent?.borrowed?.loans?.[loanId]) return 0;
+        const take = money(Math.min(amount, agent.borrowed.loans[loanId]));
+        agent.borrowed.loans[loanId] = money(agent.borrowed.loans[loanId] - take);
+        if (agent.borrowed.loans[loanId] <= 0) delete agent.borrowed.loans[loanId];
+        agent.borrowed.usdt = money(Math.max(0, agent.borrowed.usdt - take));
+        if (fromBond) agent.bond.usdt = money(Math.max(0, agent.bond.usdt - take));
+        if (agent.unbonding && agent.unbonding.usdt > agent.bond.usdt) agent.unbonding.usdt = agent.bond.usdt;
+        agent.ledger.push({ ts: Date.now(), kind: why, loan_id: loanId, usdt: take });
+        syncAgentCapacity(agent);
+        return take;
+      },
+      borrowedStake(subject) { const a = agentOf(subject); return a?.borrowed ?? { usdt: 0, loans: {} }; },
     },
   });
+  function agentOf(subject) { const p = state.providers[subject]; return p?.agentId ? state.agents[p.agentId] : (state.agents[subject] ?? null); }
 
   async function drain() {
     while (inflight.size) await Promise.allSettled([...inflight]);
@@ -606,13 +648,22 @@ export function createEngine(cfg = {}) {
       const price = money(offer.price_ceiling * (0.7 + 0.25 * hash01(p.id + task.id + 'price')));
       const native = !p.endpoint_url && p.protocol !== 'x402';
       const deadline_ms = Math.max(native ? floor : 0, Math.floor(offer.sla_deadline_ms * (0.8 + 0.2 * hash01(p.id + task.id + 'dl'))));
+      const score = credit.scoreFor(p.id);
       quotes.push({
         provider: p.id, price, deadline_ms,
         track: p.track, stake_available: money(p.stake - p.stakeReserved),
-        credit: credit.scoreFor(p.id),
+        credit: score, stake_reserved: reservationFor(price, score),
       });
     }
     return quotes;
+  }
+
+  // What a quote reserves of the provider's stake: the price, less the credit
+  // tier's discount (a provider with a long record of verified, repaid work
+  // puts less at risk per quote). Configurable curve; never below zero.
+  function reservationFor(price, score) {
+    const d = Number(cfg.creditStakeDiscount?.[credit.tier(score)] ?? 0);
+    return money(price * (1 - clamp(d, 0, 1)));
   }
 
   function admissible(task, q) {
@@ -620,7 +671,7 @@ export function createEngine(cfg = {}) {
     if (q.deadline_ms > task.deadline_ms) return 'deadline';
     if (task.min_track !== undefined && q.track < task.min_track) return 'min_track';
     if (task.min_credit !== undefined && (q.credit ?? 0) < task.min_credit) return 'min_credit';
-    if (q.stake_available < q.price) return 'stake';
+    if (q.stake_available < (q.stake_reserved ?? q.price)) return 'stake';
     return null;
   }
 
@@ -687,6 +738,7 @@ export function createEngine(cfg = {}) {
     // advance can be drawn against.
     const proceeds = agent ? money(agent.ownerPaid - ownerBefore) : task.quote.price;
     credit.record('settlement', p.id, task.id, proceeds, { task_id: task.id, price: task.quote.price, payout_at: Date.now() + cfg.disputeWindowMs });
+    if (task.credit) credit.onTaskSettled(task);
     return entry.tx;
   }
 
@@ -695,6 +747,7 @@ export function createEngine(cfg = {}) {
     const locked = task.escrow?.locked ?? task.quote.price;
     acct.locked = money(acct.locked - locked);
     bumpLockedToday(task.keyId, -locked);
+    if (task.credit) credit.onTaskRefunded(task, reason);
     return creditAccount(task.keyId, locked, { kind: 'refund', task: task.id, reason });
   }
 
@@ -849,8 +902,9 @@ export function createEngine(cfg = {}) {
 
   function reserveProvider(task, q) {
     const p = state.providers[q.provider];
-    p.stakeReserved = money(p.stakeReserved + q.price);
-    task.quote = { provider: q.provider, price: q.price, deadline_ms: q.deadline_ms, stake_reserved: q.price };
+    const reserved = q.stake_reserved ?? q.price;
+    p.stakeReserved = money(p.stakeReserved + reserved);
+    task.quote = { provider: q.provider, price: q.price, deadline_ms: q.deadline_ms, stake_reserved: reserved, ...(q.credit !== undefined ? { credit: q.credit } : {}) };
   }
 
   function settleTask(task, output, verdict, startedAt, extra = {}) {
@@ -1083,7 +1137,10 @@ export function createEngine(cfg = {}) {
     return publicTask(task);
   }
 
-  function createTask(key, body) {
+  // opts.taskId pins the id (so a preview and the real post see the same quotes);
+  // opts.preview stops after the quote is chosen and returns it without locking
+  // anything; opts.credit tags the task as funded by a Vouch Credit escrow loan.
+  function createTask(key, body, opts = {}) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ApiError(400, 'invalid_input', 'body must be a JSON object');
     const { capability, input, acceptance = {}, budget, deadline_ms, min_track, min_credit, webhook_url, idempotency_key, retry, consensus, cache } = body;
 
@@ -1152,10 +1209,11 @@ export function createEngine(cfg = {}) {
     const consensusN = consensus ? Math.max(2, Math.min(cfg.maxConsensus, Number(consensus) || 0)) : 1;
 
     const task = {
-      id: id('tsk'), keyId: key.id, capability, input,
+      id: opts.taskId ?? id('tsk'), keyId: key.id, capability, input,
       acceptance, budget, deadline_ms, min_track, min_credit, webhook_url, idempotency_key,
       retry: retryOn, maxAttempts, attempts: [], consensus: consensusN > 1 ? consensusN : undefined,
       status: 'quoting', createdAt: Date.now(), events: [],
+      ...(opts.credit ? { credit: opts.credit } : {}),
     };
 
     const quotes = collectQuotes(task);
@@ -1181,6 +1239,7 @@ export function createEngine(cfg = {}) {
     // surplus returns on settlement). A plain task locks exactly the winning quote.
     const acct = state.accounts[key.id];
     const lockAmount = (retryOn || consensusN > 1) ? money(budget) : winner.price;
+    if (opts.preview) return { preview: true, task_id: task.id, provider: winner.provider, price: winner.price, deadline_ms: winner.deadline_ms, lock: lockAmount, credit: winner.credit };
     if (acct.balance < lockAmount) {
       throw new ApiError(402, 'escrow_insufficient', 'Balance below the escrow required for this task. Top up or lower the budget.', {
         required: lockAmount, balance: acct.balance,
@@ -1197,16 +1256,16 @@ export function createEngine(cfg = {}) {
     task.escrow = { locked: lockAmount, tx: escrowTx };
     task.quote = {
       provider: winner.provider, price: winner.price,
-      deadline_ms: winner.deadline_ms, stake_reserved: winner.price,
+      deadline_ms: winner.deadline_ms, stake_reserved: winner.stake_reserved ?? winner.price,
       ...(winner.credit !== undefined ? { credit: winner.credit } : {}),
     };
 
     if (consensusN > 1) {
       // Reserve stake for the top-N and run them in parallel.
       const chosen = admissibleQuotes.slice(0, consensusN).map((q) => ({
-        provider: q.provider, price: q.price, deadline_ms: q.deadline_ms, track: q.track, stake_reserved: q.price,
+        provider: q.provider, price: q.price, deadline_ms: q.deadline_ms, track: q.track, stake_reserved: q.stake_reserved ?? q.price,
       }));
-      for (const q of chosen) state.providers[q.provider].stakeReserved = money(state.providers[q.provider].stakeReserved + q.price);
+      for (const q of chosen) state.providers[q.provider].stakeReserved = money(state.providers[q.provider].stakeReserved + q.stake_reserved);
       task.consensusQuotes = chosen;
       task.status = 'dispatched';
       state.tasks[task.id] = task;
@@ -1216,7 +1275,7 @@ export function createEngine(cfg = {}) {
       return { task: publicTask(task), reused: false };
     }
 
-    state.providers[winner.provider].stakeReserved = money(state.providers[winner.provider].stakeReserved + winner.price);
+    state.providers[winner.provider].stakeReserved = money(state.providers[winner.provider].stakeReserved + (winner.stake_reserved ?? winner.price));
     task.status = 'dispatched';
     state.tasks[task.id] = task;
     emit(task, { status: 'dispatched', quote: task.quote });
@@ -1285,7 +1344,7 @@ export function createEngine(cfg = {}) {
     const prov = a.providerId ? state.providers[a.providerId] : null;
     return {
       id: a.id, owner: a.owner, owner_key_id: a.ownerKeyId ?? null, name: a.name ?? null, created_at: a.createdAt,
-      bond: { stake_usdt: a.bond.usdt, backing_usdt: raw, capacity_usdt: bondCapacity(raw, a.params), reserved_usdt: prov?.stakeReserved ?? 0 },
+      bond: { stake_usdt: a.bond.usdt, backing_usdt: raw, capacity_usdt: bondCapacity(raw, a.params), reserved_usdt: prov?.stakeReserved ?? 0, borrowed_usdt: a.borrowed?.usdt ?? 0 },
       operating_usdt: state.accounts[a.id]?.balance ?? 0,
       provider_id: a.providerId,
       unbonding: a.unbonding ? { usdt: a.unbonding.usdt, requested_at: a.unbonding.requestedAt, release_at: a.unbonding.releaseAt } : null,
@@ -1504,6 +1563,13 @@ export function createEngine(cfg = {}) {
     if (!agent) { ps.status = 'void'; return; }
     const taken = money(Math.min(ps.amount_usdt, agent.bond.usdt));
     agent.bond.usdt = money(agent.bond.usdt - taken);
+    // Borrowed stake is collateral for its loan: the agent's own stake absorbs
+    // the slash first, and what reaches the borrowed part is seized on-chain.
+    if (agent.borrowed?.usdt > 0) {
+      const own = money(agent.bond.usdt + taken - agent.borrowed.usdt);
+      const fromBorrowed = money(Math.max(0, taken - Math.max(0, own)));
+      if (fromBorrowed > 0) credit.onBorrowedStakeSlashed(agent, fromBorrowed, ps.id);
+    }
     // The slash eats into an unstaking request first: nothing in flight escapes it.
     if (agent.unbonding && agent.unbonding.usdt > agent.bond.usdt) agent.unbonding.usdt = agent.bond.usdt;
     agent.slashedUsdt = money((agent.slashedUsdt ?? 0) + taken);
@@ -1562,8 +1628,9 @@ export function createEngine(cfg = {}) {
     assertAgentActor(agent, actor);
     const add = Number(amount) || 0;
     if (!(add > 0)) throw new ApiError(400, 'invalid_input', 'amount must be positive');
-    const usdt = Math.min(money((agent.unbonding?.usdt ?? 0) + add), agent.bond.usdt);
-    if (!(usdt > 0)) throw new ApiError(409, 'nothing_to_unbond', 'The agent has no stake.');
+    const own = money(agent.bond.usdt - (agent.borrowed?.usdt ?? 0));
+    const usdt = Math.min(money((agent.unbonding?.usdt ?? 0) + add), own);
+    if (!(usdt > 0)) throw new ApiError(409, 'nothing_to_unbond', agent.borrowed?.usdt > 0 ? 'Only the agent\'s own stake can be unstaked; borrowed stake is returned by repaying its loan.' : 'The agent has no stake.');
     const now = Date.now();
     agent.unbonding = { usdt, requestedAt: now, releaseAt: now + agentDelay(agent.params.unbondingCooldownMs) };
     agent.ledger.push({ ts: now, kind: 'unstake_request', usdt, release_at: agent.unbonding.releaseAt });
@@ -2067,6 +2134,7 @@ export function createEngine(cfg = {}) {
     creditLoans: async (x) => credit.loans(credit.resolve(x)),
     creditSettlement: async (ref) => credit.settlement(ref),
     creditQuote: async (x, ref) => credit.quoteAdvance(credit.resolve(x), ref),
+    creditQuoteLoan: async (x, amount, termDays) => credit.quoteLoan(credit.resolve(x), amount, termDays),
     creditBorrow: async (x, body, actor) => credit.borrow(credit.resolve(x), body, creditActorCheck(x, actor)),
     creditRepay: async (x, body, actor) => credit.repay(credit.resolve(x), body, creditActorCheck(x, actor)),
     creditPayout: async (ref, actor) => credit.payout(ref, (subject) => creditActorCheck(subject, actor)),

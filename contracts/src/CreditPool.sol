@@ -13,8 +13,19 @@ import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
 /// before lender principal is touched, and it is priced into the borrower's score,
 /// never executed against its identity.
 ///
-/// Phase 2 lends on one path: an advance against a verified settlement whose
-/// payout is still pending. The Vouch attester records the settlement here (and
+/// Three lending paths, none of which lands in a free wallet:
+///   advance        against a verified settlement whose payout is pending; the cash goes
+///                  to the identity owner and the payout repays it first (phase 2)
+///   task escrow    the principal stays in this contract, earmarked for a task the agent is
+///                  posting; the Vouch engine mirrors it as that task's locked budget. On
+///                  settlement it goes to the treasury (which paid the provider), on refund
+///                  it returns to the lenders as repayment (phase 3)
+///   stake          the principal stays in this contract as the agent's borrowed stake; the
+///                  engine mirrors it as bond. Slashes seize from it to the treasury; releasing
+///                  it repays the principal (phase 3)
+/// Every path is repaid out of the agent's settlement proceeds before the agent sees them.
+///
+/// On the advance path, The Vouch attester records the settlement here (and
 /// in the registry, in the same transaction), the agent draws up to a fixed share
 /// of it, and when the payout arrives it is routed through this contract: the loan
 /// is repaid first and only the remainder is forwarded to the agent. A loan that
@@ -22,7 +33,7 @@ import {IIdentityRegistry} from "./interfaces/IIdentityRegistry.sol";
 /// anyone; repaying it afterwards is a recovery.
 ///
 /// Accounting (all USDG base units):
-///   balanceOf(this) == lenderCash + reserve + protocolFees           (solvency)
+///   balanceOf(this) == lenderCash + reserve + protocolFees + escrowHeld + stakeHeld   (solvency)
 ///   lenderAssets()  == lenderCash + outstanding                        (what shares are worth)
 ///   exposure[agent] == sum of remaining principal of that agent's active loans
 /// Nothing is upgradeable; every parameter is immutable.
@@ -90,6 +101,11 @@ contract CreditPool {
     mapping(uint256 => uint256) public exposure;          // agentId -> remaining active principal
     mapping(uint256 => bytes32[]) private agentLoans;
     uint256 public loanCount;
+    // principal that never left: held per loan, by kind
+    mapping(bytes32 => uint128) public held;          // loanId -> principal still inside this contract
+    mapping(bytes32 => bytes32) public escrowLoan;    // task ref -> its escrow loan
+    uint256 public escrowHeld;
+    uint256 public stakeHeld;
 
     event Deposited(address indexed lender, uint256 assets, uint256 shares);
     event Withdrawn(address indexed lender, uint256 assets, uint256 shares);
@@ -100,6 +116,12 @@ contract CreditPool {
     event Defaulted(bytes32 indexed loanId, uint256 indexed agentId, uint128 loss, uint128 reserveCovered, uint128 lenderLoss);
     event ProceedsSettled(bytes32 indexed settlementId, uint128 proceeds, uint128 repaid, uint128 forwarded, address to);
     event ProtocolFeesWithdrawn(address to, uint256 amount);
+    event EscrowFunded(uint256 indexed agentId, bytes32 indexed loanId, bytes32 indexed taskRef, uint128 principal, uint128 fee, uint64 dueAt);
+    event EscrowSettled(bytes32 indexed taskRef, bytes32 indexed loanId, uint128 amount, address to);
+    event EscrowRefunded(bytes32 indexed taskRef, bytes32 indexed loanId, uint128 amount);
+    event StakeFunded(uint256 indexed agentId, bytes32 indexed loanId, uint128 principal, uint128 fee, uint64 dueAt);
+    event StakeSlashed(bytes32 indexed loanId, uint128 amount, address to);
+    event StakeReleased(bytes32 indexed loanId, uint128 amount);
 
     error NotAttester();
     error NotTreasury();
@@ -120,6 +142,9 @@ contract CreditPool {
     error UnknownLoan(bytes32 loanId);
     error LoanNotActive(bytes32 loanId);
     error NotDue(bytes32 loanId, uint64 dueAt, uint64 graceSeconds);
+    error EscrowTaken(bytes32 taskRef);
+    error WrongKind(bytes32 loanId);
+    error NothingHeld(bytes32 loanId);
 
     constructor(
         IERC20 usdg_,
@@ -285,6 +310,118 @@ contract CreditPool {
         emit Advanced(agentId, loanId, settlementId, principal, fee, s.payoutAt, owner);
     }
 
+    // ---- borrowing: escrow and stake loans (the principal never leaves) ---------------------------
+
+    /// @notice The most the agent can borrow right now on a sized path, and the fee for `amount` over `termDays`.
+    function quoteLoan(uint256 agentId, uint128 amount, uint16 termDays) public view returns (uint128 fee, uint16 feeBps, uint256 score, uint256 line, uint256 room) {
+        if (termDays < MIN_TERM_DAYS || termDays > MAX_TERM_DAYS) revert TermOutOfRange(uint256(termDays) * 1 days);
+        uint256 feeBps_;
+        (, score,, feeBps_, line,) = registry.creditReport(agentId);
+        if (line == 0) revert NoCredit(agentId, score);
+        feeBps = uint16(feeBps_);
+        uint256 free = line > exposure[agentId] ? line - exposure[agentId] : 0;
+        room = _min(_min(free, maxLoan), lenderCash);
+        if (amount < minLoan) revert BelowMinimum(amount, minLoan);
+        if (amount > room) revert BelowMinimum(room, amount);
+        fee = uint128((uint256(amount) * feeBps * termDays) / (30 * BPS));
+    }
+
+    function _openSizedLoan(uint256 agentId, Kind kind, uint128 amount, uint16 termDays, bytes32 ref) private returns (bytes32 loanId, uint128 fee) {
+        address owner = _ownerOf(agentId);
+        if (msg.sender != owner && msg.sender != attester) revert NotBorrower();
+        uint16 feeBps;
+        (fee, feeBps,,,) = quoteLoan(agentId, amount, termDays);
+        loanId = keccak256(abi.encode(address(this), ++loanCount, agentId, ref));
+        loans[loanId] = Loan({
+            agentId: agentId, kind: kind, status: Status.Active,
+            principal: amount, remainingPrincipal: amount, fee: fee, feePaid: 0,
+            borrowedAt: uint64(block.timestamp), dueAt: uint64(block.timestamp + uint256(termDays) * 1 days), termDays: termDays, feeBps: feeBps,
+            settlementId: ref, borrower: owner, reserveCovered: 0, lenderLoss: 0
+        });
+        agentLoans[agentId].push(loanId);
+        held[loanId] = amount;
+        lenderCash -= amount;
+        outstanding += amount;
+        exposure[agentId] += amount;
+    }
+
+    /// @notice Borrow a task's budget. The principal stays here, earmarked for `taskRef`; the
+    /// engine locks the same amount as that task's escrow. Nothing is transferred.
+    function fundTaskEscrow(uint256 agentId, bytes32 taskRef, uint128 amount, uint16 termDays) external returns (bytes32 loanId) {
+        if (taskRef == bytes32(0)) revert BadAmount();
+        if (escrowLoan[taskRef] != bytes32(0)) revert EscrowTaken(taskRef);
+        uint128 fee;
+        (loanId, fee) = _openSizedLoan(agentId, Kind.TaskEscrow, amount, termDays, taskRef);
+        escrowLoan[taskRef] = loanId;
+        escrowHeld += amount;
+        emit EscrowFunded(agentId, loanId, taskRef, amount, fee, loans[loanId].dueAt);
+    }
+
+    /// @notice The task settled: the engine's ledger paid the provider, so the held budget goes
+    /// to the treasury. The loan stays owed and is repaid out of the agent's proceeds.
+    function settleTaskEscrow(bytes32 taskRef) external onlyAttester returns (uint128 amount) {
+        bytes32 loanId = escrowLoan[taskRef];
+        if (loanId == bytes32(0)) revert UnknownLoan(taskRef);
+        amount = held[loanId];
+        if (amount == 0) revert NothingHeld(loanId);
+        held[loanId] = 0;
+        escrowHeld -= amount;
+        _push(attester, amount);
+        emit EscrowSettled(taskRef, loanId, amount, attester);
+    }
+
+    /// @notice The task was refunded: the held budget never left, so it goes straight back to the
+    /// lenders as principal repaid. The fee stays owed.
+    function refundTaskEscrow(bytes32 taskRef) external onlyAttester returns (uint128 amount) {
+        bytes32 loanId = escrowLoan[taskRef];
+        if (loanId == bytes32(0)) revert UnknownLoan(taskRef);
+        amount = held[loanId];
+        if (amount == 0) revert NothingHeld(loanId);
+        held[loanId] = 0;
+        escrowHeld -= amount;
+        _applyRepayment(loanId, loans[loanId], amount); // books the bucket move; no transfer
+        emit EscrowRefunded(taskRef, loanId, amount);
+    }
+
+    /// @notice Borrow stake. The principal stays here as the agent's borrowed collateral; the
+    /// engine mirrors it as bond. It is released back to the lenders when the agent returns it,
+    /// seized to the treasury when the agent is slashed.
+    function fundStake(uint256 agentId, uint128 amount, uint16 termDays) external returns (bytes32 loanId) {
+        uint128 fee;
+        (loanId, fee) = _openSizedLoan(agentId, Kind.Stake, amount, termDays, bytes32(0));
+        stakeHeld += amount;
+        emit StakeFunded(agentId, loanId, amount, fee, loans[loanId].dueAt);
+    }
+
+    /// @notice A verifier-attested slash of borrowed stake: seized to the treasury (the
+    /// insurance pool). The agent still owes the principal it lost.
+    function slashHeldStake(bytes32 loanId, uint128 amount) external onlyAttester {
+        Loan storage l = loans[loanId];
+        if (l.status == Status.None) revert UnknownLoan(loanId);
+        if (l.kind != Kind.Stake) revert WrongKind(loanId);
+        if (amount == 0 || amount > held[loanId]) revert BadAmount();
+        held[loanId] -= amount;
+        stakeHeld -= amount;
+        _push(attester, amount);
+        emit StakeSlashed(loanId, amount, attester);
+    }
+
+    /// @notice Return borrowed stake: the held principal goes back to the lenders as repayment.
+    /// The identity owner or the attester (the engine, on an unstake) may call it.
+    function releaseStake(bytes32 loanId, uint128 amount) external returns (uint128 released) {
+        Loan storage l = loans[loanId];
+        if (l.status == Status.None) revert UnknownLoan(loanId);
+        if (l.kind != Kind.Stake) revert WrongKind(loanId);
+        if (msg.sender != l.borrower && msg.sender != attester && msg.sender != _ownerOf(l.agentId)) revert NotBorrower();
+        if (l.status != Status.Active && l.status != Status.Defaulted) revert LoanNotActive(loanId);
+        released = amount < held[loanId] ? amount : held[loanId];
+        if (released == 0) revert NothingHeld(loanId);
+        held[loanId] -= released;
+        stakeHeld -= released;
+        _applyRepayment(loanId, l, released);
+        emit StakeReleased(loanId, released);
+    }
+
     // ---- repayment --------------------------------------------------------------------------
 
     /// @notice The settlement's payout arrives, pulled from the attester (the Vouch treasury
@@ -302,6 +439,14 @@ contract CreditPool {
             if (l.status == Status.Active || l.status == Status.Defaulted) {
                 repaid = _applyRepayment(s.loanId, l, proceeds);
             }
+        }
+        // then the agent's other open loans, oldest first: every path is repaid out of proceeds
+        bytes32[] storage all = agentLoans[s.agentId];
+        for (uint256 i = 0; i < all.length && repaid < proceeds; i++) {
+            if (all[i] == s.loanId) continue;
+            Loan storage o = loans[all[i]];
+            if (o.status != Status.Active && o.status != Status.Defaulted) continue;
+            repaid += _applyRepayment(all[i], o, proceeds - repaid);
         }
         forwarded = proceeds - repaid;
         address to = _ownerOf(s.agentId);
@@ -323,14 +468,17 @@ contract CreditPool {
         _applyRepayment(loanId, l, applied);
     }
 
+    /// @notice What is owed in cash: principal not still held here, plus the unpaid fee. Held
+    /// principal is never paid for twice; it comes back through settle, refund, release or default.
     function owedOn(bytes32 loanId) public view returns (uint128) {
         Loan storage l = loans[loanId];
-        return l.remainingPrincipal + (l.fee - l.feePaid);
+        return (l.remainingPrincipal - held[loanId]) + (l.fee - l.feePaid);
     }
 
-    /// @dev Applies up to `amount` to the loan (principal, then fee) and books it. Returns what was applied.
+    /// @dev Applies up to `amount` to the loan (unheld principal, then fee) and books it. Returns what was applied.
     function _applyRepayment(bytes32 loanId, Loan storage l, uint128 amount) private returns (uint128 applied) {
-        uint128 p = amount < l.remainingPrincipal ? amount : l.remainingPrincipal;
+        uint128 unheld = l.remainingPrincipal - held[loanId];
+        uint128 p = amount < unheld ? amount : unheld;
         uint128 f = (amount - p) < (l.fee - l.feePaid) ? (amount - p) : (l.fee - l.feePaid);
         applied = p + f;
         if (p > 0) {
@@ -378,6 +526,24 @@ contract CreditPool {
         if (l.status == Status.None) revert UnknownLoan(loanId);
         if (l.status != Status.Active) revert LoanNotActive(loanId);
         if (block.timestamp <= uint256(l.dueAt) + graceSeconds) revert NotDue(loanId, l.dueAt, graceSeconds);
+        // principal still held here is not lost: it returns to the lenders first
+        uint128 kept = held[loanId];
+        if (kept > 0) {
+            held[loanId] = 0;
+            if (l.kind == Kind.Stake) stakeHeld -= kept; else escrowHeld -= kept;
+            uint128 back = kept < l.remainingPrincipal ? kept : l.remainingPrincipal;
+            l.remainingPrincipal -= back;
+            outstanding -= back;
+            exposure[l.agentId] -= back;
+            lenderCash += kept; // the whole bucket returns; anything beyond principal is dust
+            if (l.remainingPrincipal == 0 && l.feePaid == l.fee) {
+                l.status = Status.Repaid;
+                if (l.kind == Kind.Advance) registry.recordAdvanceRepayment(l.agentId, loanId, l.principal);
+                else registry.recordRepayment(l.agentId, loanId, l.principal, l.termDays, false);
+                emit Repaid(loanId, back, 0, l.status);
+                return;
+            }
+        }
         uint128 loss = l.remainingPrincipal;
         uint128 covered = uint128(_min(reserve, loss));
         reserve -= covered;
