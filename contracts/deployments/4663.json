@@ -1,0 +1,13 @@
+{
+  "chainId": 4663,
+  "name": "Robinhood Chain",
+  "rpc": "https://rpc.mainnet.chain.robinhood.com",
+  "explorer": "https://robinhoodchain.blockscout.com",
+  "identityRegistry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+  "usdg": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+  "attester": null,
+  "creditRegistry": null,
+  "creditPool": null,
+  "deployedAt": null,
+  "note": "External addresses only. The credit contracts are not deployed on this chain; a deploy needs explicit sign-off and fills attester, creditRegistry and creditPool here."
+}

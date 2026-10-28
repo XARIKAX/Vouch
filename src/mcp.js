@@ -39,6 +39,7 @@ const TOOLS = [
         budget: { type: 'number', description: 'Maximum spend in USDT' },
         deadline_ms: { type: 'integer' },
         min_track: { type: 'number' },
+        min_credit: { type: 'number', description: 'Only providers with at least this Vouch Credit score (0-1000) may quote' },
         idempotency_key: { type: 'string' },
         retry: { description: 'true (or { max_attempts }) to reroute past failures until verified' },
         consensus: { type: 'integer', description: 'Run N providers in parallel (2-3); settle the best that passes' },
@@ -176,6 +177,21 @@ const TOOLS = [
     description: 'Set a launched agent\'s compute top-up rule: while its compute balance is under `threshold`, `share` of each settled job\'s net payout moves into it from the owner\'s share (owner key only, share within the cap).',
     inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' }, threshold: { type: 'number' }, share: { type: 'number' } } },
   },
+  {
+    name: 'vouch_credit_score',
+    description: 'Vouch Credit score (0-1000) for a provider, a launched agent or a linked ERC-8004 agentId, with its risk tier, fee rate and credit line. A pure function of verified settlements, slashes, dispute losses and repayment history.',
+    inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string', description: 'prv_…, agt_… or an ERC-8004 agentId' } } },
+  },
+  {
+    name: 'vouch_credit_report',
+    description: 'The full credit report: every input to the score, the point breakdown, the linked identity, recent events and the on-chain record when one exists.',
+    inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
+  },
+  {
+    name: 'vouch_credit_line',
+    description: 'How much working capital the score currently sizes for this agent, the fee per 30 days and how the line was computed.',
+    inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
+  },
 ];
 
 const CORS = {
@@ -217,6 +233,9 @@ export function createMcp(engine, { limit } = {}) {
       case 'vouch_price_book': return { models: engine.priceBook() };
       case 'vouch_compute_balance': return engine.inferenceUsage(key, { days: a.days || 30 });
       case 'vouch_set_top_up': return engine.setTopUpRule(a.agent_id, a, { key });
+      case 'vouch_credit_score': return engine.creditScore(a.agent_id);
+      case 'vouch_credit_report': return engine.creditReport(a.agent_id);
+      case 'vouch_credit_line': return engine.creditLine(a.agent_id);
       default: throw new ApiError(404, 'unknown_tool', `No tool "${name}".`);
     }
   }

@@ -153,7 +153,7 @@ Point any MCP client at `/mcp`:
 }
 ```
 
-Seventeen tools: thirteen core (`vouch_find_offers`, `vouch_post_task`, `vouch_task_status`, `vouch_verify`, `vouch_create_workflow`, `vouch_workflow_status`, `vouch_list_providers`, `vouch_get_attestation`, `vouch_create_subkey`, `vouch_dispute`, `vouch_balance`, `vouch_list_agents`, `vouch_get_agent`) plus four for sub-keys and disputes (`vouch_list_subkeys`, `vouch_freeze_subkey`, `vouch_revoke_subkey`, `vouch_dispute_status`). Discovery (`initialize`, `tools/list`, `ping`) is open; `tools/call` requires the key. Only `/mcp` answers JSON-RPC.
+Twenty-four tools: thirteen core (`vouch_find_offers`, `vouch_post_task`, `vouch_task_status`, `vouch_verify`, `vouch_create_workflow`, `vouch_workflow_status`, `vouch_list_providers`, `vouch_get_attestation`, `vouch_create_subkey`, `vouch_dispute`, `vouch_balance`, `vouch_list_agents`, `vouch_get_agent`) plus four for sub-keys and disputes (`vouch_list_subkeys`, `vouch_freeze_subkey`, `vouch_revoke_subkey`, `vouch_dispute_status`), four for inference (`vouch_inference_offers`, `vouch_price_book`, `vouch_compute_balance`, `vouch_set_top_up`) and three for credit (`vouch_credit_score`, `vouch_credit_report`, `vouch_credit_line`). Discovery (`initialize`, `tools/list`, `ping`) is open; `tools/call` requires the key. Only `/mcp` answers JSON-RPC.
 
 ## Verification validators
 
@@ -185,6 +185,9 @@ src/store.js         JSON snapshot persistence; src/store-upstash.js for Redis
 src/api.js           REST routes, auth, token-bucket rate limiting, SSE
 src/mcp.js           Model Context Protocol server (Streamable HTTP JSON-RPC)
 src/chain/           Solana with zero dependencies: base58, ed25519, PDAs, SPL instructions, RPC, USDT funds
+src/credit/          Vouch Credit: the score (mirror of ScoreLib.sol), the credit record, the attester client (ethers)
+contracts/           Vouch Credit contracts (Solidity, Foundry): ScoreLib, CreditRegistry, mocks, deploy script, deployment records
+bin/vouch.js         the command line: vouch credit score|report|line|doctor
 docs/                the documentation site (served at /docs)
 public/              the pages (served at /, /dashboard, /agents, ...)
 examples/            client, agent, provider SDK and reference provider
@@ -244,7 +247,28 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `VOUCH_ADMIN_TOKEN` | unset | Admin token for locked minting, agent writes and `POST /v1/admin/guardian` |
 | `ALPACA_KEY_ID` / `ALPACA_SECRET_KEY` | unset | Alpaca **paper** keys for `/v1/broker/*`; `ALPACA_BASE_URL` must stay on the paper host |
 | `BROKER_ORDER_TOKEN` | unset | If set, `POST /v1/broker/order` requires a matching `x-broker-token` |
+| `VOUCH_CREDIT_CHAIN_ID` | unset | Vouch Credit chain: `4663` Robinhood Chain, `31337` local devnet. Needs `contracts/deployments/<chainId>.json` with a deployed `creditRegistry`; otherwise scores stay engine-only |
+| `VOUCH_CREDIT_RPC` | the record's `rpc` | Override the credit chain's JSON-RPC endpoint |
+| `VOUCH_CREDIT_ATTESTER_KEY` | unset (read-only) | The attester's secp256k1 private key; set, the engine posts credit events on-chain. Keep it in the host's secret store only |
+| `VOUCH_CREDIT_DEPLOYMENTS` | `contracts/deployments` | Directory of deployment records |
 | `VOUCH_FAST` | off | Compress provider latencies (dev/test) |
+
+## Vouch Credit
+
+Working capital for agents, earned by verified work. Phase 1 is the record: every provider and launched agent has a credit score (0 to 1000) that is a pure function of its recorded events, verified settlements, slashes, dispute losses, and, once lending opens, repayments and defaults. Anyone can replay the events and recompute it: the same arithmetic lives in `contracts/src/ScoreLib.sol` and `src/credit/score.js`, and `contracts/test/Vectors.t.sol` holds the two equal.
+
+| Endpoint | Does |
+|---|---|
+| `GET /v1/credit` | The credit layer's status: chain, contracts, attester, outbox (public) |
+| `GET /v1/credit/score/{id}` · `/report/{id}` · `/line/{id}` | Score, tier, fee rate and credit line; every input and the point breakdown; what the score currently sizes. `{id}` is a provider id, an agent id or a linked ERC-8004 agentId (public) |
+| `POST /v1/credit/identity/{id}` `{ agent_id, signature? }` | Link an ERC-8004 agentId to a provider (owner key or admin). With a credit chain configured the identity owner's wallet signs `vouch-credit-identity|{id}|{agent_id}` |
+| `POST /v1/tasks` with `min_credit` | Only providers with at least that score may quote, beside `min_track` |
+
+MCP: `vouch_credit_score`, `vouch_credit_report`, `vouch_credit_line`. CLI: `npx vouch credit score|report|line <id>` and `npx vouch credit doctor` (`VOUCH_URL`, `VOUCH_KEY`).
+
+On-chain, the `CreditRegistry` (Solidity, Foundry, `contracts/`) holds one record per ERC-8004 agentId. The engine is the attester: it posts each settlement, slash and dispute loss under the linked agentId, and the chain's `score(agentId)` and `creditReport(agentId)` are the public, replayable copy. Every address comes from `contracts/deployments/<chainId>.json`; a chain without a record is refused. Robinhood Chain (4663) carries the external addresses only, the identity registry and USDG, and no credit contract is deployed there: a mainnet deploy needs explicit sign-off. `cd contracts && forge test` runs the Solidity suite, including the fuzzed monotonicity proofs (repaying never lowers the score, defaulting never raises it) and the parity vectors.
+
+Phases 2 to 4 (the open USDG lender pool, advances against pending settlements with repayment intercepted at settlement, escrow- and stake-funding loans, the mainnet deploy script) are not built yet. No borrowing is open and no claim about lender principal is made until the multi-default invariant suite is green.
 
 ## Status
 

@@ -1,0 +1,5519 @@
+{
+ "count": 49,
+ "vectors": [
+  {
+   "n": 18,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 25405621,
+     "ts": 1801985594,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 831543865,
+     "ts": 1804805625,
+     "days": 18,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1194283324,
+     "ts": 1807962188,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 248159357,
+     "ts": 1810285994,
+     "days": 7,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 48886946,
+     "ts": 1811506690,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 183178209,
+     "ts": 1813063440,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1903087425,
+     "ts": 1814658555,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1023444142,
+     "ts": 1816642809,
+     "days": 8,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 71194548,
+     "ts": 1818330914,
+     "days": 11,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 103781851,
+     "ts": 1820160712,
+     "days": 18,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1228870468,
+     "ts": 1821360069,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 348602153,
+     "ts": 1824749098,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1128921280,
+     "ts": 1824814552,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1302420144,
+     "ts": 1825008964,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1746344375,
+     "ts": 1825497359,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 120271478,
+     "ts": 1826107834,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1593092576,
+     "ts": 1828862133,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 934081051,
+     "ts": 1832186381,
+     "days": 10,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1832186381,
+     "score": 322
+    },
+    {
+     "now": 1832186382,
+     "score": 322
+    },
+    {
+     "now": 1832791181,
+     "score": 322
+    },
+    {
+     "now": 1834778381,
+     "score": 322
+    },
+    {
+     "now": 1840826381,
+     "score": 138
+    },
+    {
+     "now": 1863722381,
+     "score": 72
+    },
+    {
+     "now": 2147546381,
+     "score": 72
+    }
+   ]
+  },
+  {
+   "n": 18,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 1951272207,
+     "ts": 1800408841,
+     "days": 10,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1597295837,
+     "ts": 1802177398,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 624007325,
+     "ts": 1804050104,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 137798197,
+     "ts": 1804680417,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 854538199,
+     "ts": 1806727444,
+     "days": 11,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 558710159,
+     "ts": 1809295439,
+     "days": 6,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1899669325,
+     "ts": 1809349354,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1024985720,
+     "ts": 1810885967,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1462991790,
+     "ts": 1812494459,
+     "days": 26,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 277951633,
+     "ts": 1815766826,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 266299508,
+     "ts": 1817647390,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 103171374,
+     "ts": 1820148501,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 260957974,
+     "ts": 1822519320,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 399328674,
+     "ts": 1822569885,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 277473480,
+     "ts": 1823600078,
+     "days": 9,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 951732099,
+     "ts": 1826043892,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1098413393,
+     "ts": 1828024060,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 574269359,
+     "ts": 1829917580,
+     "days": 0,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1829917580,
+     "score": 322
+    },
+    {
+     "now": 1829917581,
+     "score": 322
+    },
+    {
+     "now": 1830522380,
+     "score": 322
+    },
+    {
+     "now": 1832509580,
+     "score": 308
+    },
+    {
+     "now": 1838557580,
+     "score": 121
+    },
+    {
+     "now": 1861453580,
+     "score": 72
+    },
+    {
+     "now": 2145277580,
+     "score": 72
+    }
+   ]
+  },
+  {
+   "n": 11,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 838782821,
+     "ts": 1801668398,
+     "days": 29,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 814805321,
+     "ts": 1803368324,
+     "days": 22,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 110624461,
+     "ts": 1805309744,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1063341484,
+     "ts": 1805852744,
+     "days": 4,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 995727128,
+     "ts": 1807043269,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 487187290,
+     "ts": 1808669791,
+     "days": 5,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 261992769,
+     "ts": 1810009953,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 12083928,
+     "ts": 1811073483,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 771223216,
+     "ts": 1813335055,
+     "days": 26,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1157588407,
+     "ts": 1815990835,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1891746210,
+     "ts": 1818091928,
+     "days": 9,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1818091928,
+     "score": 294
+    },
+    {
+     "now": 1818091929,
+     "score": 294
+    },
+    {
+     "now": 1818696728,
+     "score": 294
+    },
+    {
+     "now": 1820683928,
+     "score": 294
+    },
+    {
+     "now": 1826731928,
+     "score": 123
+    },
+    {
+     "now": 1849627928,
+     "score": 44
+    },
+    {
+     "now": 2133451928,
+     "score": 44
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 1764987502,
+     "ts": 1801054639,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1393673875,
+     "ts": 1801870853,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1049554926,
+     "ts": 1804113677,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 370768374,
+     "ts": 1805005984,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 490121106,
+     "ts": 1808443192,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1892211406,
+     "ts": 1811192897,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 553564537,
+     "ts": 1811679308,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 774996227,
+     "ts": 1811761823,
+     "days": 10,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1092930343,
+     "ts": 1813576349,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 898487994,
+     "ts": 1815364387,
+     "days": 29,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1815364387,
+     "score": 290
+    },
+    {
+     "now": 1815364388,
+     "score": 290
+    },
+    {
+     "now": 1815969187,
+     "score": 290
+    },
+    {
+     "now": 1817956387,
+     "score": 290
+    },
+    {
+     "now": 1824004387,
+     "score": 122
+    },
+    {
+     "now": 1846900387,
+     "score": 40
+    },
+    {
+     "now": 2130724387,
+     "score": 40
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 1139148548,
+     "ts": 1803447032,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 8118897,
+     "ts": 1805165130,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1510113994,
+     "ts": 1805748130,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1029925456,
+     "ts": 1806181561,
+     "days": 26,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1806181561,
+     "score": 266
+    },
+    {
+     "now": 1806181562,
+     "score": 266
+    },
+    {
+     "now": 1806786361,
+     "score": 266
+    },
+    {
+     "now": 1808773561,
+     "score": 266
+    },
+    {
+     "now": 1814821561,
+     "score": 95
+    },
+    {
+     "now": 1837717561,
+     "score": 16
+    },
+    {
+     "now": 2121541561,
+     "score": 16
+    }
+   ]
+  },
+  {
+   "n": 18,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 384278923,
+     "ts": 1802081819,
+     "days": 18,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 161071325,
+     "ts": 1802232116,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 232767075,
+     "ts": 1804639404,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 240627169,
+     "ts": 1806074087,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 939983455,
+     "ts": 1807040398,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 402692397,
+     "ts": 1809979555,
+     "days": 27,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1643844212,
+     "ts": 1810543172,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 434103773,
+     "ts": 1812451068,
+     "days": 4,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 459031217,
+     "ts": 1812913097,
+     "days": 26,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 475748831,
+     "ts": 1815979108,
+     "days": 8,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 128259140,
+     "ts": 1818368962,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1247185942,
+     "ts": 1819221498,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 172873831,
+     "ts": 1821807619,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 288126935,
+     "ts": 1824869759,
+     "days": 2,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1746202078,
+     "ts": 1827198102,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 423012510,
+     "ts": 1829862207,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 420220706,
+     "ts": 1832685473,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 308366635,
+     "ts": 1834896735,
+     "days": 20,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1834896735,
+     "score": 312
+    },
+    {
+     "now": 1834896736,
+     "score": 312
+    },
+    {
+     "now": 1835501535,
+     "score": 284
+    },
+    {
+     "now": 1837488735,
+     "score": 192
+    },
+    {
+     "now": 1843536735,
+     "score": 97
+    },
+    {
+     "now": 1866432735,
+     "score": 72
+    },
+    {
+     "now": 2150256735,
+     "score": 72
+    }
+   ]
+  },
+  {
+   "n": 23,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 1563221577,
+     "ts": 1801923265,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 211604503,
+     "ts": 1802339215,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 550779207,
+     "ts": 1804417243,
+     "days": 10,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 247171040,
+     "ts": 1806269209,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 34361753,
+     "ts": 1807778497,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1398889055,
+     "ts": 1809655018,
+     "days": 12,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 586494246,
+     "ts": 1810977046,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1127693728,
+     "ts": 1812819238,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 182453300,
+     "ts": 1812888071,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1507704183,
+     "ts": 1813747187,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 138156330,
+     "ts": 1815223547,
+     "days": 26,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1626609749,
+     "ts": 1818326041,
+     "days": 2,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 859008770,
+     "ts": 1818369865,
+     "days": 28,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1732447319,
+     "ts": 1819605813,
+     "days": 10,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 352612995,
+     "ts": 1821472544,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1663908481,
+     "ts": 1823125673,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1700226317,
+     "ts": 1824409638,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 624784376,
+     "ts": 1826042894,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 693568372,
+     "ts": 1828576738,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1714286696,
+     "ts": 1832032149,
+     "days": 0,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 240753685,
+     "ts": 1835359315,
+     "days": 29,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1542883386,
+     "ts": 1837209630,
+     "days": 6,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 166463372,
+     "ts": 1838939983,
+     "days": 16,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1838939983,
+     "score": 342
+    },
+    {
+     "now": 1838939984,
+     "score": 342
+    },
+    {
+     "now": 1839544783,
+     "score": 342
+    },
+    {
+     "now": 1841531983,
+     "score": 318
+    },
+    {
+     "now": 1847579983,
+     "score": 139
+    },
+    {
+     "now": 1870475983,
+     "score": 92
+    },
+    {
+     "now": 2154299983,
+     "score": 92
+    }
+   ]
+  },
+  {
+   "n": 1,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 1541500438,
+     "ts": 1803307804,
+     "days": 19,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1803307804,
+     "score": 254
+    },
+    {
+     "now": 1803307805,
+     "score": 254
+    },
+    {
+     "now": 1803912604,
+     "score": 254
+    },
+    {
+     "now": 1805899804,
+     "score": 196
+    },
+    {
+     "now": 1811947804,
+     "score": 44
+    },
+    {
+     "now": 1834843804,
+     "score": 4
+    },
+    {
+     "now": 2118667804,
+     "score": 4
+    }
+   ]
+  },
+  {
+   "n": 19,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 1749780613,
+     "ts": 1802403959,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1676356358,
+     "ts": 1802654229,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1580318458,
+     "ts": 1805689396,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1086620651,
+     "ts": 1805930092,
+     "days": 18,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1538932719,
+     "ts": 1808740555,
+     "days": 28,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1746349530,
+     "ts": 1812025172,
+     "days": 5,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1337857353,
+     "ts": 1815082943,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 703291644,
+     "ts": 1818403651,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1307879449,
+     "ts": 1820830918,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 216809641,
+     "ts": 1821284487,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 883083292,
+     "ts": 1822992184,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1160911846,
+     "ts": 1826422227,
+     "days": 8,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 832843035,
+     "ts": 1827498603,
+     "days": 24,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 402738338,
+     "ts": 1827596331,
+     "days": 29,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1193308205,
+     "ts": 1827829608,
+     "days": 27,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1767498434,
+     "ts": 1828813285,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 886155331,
+     "ts": 1829935054,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 193018633,
+     "ts": 1832998392,
+     "days": 12,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 41612731,
+     "ts": 1833866357,
+     "days": 7,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1833866357,
+     "score": 0
+    },
+    {
+     "now": 1833866358,
+     "score": 0
+    },
+    {
+     "now": 1834471157,
+     "score": 0
+    },
+    {
+     "now": 1836458357,
+     "score": 0
+    },
+    {
+     "now": 1842506357,
+     "score": 0
+    },
+    {
+     "now": 1865402357,
+     "score": 0
+    },
+    {
+     "now": 2149226357,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "m": 7,
+   "events": [
+    {
+     "kind": "advance_repayment",
+     "amount": 464475475,
+     "ts": 1802900738,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1009946136,
+     "ts": 1805287096,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 774175301,
+     "ts": 1807278043,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1829805492,
+     "ts": 1809589426,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1475623391,
+     "ts": 1811575237,
+     "days": 29,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1022641760,
+     "ts": 1814810084,
+     "days": 21,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1814810084,
+     "score": 0
+    },
+    {
+     "now": 1814810085,
+     "score": 0
+    },
+    {
+     "now": 1815414884,
+     "score": 0
+    },
+    {
+     "now": 1817402084,
+     "score": 0
+    },
+    {
+     "now": 1823450084,
+     "score": 0
+    },
+    {
+     "now": 1846346084,
+     "score": 0
+    },
+    {
+     "now": 2130170084,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "m": 7,
+   "events": [
+    {
+     "kind": "recovery",
+     "amount": 1597683126,
+     "ts": 1800070281,
+     "days": 5,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 809863422,
+     "ts": 1801637389,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 942997348,
+     "ts": 1804425141,
+     "days": 28,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 35858424,
+     "ts": 1806790595,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 418227339,
+     "ts": 1809628335,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 359491139,
+     "ts": 1812711017,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1161276253,
+     "ts": 1814174614,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 242515765,
+     "ts": 1816741149,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 285332052,
+     "ts": 1818269958,
+     "days": 29,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1072665889,
+     "ts": 1819487210,
+     "days": 30,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1819487210,
+     "score": 0
+    },
+    {
+     "now": 1819487211,
+     "score": 0
+    },
+    {
+     "now": 1820092010,
+     "score": 0
+    },
+    {
+     "now": 1822079210,
+     "score": 0
+    },
+    {
+     "now": 1828127210,
+     "score": 0
+    },
+    {
+     "now": 1851023210,
+     "score": 0
+    },
+    {
+     "now": 2134847210,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "m": 7,
+   "events": [
+    {
+     "kind": "recovery",
+     "amount": 877522864,
+     "ts": 1800970619,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1557330408,
+     "ts": 1800974143,
+     "days": 2,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1230186389,
+     "ts": 1803157707,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1796337971,
+     "ts": 1804212467,
+     "days": 12,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 31051323,
+     "ts": 1805225118,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 911771791,
+     "ts": 1805463235,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1945723916,
+     "ts": 1806338079,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1026648392,
+     "ts": 1809496473,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 222809836,
+     "ts": 1812071758,
+     "days": 5,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 969140030,
+     "ts": 1815368452,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1574464014,
+     "ts": 1816377788,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1846499622,
+     "ts": 1816413345,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 299511638,
+     "ts": 1816503786,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1040317032,
+     "ts": 1819361241,
+     "days": 24,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1452536386,
+     "ts": 1820859236,
+     "days": 30,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1820859236,
+     "score": 0
+    },
+    {
+     "now": 1820859237,
+     "score": 0
+    },
+    {
+     "now": 1821464036,
+     "score": 0
+    },
+    {
+     "now": 1823451236,
+     "score": 0
+    },
+    {
+     "now": 1829499236,
+     "score": 0
+    },
+    {
+     "now": 1852395236,
+     "score": 0
+    },
+    {
+     "now": 2136219236,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "m": 7,
+   "events": [
+    {
+     "kind": "default",
+     "amount": 1519886015,
+     "ts": 1801584873,
+     "days": 29,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 632661253,
+     "ts": 1802206244,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1013227973,
+     "ts": 1805550925,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 130309535,
+     "ts": 1806765422,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1160258869,
+     "ts": 1808965613,
+     "days": 29,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1192697254,
+     "ts": 1809542214,
+     "days": 7,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 539127819,
+     "ts": 1812093911,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 333208524,
+     "ts": 1814680309,
+     "days": 18,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 974370698,
+     "ts": 1816808108,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1588960276,
+     "ts": 1818448399,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1327938695,
+     "ts": 1820773617,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1433832593,
+     "ts": 1824229164,
+     "days": 4,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1824229164,
+     "score": 464
+    },
+    {
+     "now": 1824229165,
+     "score": 464
+    },
+    {
+     "now": 1824833964,
+     "score": 458
+    },
+    {
+     "now": 1826821164,
+     "score": 444
+    },
+    {
+     "now": 1832869164,
+     "score": 428
+    },
+    {
+     "now": 1855765164,
+     "score": 424
+    },
+    {
+     "now": 2139589164,
+     "score": 424
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 1755842768,
+     "ts": 1802636203,
+     "days": 29,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 195870452,
+     "ts": 1805166441,
+     "days": 0,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1805166441,
+     "score": 125
+    },
+    {
+     "now": 1805166442,
+     "score": 125
+    },
+    {
+     "now": 1805771241,
+     "score": 125
+    },
+    {
+     "now": 1807758441,
+     "score": 125
+    },
+    {
+     "now": 1813806441,
+     "score": 125
+    },
+    {
+     "now": 1836702441,
+     "score": 125
+    },
+    {
+     "now": 2120526441,
+     "score": 125
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "m": 7,
+   "events": [
+    {
+     "kind": "recovery",
+     "amount": 1566035940,
+     "ts": 1800043074,
+     "days": 0,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1822210503,
+     "ts": 1800452971,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1207754856,
+     "ts": 1800518048,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1652695718,
+     "ts": 1801868360,
+     "days": 27,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 503584449,
+     "ts": 1803118024,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1100434634,
+     "ts": 1803422723,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 887566997,
+     "ts": 1806278091,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1612877463,
+     "ts": 1809028298,
+     "days": 0,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 268323076,
+     "ts": 1809097108,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1809104522,
+     "ts": 1812292186,
+     "days": 11,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1812292186,
+     "score": 0
+    },
+    {
+     "now": 1812292187,
+     "score": 0
+    },
+    {
+     "now": 1812896986,
+     "score": 0
+    },
+    {
+     "now": 1814884186,
+     "score": 0
+    },
+    {
+     "now": 1820932186,
+     "score": 0
+    },
+    {
+     "now": 1843828186,
+     "score": 0
+    },
+    {
+     "now": 2127652186,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 6,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 1790015080,
+     "ts": 1800787603,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 990349344,
+     "ts": 1804175006,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1990367949,
+     "ts": 1807220646,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1916005300,
+     "ts": 1808057047,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1412879620,
+     "ts": 1810292886,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1072675215,
+     "ts": 1811429874,
+     "days": 2,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1811429874,
+     "score": 685
+    },
+    {
+     "now": 1811429875,
+     "score": 685
+    },
+    {
+     "now": 1812034674,
+     "score": 685
+    },
+    {
+     "now": 1814021874,
+     "score": 582
+    },
+    {
+     "now": 1820069874,
+     "score": 465
+    },
+    {
+     "now": 1842965874,
+     "score": 435
+    },
+    {
+     "now": 2126789874,
+     "score": 435
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "m": 7,
+   "events": [
+    {
+     "kind": "advance_repayment",
+     "amount": 1323727469,
+     "ts": 1802910070,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1221247021,
+     "ts": 1805613386,
+     "days": 5,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 439608290,
+     "ts": 1808074262,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1231985090,
+     "ts": 1810698466,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1977478449,
+     "ts": 1811261295,
+     "days": 15,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1811261295,
+     "score": 0
+    },
+    {
+     "now": 1811261296,
+     "score": 0
+    },
+    {
+     "now": 1811866095,
+     "score": 0
+    },
+    {
+     "now": 1813853295,
+     "score": 0
+    },
+    {
+     "now": 1819901295,
+     "score": 0
+    },
+    {
+     "now": 1842797295,
+     "score": 0
+    },
+    {
+     "now": 2126621295,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "m": 7,
+   "events": [
+    {
+     "kind": "dispute_loss",
+     "amount": 875347056,
+     "ts": 1800812126,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1347599631,
+     "ts": 1803352701,
+     "days": 3,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1803352701,
+     "score": 0
+    },
+    {
+     "now": 1803352702,
+     "score": 0
+    },
+    {
+     "now": 1803957501,
+     "score": 0
+    },
+    {
+     "now": 1805944701,
+     "score": 0
+    },
+    {
+     "now": 1811992701,
+     "score": 0
+    },
+    {
+     "now": 1834888701,
+     "score": 0
+    },
+    {
+     "now": 2118712701,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 17,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 145347220,
+     "ts": 1801700436,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 880624054,
+     "ts": 1805133792,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 685441876,
+     "ts": 1806997560,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 952252786,
+     "ts": 1807145403,
+     "days": 12,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 914570810,
+     "ts": 1809585951,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 15250750,
+     "ts": 1811945436,
+     "days": 1,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 861302670,
+     "ts": 1812091797,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1423870632,
+     "ts": 1812931830,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1388842402,
+     "ts": 1814271818,
+     "days": 9,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1456452090,
+     "ts": 1815926451,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 800146038,
+     "ts": 1818425335,
+     "days": 26,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 470970565,
+     "ts": 1820057098,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1007014383,
+     "ts": 1820309043,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 830062327,
+     "ts": 1822896078,
+     "days": 18,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 407745077,
+     "ts": 1823745031,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 991640449,
+     "ts": 1825634774,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1147762494,
+     "ts": 1827535350,
+     "days": 9,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1827535350,
+     "score": 0
+    },
+    {
+     "now": 1827535351,
+     "score": 0
+    },
+    {
+     "now": 1828140150,
+     "score": 0
+    },
+    {
+     "now": 1830127350,
+     "score": 0
+    },
+    {
+     "now": 1836175350,
+     "score": 0
+    },
+    {
+     "now": 1859071350,
+     "score": 0
+    },
+    {
+     "now": 2142895350,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 1202933784,
+     "ts": 1802175166,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1450304878,
+     "ts": 1802398646,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1905935706,
+     "ts": 1802777473,
+     "days": 27,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 691642548,
+     "ts": 1805657596,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 261770962,
+     "ts": 1806394033,
+     "days": 12,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1806394033,
+     "score": 0
+    },
+    {
+     "now": 1806394034,
+     "score": 0
+    },
+    {
+     "now": 1806998833,
+     "score": 0
+    },
+    {
+     "now": 1808986033,
+     "score": 0
+    },
+    {
+     "now": 1815034033,
+     "score": 0
+    },
+    {
+     "now": 1837930033,
+     "score": 200
+    },
+    {
+     "now": 2121754033,
+     "score": 404
+    }
+   ]
+  },
+  {
+   "n": 1,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 732323982,
+     "ts": 1803269419,
+     "days": 11,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1803269419,
+     "score": 187
+    },
+    {
+     "now": 1803269420,
+     "score": 187
+    },
+    {
+     "now": 1803874219,
+     "score": 165
+    },
+    {
+     "now": 1805861419,
+     "score": 95
+    },
+    {
+     "now": 1811909419,
+     "score": 23
+    },
+    {
+     "now": 1834805419,
+     "score": 4
+    },
+    {
+     "now": 2118629419,
+     "score": 4
+    }
+   ]
+  },
+  {
+   "n": 20,
+   "m": 7,
+   "events": [
+    {
+     "kind": "advance_repayment",
+     "amount": 946760524,
+     "ts": 1800483730,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1623512459,
+     "ts": 1801838780,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 896913878,
+     "ts": 1802403148,
+     "days": 4,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1717653777,
+     "ts": 1803801452,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 854229144,
+     "ts": 1806442139,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1036037393,
+     "ts": 1806959514,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1981737566,
+     "ts": 1809840046,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 814543465,
+     "ts": 1810276776,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1229654697,
+     "ts": 1812467390,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1425970380,
+     "ts": 1813730758,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1066294066,
+     "ts": 1813863029,
+     "days": 2,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1348679260,
+     "ts": 1814504919,
+     "days": 22,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 16284233,
+     "ts": 1815138889,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 308609068,
+     "ts": 1816352734,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 230464084,
+     "ts": 1818099483,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1453882434,
+     "ts": 1819435711,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 196691606,
+     "ts": 1819991902,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1245139811,
+     "ts": 1822097598,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 887773678,
+     "ts": 1822879929,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 197038771,
+     "ts": 1823558341,
+     "days": 14,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1823558341,
+     "score": 0
+    },
+    {
+     "now": 1823558342,
+     "score": 0
+    },
+    {
+     "now": 1824163141,
+     "score": 0
+    },
+    {
+     "now": 1826150341,
+     "score": 0
+    },
+    {
+     "now": 1832198341,
+     "score": 0
+    },
+    {
+     "now": 1855094341,
+     "score": 0
+    },
+    {
+     "now": 2138918341,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 1426343498,
+     "ts": 1800085440,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 272038797,
+     "ts": 1802191137,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 960508012,
+     "ts": 1802765543,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1989073761,
+     "ts": 1805613933,
+     "days": 7,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1805613933,
+     "score": 484
+    },
+    {
+     "now": 1805613934,
+     "score": 484
+    },
+    {
+     "now": 1806218733,
+     "score": 480
+    },
+    {
+     "now": 1808205933,
+     "score": 470
+    },
+    {
+     "now": 1814253933,
+     "score": 458
+    },
+    {
+     "now": 1837149933,
+     "score": 456
+    },
+    {
+     "now": 2120973933,
+     "score": 456
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 254302503,
+     "ts": 1801030599,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 249633306,
+     "ts": 1801972384,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 44468752,
+     "ts": 1802051084,
+     "days": 5,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 625960424,
+     "ts": 1803773757,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 603162210,
+     "ts": 1804424463,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 960654524,
+     "ts": 1806229513,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 712801808,
+     "ts": 1808126378,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1522852884,
+     "ts": 1810718302,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 26155923,
+     "ts": 1812810459,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1410330162,
+     "ts": 1813185628,
+     "days": 2,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1813185628,
+     "score": 0
+    },
+    {
+     "now": 1813185629,
+     "score": 0
+    },
+    {
+     "now": 1813790428,
+     "score": 0
+    },
+    {
+     "now": 1815777628,
+     "score": 0
+    },
+    {
+     "now": 1821825628,
+     "score": 0
+    },
+    {
+     "now": 1844721628,
+     "score": 0
+    },
+    {
+     "now": 2128545628,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 610460596,
+     "ts": 1801592911,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 471250473,
+     "ts": 1804371056,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1607015046,
+     "ts": 1805595866,
+     "days": 8,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1239606142,
+     "ts": 1807398434,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1880469473,
+     "ts": 1808625138,
+     "days": 26,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1149957723,
+     "ts": 1811927893,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 785527600,
+     "ts": 1814209160,
+     "days": 4,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 272982904,
+     "ts": 1816474904,
+     "days": 22,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 643800534,
+     "ts": 1819145563,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 531855512,
+     "ts": 1819637926,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 483180163,
+     "ts": 1820207771,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 917424689,
+     "ts": 1822276584,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1174689690,
+     "ts": 1822869022,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 14207453,
+     "ts": 1825707062,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1424372780,
+     "ts": 1826787547,
+     "days": 28,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1826787547,
+     "score": 213
+    },
+    {
+     "now": 1826787548,
+     "score": 213
+    },
+    {
+     "now": 1827392347,
+     "score": 206
+    },
+    {
+     "now": 1829379547,
+     "score": 190
+    },
+    {
+     "now": 1835427547,
+     "score": 172
+    },
+    {
+     "now": 1858323547,
+     "score": 168
+    },
+    {
+     "now": 2142147547,
+     "score": 168
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "m": 7,
+   "events": [
+    {
+     "kind": "slash",
+     "amount": 1544262544,
+     "ts": 1801462780,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1508560145,
+     "ts": 1801946019,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 477114557,
+     "ts": 1804270801,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 208488325,
+     "ts": 1807219348,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 767494000,
+     "ts": 1809353716,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 890135515,
+     "ts": 1810217010,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1392742516,
+     "ts": 1810372367,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 868378537,
+     "ts": 1810758129,
+     "days": 3,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1223966167,
+     "ts": 1812202542,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1171515172,
+     "ts": 1814366252,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1533551683,
+     "ts": 1817470925,
+     "days": 22,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1772639757,
+     "ts": 1819150551,
+     "days": 5,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1819150551,
+     "score": 0
+    },
+    {
+     "now": 1819150552,
+     "score": 0
+    },
+    {
+     "now": 1819755351,
+     "score": 0
+    },
+    {
+     "now": 1821742551,
+     "score": 0
+    },
+    {
+     "now": 1827790551,
+     "score": 0
+    },
+    {
+     "now": 1850686551,
+     "score": 0
+    },
+    {
+     "now": 2134510551,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 10,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 301643349,
+     "ts": 1803254953,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 339668078,
+     "ts": 1804580454,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1262448134,
+     "ts": 1806828168,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 16373532,
+     "ts": 1807764347,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1684918247,
+     "ts": 1808142228,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1375144156,
+     "ts": 1811476504,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 328092573,
+     "ts": 1814177375,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 942799636,
+     "ts": 1814659945,
+     "days": 3,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 134987279,
+     "ts": 1816206291,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 36457187,
+     "ts": 1817817969,
+     "days": 14,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1817817969,
+     "score": 0
+    },
+    {
+     "now": 1817817970,
+     "score": 0
+    },
+    {
+     "now": 1818422769,
+     "score": 0
+    },
+    {
+     "now": 1820409969,
+     "score": 0
+    },
+    {
+     "now": 1826457969,
+     "score": 0
+    },
+    {
+     "now": 1849353969,
+     "score": 0
+    },
+    {
+     "now": 2133177969,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "m": 7,
+   "events": [
+    {
+     "kind": "dispute_loss",
+     "amount": 1052223677,
+     "ts": 1800565746,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1983015650,
+     "ts": 1800979507,
+     "days": 5,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1195165687,
+     "ts": 1801972983,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 320837963,
+     "ts": 1802929926,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 668474435,
+     "ts": 1805616234,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1642476381,
+     "ts": 1807545413,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 259639743,
+     "ts": 1808779460,
+     "days": 12,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 174864222,
+     "ts": 1808950890,
+     "days": 22,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 184076890,
+     "ts": 1809522645,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 594202692,
+     "ts": 1810359769,
+     "days": 5,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 298109755,
+     "ts": 1812848901,
+     "days": 3,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 333524449,
+     "ts": 1816145504,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1725012591,
+     "ts": 1819327517,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1654527212,
+     "ts": 1821450873,
+     "days": 5,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1398783693,
+     "ts": 1821831597,
+     "days": 15,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1821831597,
+     "score": 0
+    },
+    {
+     "now": 1821831598,
+     "score": 0
+    },
+    {
+     "now": 1822436397,
+     "score": 0
+    },
+    {
+     "now": 1824423597,
+     "score": 0
+    },
+    {
+     "now": 1830471597,
+     "score": 0
+    },
+    {
+     "now": 1853367597,
+     "score": 0
+    },
+    {
+     "now": 2137191597,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 1,
+   "m": 7,
+   "events": [
+    {
+     "kind": "advance_repayment",
+     "amount": 1573717731,
+     "ts": 1800060654,
+     "days": 1,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1800060654,
+     "score": 42
+    },
+    {
+     "now": 1800060655,
+     "score": 42
+    },
+    {
+     "now": 1800665454,
+     "score": 42
+    },
+    {
+     "now": 1802652654,
+     "score": 42
+    },
+    {
+     "now": 1808700654,
+     "score": 42
+    },
+    {
+     "now": 1831596654,
+     "score": 42
+    },
+    {
+     "now": 2115420654,
+     "score": 42
+    }
+   ]
+  },
+  {
+   "n": 21,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 240389222,
+     "ts": 1800265047,
+     "days": 9,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 131854734,
+     "ts": 1803141755,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 679915807,
+     "ts": 1804404529,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 337990345,
+     "ts": 1806505532,
+     "days": 11,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 861638233,
+     "ts": 1809458173,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1082821672,
+     "ts": 1811777000,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 176104220,
+     "ts": 1814196063,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 349772891,
+     "ts": 1814362868,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1977226320,
+     "ts": 1814489452,
+     "days": 7,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 50560169,
+     "ts": 1817540438,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 624812324,
+     "ts": 1817884243,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1986855979,
+     "ts": 1817970481,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 862246756,
+     "ts": 1821240486,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1033693073,
+     "ts": 1823115418,
+     "days": 29,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1028058056,
+     "ts": 1823321676,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 615337309,
+     "ts": 1824449699,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 11644346,
+     "ts": 1827756331,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 693253017,
+     "ts": 1828565929,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 216097271,
+     "ts": 1831101398,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1593607605,
+     "ts": 1834084662,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 243118526,
+     "ts": 1835004232,
+     "days": 18,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1835004232,
+     "score": 0
+    },
+    {
+     "now": 1835004233,
+     "score": 0
+    },
+    {
+     "now": 1835609032,
+     "score": 0
+    },
+    {
+     "now": 1837596232,
+     "score": 0
+    },
+    {
+     "now": 1843644232,
+     "score": 0
+    },
+    {
+     "now": 1866540232,
+     "score": 0
+    },
+    {
+     "now": 2150364232,
+     "score": 130
+    }
+   ]
+  },
+  {
+   "n": 4,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 251472529,
+     "ts": 1800202555,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1227274939,
+     "ts": 1802681233,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1038538431,
+     "ts": 1804586033,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 720715828,
+     "ts": 1807128861,
+     "days": 11,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1807128861,
+     "score": 198
+    },
+    {
+     "now": 1807128862,
+     "score": 198
+    },
+    {
+     "now": 1807733661,
+     "score": 176
+    },
+    {
+     "now": 1809720861,
+     "score": 103
+    },
+    {
+     "now": 1815768861,
+     "score": 27
+    },
+    {
+     "now": 1838664861,
+     "score": 8
+    },
+    {
+     "now": 2122488861,
+     "score": 8
+    }
+   ]
+  },
+  {
+   "n": 14,
+   "m": 7,
+   "events": [
+    {
+     "kind": "recovery",
+     "amount": 805454924,
+     "ts": 1801074674,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1684849391,
+     "ts": 1801097916,
+     "days": 10,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1849656376,
+     "ts": 1802646586,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 512036401,
+     "ts": 1805877610,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1247172373,
+     "ts": 1807170495,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1299071723,
+     "ts": 1810027550,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1634985723,
+     "ts": 1811883260,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1228001578,
+     "ts": 1813762760,
+     "days": 1,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1535900367,
+     "ts": 1816127056,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1251276785,
+     "ts": 1816247153,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1861774388,
+     "ts": 1818146315,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 66700693,
+     "ts": 1820292644,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 865116869,
+     "ts": 1821021064,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 514369408,
+     "ts": 1823883910,
+     "days": 29,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1823883910,
+     "score": 0
+    },
+    {
+     "now": 1823883911,
+     "score": 0
+    },
+    {
+     "now": 1824488710,
+     "score": 0
+    },
+    {
+     "now": 1826475910,
+     "score": 0
+    },
+    {
+     "now": 1832523910,
+     "score": 0
+    },
+    {
+     "now": 1855419910,
+     "score": 70
+    },
+    {
+     "now": 2139243910,
+     "score": 138
+    }
+   ]
+  },
+  {
+   "n": 22,
+   "m": 7,
+   "events": [
+    {
+     "kind": "dispute_loss",
+     "amount": 695049161,
+     "ts": 1803086309,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 411234795,
+     "ts": 1805287372,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1337637942,
+     "ts": 1807734564,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 351922400,
+     "ts": 1807858344,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 737529450,
+     "ts": 1811221374,
+     "days": 27,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1175081972,
+     "ts": 1812413918,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 888657457,
+     "ts": 1812897189,
+     "days": 2,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1410245239,
+     "ts": 1813529341,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 90589422,
+     "ts": 1813786854,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1007757087,
+     "ts": 1814359659,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1186678437,
+     "ts": 1817542936,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 814319716,
+     "ts": 1819655346,
+     "days": 4,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 428988965,
+     "ts": 1822590298,
+     "days": 4,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 344376991,
+     "ts": 1822963331,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 801716485,
+     "ts": 1823970998,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 110069324,
+     "ts": 1826799677,
+     "days": 22,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 978894876,
+     "ts": 1829982625,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 329183359,
+     "ts": 1832152318,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 726473716,
+     "ts": 1834724632,
+     "days": 6,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1881631800,
+     "ts": 1836046693,
+     "days": 0,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 969867733,
+     "ts": 1838659884,
+     "days": 6,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 878012542,
+     "ts": 1839357218,
+     "days": 16,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1839357218,
+     "score": 0
+    },
+    {
+     "now": 1839357219,
+     "score": 0
+    },
+    {
+     "now": 1839962018,
+     "score": 0
+    },
+    {
+     "now": 1841949218,
+     "score": 0
+    },
+    {
+     "now": 1847997218,
+     "score": 0
+    },
+    {
+     "now": 1870893218,
+     "score": 0
+    },
+    {
+     "now": 2154717218,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 12,
+   "m": 7,
+   "events": [
+    {
+     "kind": "default",
+     "amount": 820703939,
+     "ts": 1801325851,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1194936781,
+     "ts": 1802716210,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 321306616,
+     "ts": 1805678505,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1472815380,
+     "ts": 1806584242,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1553452263,
+     "ts": 1808954107,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1232573949,
+     "ts": 1810180424,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 921759992,
+     "ts": 1812337447,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 188702758,
+     "ts": 1812349369,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1794018908,
+     "ts": 1814608920,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1843341259,
+     "ts": 1817149133,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 200343190,
+     "ts": 1818864426,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 48091902,
+     "ts": 1819901799,
+     "days": 7,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1819901799,
+     "score": 0
+    },
+    {
+     "now": 1819901800,
+     "score": 0
+    },
+    {
+     "now": 1820506599,
+     "score": 0
+    },
+    {
+     "now": 1822493799,
+     "score": 0
+    },
+    {
+     "now": 1828541799,
+     "score": 0
+    },
+    {
+     "now": 1851437799,
+     "score": 144
+    },
+    {
+     "now": 2135261799,
+     "score": 238
+    }
+   ]
+  },
+  {
+   "n": 18,
+   "m": 7,
+   "events": [
+    {
+     "kind": "recovery",
+     "amount": 802398579,
+     "ts": 1801794521,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1439864356,
+     "ts": 1803393453,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 730052833,
+     "ts": 1806284231,
+     "days": 1,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1650762854,
+     "ts": 1807369204,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1969542672,
+     "ts": 1808066929,
+     "days": 1,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 32803879,
+     "ts": 1809327997,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 94064888,
+     "ts": 1809961344,
+     "days": 3,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 85420698,
+     "ts": 1810025811,
+     "days": 11,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 107806079,
+     "ts": 1810410287,
+     "days": 3,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 372948409,
+     "ts": 1812438892,
+     "days": 10,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 104129147,
+     "ts": 1813644269,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1111659984,
+     "ts": 1816275849,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 54942895,
+     "ts": 1819598979,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1704073800,
+     "ts": 1821638755,
+     "days": 7,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1278894295,
+     "ts": 1823341458,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1685412332,
+     "ts": 1825478316,
+     "days": 12,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1134322345,
+     "ts": 1826844870,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1262280809,
+     "ts": 1829160575,
+     "days": 8,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1829160575,
+     "score": 70
+    },
+    {
+     "now": 1829160576,
+     "score": 70
+    },
+    {
+     "now": 1829765375,
+     "score": 71
+    },
+    {
+     "now": 1831752575,
+     "score": 22
+    },
+    {
+     "now": 1837800575,
+     "score": 0
+    },
+    {
+     "now": 1860696575,
+     "score": 0
+    },
+    {
+     "now": 2144520575,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 16,
+   "m": 7,
+   "events": [
+    {
+     "kind": "recovery",
+     "amount": 1958869879,
+     "ts": 1801063699,
+     "days": 26,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1151678529,
+     "ts": 1802919173,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 219400889,
+     "ts": 1803432866,
+     "days": 1,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 26739054,
+     "ts": 1805956630,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 28676782,
+     "ts": 1806115235,
+     "days": 27,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 119656628,
+     "ts": 1806959597,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 45506018,
+     "ts": 1807473195,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 866648248,
+     "ts": 1809125925,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 817237612,
+     "ts": 1811422490,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1825289959,
+     "ts": 1811450541,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 207783622,
+     "ts": 1812787906,
+     "days": 17,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 702180047,
+     "ts": 1814040287,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1158707103,
+     "ts": 1816282275,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1643914479,
+     "ts": 1818606116,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1238943063,
+     "ts": 1821486614,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1632478158,
+     "ts": 1823409396,
+     "days": 2,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1823409396,
+     "score": 0
+    },
+    {
+     "now": 1823409397,
+     "score": 0
+    },
+    {
+     "now": 1824014196,
+     "score": 0
+    },
+    {
+     "now": 1826001396,
+     "score": 0
+    },
+    {
+     "now": 1832049396,
+     "score": 0
+    },
+    {
+     "now": 1854945396,
+     "score": 0
+    },
+    {
+     "now": 2138769396,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "m": 7,
+   "events": [
+    {
+     "kind": "dispute_loss",
+     "amount": 906892318,
+     "ts": 1802315671,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1782553131,
+     "ts": 1804990820,
+     "days": 16,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 829847667,
+     "ts": 1807655223,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1786005119,
+     "ts": 1808714541,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 487235546,
+     "ts": 1810295793,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 423269493,
+     "ts": 1811698477,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 292267328,
+     "ts": 1812157540,
+     "days": 8,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1238443805,
+     "ts": 1813418598,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1265374213,
+     "ts": 1814194455,
+     "days": 27,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1247239752,
+     "ts": 1814271292,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 81237953,
+     "ts": 1815019063,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 56306225,
+     "ts": 1815026300,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1292753935,
+     "ts": 1817702704,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1663421704,
+     "ts": 1819683279,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1103103021,
+     "ts": 1820203873,
+     "days": 0,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1820203873,
+     "score": 0
+    },
+    {
+     "now": 1820203874,
+     "score": 0
+    },
+    {
+     "now": 1820808673,
+     "score": 0
+    },
+    {
+     "now": 1822795873,
+     "score": 0
+    },
+    {
+     "now": 1828843873,
+     "score": 0
+    },
+    {
+     "now": 1851739873,
+     "score": 0
+    },
+    {
+     "now": 2135563873,
+     "score": 20
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 272241345,
+     "ts": 1802314662,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1307052946,
+     "ts": 1804908701,
+     "days": 7,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 512688365,
+     "ts": 1804964970,
+     "days": 29,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1882945033,
+     "ts": 1806804796,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 856665478,
+     "ts": 1807595820,
+     "days": 26,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1807595820,
+     "score": 329
+    },
+    {
+     "now": 1807595821,
+     "score": 329
+    },
+    {
+     "now": 1808200620,
+     "score": 310
+    },
+    {
+     "now": 1810187820,
+     "score": 249
+    },
+    {
+     "now": 1816235820,
+     "score": 185
+    },
+    {
+     "now": 1839131820,
+     "score": 169
+    },
+    {
+     "now": 2122955820,
+     "score": 169
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 1829755970,
+     "ts": 1801178888,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 327510695,
+     "ts": 1801399917,
+     "days": 8,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1080072317,
+     "ts": 1801796167,
+     "days": 27,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1801796167,
+     "score": 400
+    },
+    {
+     "now": 1801796168,
+     "score": 400
+    },
+    {
+     "now": 1802400967,
+     "score": 400
+    },
+    {
+     "now": 1804388167,
+     "score": 400
+    },
+    {
+     "now": 1810436167,
+     "score": 400
+    },
+    {
+     "now": 1833332167,
+     "score": 400
+    },
+    {
+     "now": 2117156167,
+     "score": 400
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "m": 7,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 1583740510,
+     "ts": 1801591082,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 349038695,
+     "ts": 1804778018,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 795254174,
+     "ts": 1805930896,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1209212162,
+     "ts": 1806340492,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1078387614,
+     "ts": 1809524524,
+     "days": 14,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1809524524,
+     "score": 0
+    },
+    {
+     "now": 1809524525,
+     "score": 0
+    },
+    {
+     "now": 1810129324,
+     "score": 0
+    },
+    {
+     "now": 1812116524,
+     "score": 0
+    },
+    {
+     "now": 1818164524,
+     "score": 0
+    },
+    {
+     "now": 1841060524,
+     "score": 0
+    },
+    {
+     "now": 2124884524,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 8,
+   "m": 7,
+   "events": [
+    {
+     "kind": "advance_repayment",
+     "amount": 30607076,
+     "ts": 1801143302,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1923247606,
+     "ts": 1801376515,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 21340338,
+     "ts": 1802866703,
+     "days": 17,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 322311421,
+     "ts": 1804022164,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1760832831,
+     "ts": 1805314772,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1776495279,
+     "ts": 1808715316,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 64382955,
+     "ts": 1809847887,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 947235358,
+     "ts": 1811904992,
+     "days": 18,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1811904992,
+     "score": 199
+    },
+    {
+     "now": 1811904993,
+     "score": 199
+    },
+    {
+     "now": 1812509792,
+     "score": 172
+    },
+    {
+     "now": 1814496992,
+     "score": 81
+    },
+    {
+     "now": 1820544992,
+     "score": 0
+    },
+    {
+     "now": 1843440992,
+     "score": 0
+    },
+    {
+     "now": 2127264992,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 15,
+   "m": 7,
+   "events": [
+    {
+     "kind": "default",
+     "amount": 1532860825,
+     "ts": 1800775917,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1994896151,
+     "ts": 1802899951,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1741099904,
+     "ts": 1804142068,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1055980536,
+     "ts": 1805629815,
+     "days": 20,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 164301721,
+     "ts": 1807789870,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 264499805,
+     "ts": 1811126237,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1415714249,
+     "ts": 1814026277,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 502611581,
+     "ts": 1815768723,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 842097980,
+     "ts": 1818627091,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1483524376,
+     "ts": 1820180923,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 933457783,
+     "ts": 1820647675,
+     "days": 12,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 523659401,
+     "ts": 1820710543,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1022552901,
+     "ts": 1823957029,
+     "days": 14,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 215944049,
+     "ts": 1826563055,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 1032293360,
+     "ts": 1827375935,
+     "days": 5,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1827375935,
+     "score": 0
+    },
+    {
+     "now": 1827375936,
+     "score": 0
+    },
+    {
+     "now": 1827980735,
+     "score": 0
+    },
+    {
+     "now": 1829967935,
+     "score": 0
+    },
+    {
+     "now": 1836015935,
+     "score": 0
+    },
+    {
+     "now": 1858911935,
+     "score": 0
+    },
+    {
+     "now": 2142735935,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 9,
+   "m": 7,
+   "events": [
+    {
+     "kind": "default",
+     "amount": 963729576,
+     "ts": 1803209380,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 689555677,
+     "ts": 1806256016,
+     "days": 0,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1540390464,
+     "ts": 1806701471,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 723160498,
+     "ts": 1807962283,
+     "days": 19,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 224892541,
+     "ts": 1811137758,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1961616356,
+     "ts": 1811720674,
+     "days": 18,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 444754614,
+     "ts": 1811935715,
+     "days": 20,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1392688035,
+     "ts": 1813016766,
+     "days": 21,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 190871693,
+     "ts": 1815757942,
+     "days": 25,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1815757942,
+     "score": 0
+    },
+    {
+     "now": 1815757943,
+     "score": 0
+    },
+    {
+     "now": 1816362742,
+     "score": 0
+    },
+    {
+     "now": 1818349942,
+     "score": 0
+    },
+    {
+     "now": 1824397942,
+     "score": 0
+    },
+    {
+     "now": 1847293942,
+     "score": 0
+    },
+    {
+     "now": 2131117942,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 13,
+   "m": 7,
+   "events": [
+    {
+     "kind": "recovery",
+     "amount": 1092191501,
+     "ts": 1803277504,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1560218901,
+     "ts": 1805694218,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1903456909,
+     "ts": 1808290618,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 609273417,
+     "ts": 1808953362,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 1882538506,
+     "ts": 1809672026,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1717523293,
+     "ts": 1810973757,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "recovery",
+     "amount": 196525389,
+     "ts": 1812362786,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1810625748,
+     "ts": 1813928586,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1605985481,
+     "ts": 1814746482,
+     "days": 1,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 875277863,
+     "ts": 1816388404,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1388366291,
+     "ts": 1817142825,
+     "days": 11,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 834951641,
+     "ts": 1819874951,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1392823434,
+     "ts": 1821115062,
+     "days": 5,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1821115062,
+     "score": 0
+    },
+    {
+     "now": 1821115063,
+     "score": 0
+    },
+    {
+     "now": 1821719862,
+     "score": 0
+    },
+    {
+     "now": 1823707062,
+     "score": 0
+    },
+    {
+     "now": 1829755062,
+     "score": 0
+    },
+    {
+     "now": 1852651062,
+     "score": 0
+    },
+    {
+     "now": 2136475062,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 22,
+   "m": 7,
+   "events": [
+    {
+     "kind": "advance_repayment",
+     "amount": 876645529,
+     "ts": 1802360471,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1759471381,
+     "ts": 1802702788,
+     "days": 12,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1704701499,
+     "ts": 1805027249,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1794981604,
+     "ts": 1805962280,
+     "days": 30,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1023898730,
+     "ts": 1809205567,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 802822631,
+     "ts": 1812548413,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1354135577,
+     "ts": 1812931196,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 263397767,
+     "ts": 1813525320,
+     "days": 24,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 655739489,
+     "ts": 1815147178,
+     "days": 22,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1051160161,
+     "ts": 1818049776,
+     "days": 30,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1791191800,
+     "ts": 1819351226,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1881342831,
+     "ts": 1822358618,
+     "days": 8,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 1578928514,
+     "ts": 1825404217,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 212367744,
+     "ts": 1826406303,
+     "days": 18,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1799191404,
+     "ts": 1826845318,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "settlement",
+     "amount": 720902253,
+     "ts": 1826906764,
+     "days": 11,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1283971230,
+     "ts": 1827233200,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 245772293,
+     "ts": 1829513751,
+     "days": 19,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 179138401,
+     "ts": 1831482368,
+     "days": 7,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 590374610,
+     "ts": 1833328060,
+     "days": 10,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 119173624,
+     "ts": 1835970134,
+     "days": 26,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 363893577,
+     "ts": 1838525252,
+     "days": 16,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1838525252,
+     "score": 0
+    },
+    {
+     "now": 1838525253,
+     "score": 0
+    },
+    {
+     "now": 1839130052,
+     "score": 0
+    },
+    {
+     "now": 1841117252,
+     "score": 0
+    },
+    {
+     "now": 1847165252,
+     "score": 0
+    },
+    {
+     "now": 1870061252,
+     "score": 0
+    },
+    {
+     "now": 2153885252,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 21,
+   "m": 7,
+   "events": [
+    {
+     "kind": "dispute_loss",
+     "amount": 1749525094,
+     "ts": 1802546860,
+     "days": 4,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 219907773,
+     "ts": 1804447339,
+     "days": 2,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 84801580,
+     "ts": 1805291841,
+     "days": 25,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1142482102,
+     "ts": 1806287540,
+     "days": 7,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 766198986,
+     "ts": 1807391499,
+     "days": 10,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1735684413,
+     "ts": 1807431683,
+     "days": 23,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 1230862832,
+     "ts": 1808091162,
+     "days": 10,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 960448266,
+     "ts": 1810722875,
+     "days": 5,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 1218520174,
+     "ts": 1811202527,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 201722024,
+     "ts": 1811892390,
+     "days": 10,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1428465487,
+     "ts": 1814751804,
+     "days": 12,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 910020263,
+     "ts": 1815708710,
+     "days": 14,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 604150988,
+     "ts": 1818427877,
+     "days": 4,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 874968338,
+     "ts": 1819528334,
+     "days": 16,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 1621273122,
+     "ts": 1822681447,
+     "days": 15,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 210574559,
+     "ts": 1824884709,
+     "days": 27,
+     "on_time": true
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 231015296,
+     "ts": 1825881297,
+     "days": 13,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 1024607722,
+     "ts": 1826065742,
+     "days": 10,
+     "on_time": true
+    },
+    {
+     "kind": "slash",
+     "amount": 552852193,
+     "ts": 1829249299,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1890987315,
+     "ts": 1831285496,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "advance_repayment",
+     "amount": 703334684,
+     "ts": 1833600717,
+     "days": 0,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1833600717,
+     "score": 0
+    },
+    {
+     "now": 1833600718,
+     "score": 0
+    },
+    {
+     "now": 1834205517,
+     "score": 0
+    },
+    {
+     "now": 1836192717,
+     "score": 0
+    },
+    {
+     "now": 1842240717,
+     "score": 0
+    },
+    {
+     "now": 1865136717,
+     "score": 0
+    },
+    {
+     "now": 2148960717,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "m": 7,
+   "events": [
+    {
+     "kind": "default",
+     "amount": 1837975007,
+     "ts": 1801288476,
+     "days": 23,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 231812167,
+     "ts": 1802204095,
+     "days": 26,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1802204095,
+     "score": 0
+    },
+    {
+     "now": 1802204096,
+     "score": 0
+    },
+    {
+     "now": 1802808895,
+     "score": 0
+    },
+    {
+     "now": 1804796095,
+     "score": 0
+    },
+    {
+     "now": 1810844095,
+     "score": 0
+    },
+    {
+     "now": 1833740095,
+     "score": 0
+    },
+    {
+     "now": 2117564095,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 8,
+   "m": 7,
+   "events": [
+    {
+     "kind": "repayment",
+     "amount": 1390013771,
+     "ts": 1800646407,
+     "days": 25,
+     "on_time": false
+    },
+    {
+     "kind": "slash",
+     "amount": 1996761342,
+     "ts": 1800999672,
+     "days": 1,
+     "on_time": true
+    },
+    {
+     "kind": "default",
+     "amount": 1338697284,
+     "ts": 1803258967,
+     "days": 21,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1685934397,
+     "ts": 1803384881,
+     "days": 9,
+     "on_time": true
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1557984862,
+     "ts": 1805663128,
+     "days": 28,
+     "on_time": false
+    },
+    {
+     "kind": "dispute_loss",
+     "amount": 1916792082,
+     "ts": 1808670390,
+     "days": 15,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 1186153196,
+     "ts": 1811020732,
+     "days": 6,
+     "on_time": true
+    },
+    {
+     "kind": "repayment",
+     "amount": 1836749247,
+     "ts": 1812762039,
+     "days": 19,
+     "on_time": false
+    }
+   ],
+   "checks": [
+    {
+     "now": 1812762039,
+     "score": 0
+    },
+    {
+     "now": 1812762040,
+     "score": 0
+    },
+    {
+     "now": 1813366839,
+     "score": 0
+    },
+    {
+     "now": 1815354039,
+     "score": 0
+    },
+    {
+     "now": 1821402039,
+     "score": 0
+    },
+    {
+     "now": 1844298039,
+     "score": 0
+    },
+    {
+     "now": 2128122039,
+     "score": 0
+    }
+   ]
+  },
+  {
+   "n": 5,
+   "m": 3,
+   "events": [
+    {
+     "kind": "settlement",
+     "amount": 100000000,
+     "ts": 1800000000,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "default",
+     "amount": 50000000,
+     "ts": 1800086400,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "settlement",
+     "amount": 300000000,
+     "ts": 1803888000,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "recovery",
+     "amount": 50000000,
+     "ts": 1817280000,
+     "days": 0,
+     "on_time": false
+    },
+    {
+     "kind": "repayment",
+     "amount": 120000000,
+     "ts": 1817366400,
+     "days": 12,
+     "on_time": true
+    }
+   ],
+   "checks": [
+    {
+     "now": 1817366400,
+     "score": 174
+    },
+    {
+     "now": 1818230400,
+     "score": 173
+    },
+    {
+     "now": 1851926400,
+     "score": 172
+    }
+   ]
+  }
+ ]
+}
