@@ -13,7 +13,8 @@
     "test": "node --test",
     "contracts:build": "cd contracts && forge build",
     "contracts:test": "cd contracts && forge test",
-    "credit:vectors": "node scripts/credit-vectors.js"
+    "credit:vectors": "node scripts/credit-vectors.js",
+    "quickstart": "node scripts/quickstart.js"
   },
   "license": "MIT",
   "dependencies": {

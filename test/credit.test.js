@@ -170,6 +170,52 @@ test('chain config: off without a chain id, refused without a deployment record,
   assert.equal(rec.creditRegistry, null);
 });
 
+test('phase 2 without a chain: borrowing, repaying and payouts are refused with a reason; reads say the pool is off', async () => {
+  const engine = createEngine(FAST);
+  engine.state.providers = {};
+  const owner = engine.createKey('owner');
+  const p = engine.registerProvider({ name: 'p', endpoint_url: 'http://localhost:1/task', offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } } }, owner);
+  engine.credit.record('settlement', p.id, 'tsk_1', 20, { payout_at: Date.now() + 1000 });
+  await assert.rejects(engine.creditBorrow(p.id, { path: 'advance', settlement_id: 'tsk_1' }, { key: owner }), (e) => e.code === 'credit_chain_off');
+  await assert.rejects(engine.creditBorrow(p.id, { path: 'task_escrow' }, { key: owner }), (e) => e.code === 'not_implemented');
+  await assert.rejects(engine.creditRepay(p.id, { loan_id: '0x00' }, { key: owner }), (e) => e.code === 'credit_chain_off');
+  await assert.rejects(engine.creditPayout('tsk_1', { key: owner }), (e) => e.code === 'credit_chain_off');
+  await assert.rejects(engine.creditPayout('tsk_nope', { key: owner }), (e) => e.code === 'not_found');
+  await assert.rejects(engine.creditQuote(p.id, 'tsk_1'), (e) => e.code === 'credit_chain_off');
+  const pool = await engine.creditPool();
+  assert.equal(pool.enabled, false); assert.match(pool.reason, /VOUCH_CREDIT_CHAIN_ID/);
+  const s = await engine.creditSettlement('tsk_1');
+  assert.equal(s.amount_usd, 20); assert.equal(s.chain, null); assert.equal(s.payout, null);
+  const loans = await engine.creditLoans(p.id);
+  assert.deepEqual(loans.loans, []); assert.equal(loans.exposure_usd, null);
+  assert.equal((await engine.creditStatus()).borrowing, false);
+});
+
+test('record: a settlement event carries what the agent will be paid and when', async () => {
+  const good = await fakeProvider({ result: 42 });
+  try {
+    const engine = createEngine(FAST);
+    engine.state.providers = {};
+    const owner = engine.createKey('owner');
+    engine.deposit(owner, 100);
+    const a = engine.launchAgent({ name: 'calc', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 50 }, owner);
+    const buyer = engine.createKey('buyer');
+    engine.deposit(buyer, 5);
+    const ownerBefore = engine.balance(owner).balance;
+    const t = await waitTerminal(engine, engine.createTask(buyer, mathTask()).task.id);
+    const ev = engine.credit.eventsFor(a.provider_id).at(-1);
+    assert.equal(ev.kind, 'settlement'); assert.equal(ev.price, t.settlement.price);
+    assert.ok(ev.amount < t.settlement.price, 'the agent\'s proceeds are its owner\'s net share, not the price');
+    assert.ok(Math.abs(ev.amount - (engine.balance(owner).balance - ownerBefore)) < 1e-6, 'exactly what reached the owner key');
+    assert.ok(ev.payout_at > Date.now() + 23 * 3600 * 1000, 'pending until the dispute window closes');
+    // a plain provider's proceeds are the full price
+    engine.state.providers = {};
+    const p = engine.registerProvider({ name: 'p', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 10 });
+    const t2 = await waitTerminal(engine, engine.createTask(buyer, mathTask()).task.id);
+    assert.equal(engine.credit.eventsFor(p.id).at(-1).amount, t2.settlement.price);
+  } finally { good.close(); }
+});
+
 // ---- HTTP + MCP ----------------------------------------------------------------------------
 
 test('api: credit reads are public, identity link is owner-only, MCP exposes the three read tools', async () => {
@@ -200,7 +246,12 @@ test('api: credit reads are public, identity link is owner-only, MCP exposes the
     // MCP
     const rpc = async (body, key) => (await fetch(base + '/mcp', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, ...body }) })).json();
     const tools = (await rpc({ method: 'tools/list' })).result.tools.map((t) => t.name);
-    for (const t of ['vouch_credit_score', 'vouch_credit_report', 'vouch_credit_line']) assert.ok(tools.includes(t), t);
+    for (const t of ['vouch_credit_score', 'vouch_credit_report', 'vouch_credit_line', 'vouch_borrow', 'vouch_repay', 'vouch_credit_loans']) assert.ok(tools.includes(t), t);
+    const off = await rpc({ method: 'tools/call', params: { name: 'vouch_borrow', arguments: { agent_id: pid, path: 'advance', settlement_id: 'tsk_a' } } }, stranger);
+    assert.match(JSON.stringify(off), /not_owner|credit_chain_off/);
+    assert.equal((await call('GET', '/v1/credit/pool')).body.enabled, false);
+    assert.equal((await call('POST', `/v1/credit/borrow/${pid}`, { key: stranger, body: { path: 'advance' } })).status, 403);
+    assert.equal((await call('GET', `/v1/credit/loans/${pid}`)).status, 200);
     assert.ok((await rpc({ method: 'tools/list' })).result.tools.find((t) => t.name === 'vouch_post_task').inputSchema.properties.min_credit);
     const got = await rpc({ method: 'tools/call', params: { name: 'vouch_credit_score', arguments: { agent_id: '12' } } }, stranger);
     assert.equal(JSON.parse(got.result.content[0].text).score, 29);

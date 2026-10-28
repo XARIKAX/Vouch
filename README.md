@@ -249,7 +249,7 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `BROKER_ORDER_TOKEN` | unset | If set, `POST /v1/broker/order` requires a matching `x-broker-token` |
 | `VOUCH_CREDIT_CHAIN_ID` | unset | Vouch Credit chain: `4663` Robinhood Chain, `31337` local devnet. Needs `contracts/deployments/<chainId>.json` with a deployed `creditRegistry`; otherwise scores stay engine-only |
 | `VOUCH_CREDIT_RPC` | the record's `rpc` | Override the credit chain's JSON-RPC endpoint |
-| `VOUCH_CREDIT_ATTESTER_KEY` | unset (read-only) | The attester's secp256k1 private key; set, the engine posts credit events on-chain. Keep it in the host's secret store only |
+| `VOUCH_CREDIT_ATTESTER_KEY` | unset (read-only) | The attester's secp256k1 private key; set, the engine posts credit events on-chain and, as the treasury, pays settlement proceeds and repayments to the pool in USDG. Keep it in the host's secret store only |
 | `VOUCH_CREDIT_DEPLOYMENTS` | `contracts/deployments` | Directory of deployment records |
 | `VOUCH_FAST` | off | Compress provider latencies (dev/test) |
 
@@ -268,7 +268,23 @@ MCP: `vouch_credit_score`, `vouch_credit_report`, `vouch_credit_line`. CLI: `npx
 
 On-chain, the `CreditRegistry` (Solidity, Foundry, `contracts/`) holds one record per ERC-8004 agentId. The engine is the attester: it posts each settlement, slash and dispute loss under the linked agentId, and the chain's `score(agentId)` and `creditReport(agentId)` are the public, replayable copy. Every address comes from `contracts/deployments/<chainId>.json`; a chain without a record is refused. Robinhood Chain (4663) carries the external addresses only, the identity registry and USDG, and no credit contract is deployed there: a mainnet deploy needs explicit sign-off. `cd contracts && forge test` runs the Solidity suite, including the fuzzed monotonicity proofs (repaying never lowers the score, defaulting never raises it) and the parity vectors.
 
-Phases 2 to 4 (the open USDG lender pool, advances against pending settlements with repayment intercepted at settlement, escrow- and stake-funding loans, the mainnet deploy script) are not built yet. No borrowing is open and no claim about lender principal is made until the multi-default invariant suite is green.
+### Borrowing (phase 2)
+
+The `CreditPool` is an open USDG pool: lenders deposit for pro-rata shares, every loan fee is split lenders / first-loss reserve / protocol (70 / 20 / 10, fixed at deploy), and a default is absorbed by the reserve before lender principal is touched and priced into the borrower's score, never executed against its identity. One lending path is open: an **advance** against a verified settlement whose payout is still pending. The engine attests each settlement to the pool as it happens (the pool records it in the registry in the same transaction); the agent draws up to 80% of it through the engine; the cash lands in the identity owner's wallet; when the payout is routed through the pool the loan is repaid, principal first, before the remainder is forwarded. Past due plus three days of grace anyone can mark a default; repaying afterwards is a recovery that refills the reserve and the lenders in that order.
+
+| Endpoint | Does |
+|---|---|
+| `GET /v1/credit/pool` | Lender assets, cash, outstanding, reserve, protocol fees, split, limits (public) |
+| `GET /v1/credit/loans/{id}` · `GET /v1/credit/settlements/{ref}` · `GET /v1/credit/quote/{id}/{ref}` | The agent's loans; an attested settlement; what an advance against it would cost now (public) |
+| `POST /v1/credit/borrow/{id}` `{ path: "advance", settlement_id }` | Draw the advance (owner key). `task_escrow` and `stake` answer `501` until phase 3 |
+| `POST /v1/credit/payout/{ref}` | Route the settlement's proceeds through the pool (owner key): debited from the owner's Vouch balance, paid by the treasury in USDG, loan repaid first |
+| `POST /v1/credit/repay/{id}` `{ loan_id, amount? }` | Repay early, in part or in full, from the owner's Vouch balance |
+
+MCP: `vouch_borrow`, `vouch_repay`, `vouch_credit_loans`. CLI: `vouch credit pool|loans|borrow|repay|payout`. `npm run quickstart` starts a devnet, deploys everything and walks one agent through register → verified work → score → advance → payout → auto-repay → a higher score, printing each step (`--keep` leaves it up for the CLI).
+
+The invariant suite (`contracts/test/CreditPoolInvariants.t.sol`, handler-based) holds across random lifecycles: solvency, lender principal untouched while the reserve covers a default across multiple defaults per agent and across agents (the multi-default accounting Priors shipped broken), every loan tied to an attested settlement and never above the advance share, repayment applied before anything reaches the agent, and exposure equal to the sum of each agent's active principal. Lenders can still lose principal once the reserve is empty; that is the documented limit, not a claim of safety.
+
+Phase 3 (escrow- and stake-funding loans, credit-line growth from trailing volume, stake discounts by tier) and phase 4 (the mainnet deploy run and the docs page) are not built yet. Nothing is deployed on Robinhood Chain.
 
 ## Status
 

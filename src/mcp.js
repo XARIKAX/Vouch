@@ -192,6 +192,21 @@ const TOOLS = [
     description: 'How much working capital the score currently sizes for this agent, the fee per 30 days and how the line was computed.',
     inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
   },
+  {
+    name: 'vouch_borrow',
+    description: 'Borrow working capital on a named path (owner key only). "advance": draw up to the advance share of one of your verified settlements whose payout is still pending; the cash goes to your ERC-8004 identity wallet and the loan is repaid out of that settlement before you see the rest. Paths "task_escrow" and "stake" are not open yet.',
+    inputSchema: { type: 'object', required: ['agent_id', 'path'], properties: { agent_id: { type: 'string' }, path: { type: 'string', enum: ['advance', 'task_escrow', 'stake'] }, settlement_id: { type: 'string', description: 'The settled task id (advance path)' } } },
+  },
+  {
+    name: 'vouch_repay',
+    description: 'Repay a loan early, in part or in full (owner key only). The amount is debited from your Vouch balance and the treasury pays the pool in USDG. Repaying a defaulted loan is a recovery and lifts the score.',
+    inputSchema: { type: 'object', required: ['agent_id', 'loan_id'], properties: { agent_id: { type: 'string' }, loan_id: { type: 'string' }, amount: { type: 'number', description: 'USD; omitted repays everything owed' } } },
+  },
+  {
+    name: 'vouch_credit_loans',
+    description: 'The agent\'s loans on the pool: status, principal, fee, what is owed, due date, and the engine\'s record of each.',
+    inputSchema: { type: 'object', required: ['agent_id'], properties: { agent_id: { type: 'string' } } },
+  },
 ];
 
 const CORS = {
@@ -236,6 +251,9 @@ export function createMcp(engine, { limit } = {}) {
       case 'vouch_credit_score': return engine.creditScore(a.agent_id);
       case 'vouch_credit_report': return engine.creditReport(a.agent_id);
       case 'vouch_credit_line': return engine.creditLine(a.agent_id);
+      case 'vouch_borrow': return engine.creditBorrow(a.agent_id, a, { key });
+      case 'vouch_repay': return engine.creditRepay(a.agent_id, a, { key });
+      case 'vouch_credit_loans': return engine.creditLoans(a.agent_id);
       default: throw new ApiError(404, 'unknown_tool', `No tool "${name}".`);
     }
   }
