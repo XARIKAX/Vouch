@@ -341,6 +341,34 @@ export function createApi(engine, { buckets } = {}) {
       send(res, 200, { agents: engine.listAgents() }, rl);
     }],
 
+    // Vouch Credit (Phase 1: the record, no money). Reads are public and take
+    // a provider id, an agent id or a linked ERC-8004 agentId. Linking an
+    // identity is owner-only (the registering key, the agent's owner key, or
+    // an admin) and, with a credit chain configured, needs the identity
+    // owner's wallet signature over the link message.
+    ['GET', /^\/v1\/credit$/, async (req, res) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, await engine.creditStatus(), rl);
+    }],
+    ['GET', /^\/v1\/credit\/score\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, engine.creditScore(who), rl);
+    }],
+    ['GET', /^\/v1\/credit\/report\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, await engine.creditReport(who), rl);
+    }],
+    ['GET', /^\/v1\/credit\/line\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const rl = limit(keyOrAnon(req));
+      send(res, 200, engine.creditLine(who), rl);
+    }],
+    ['POST', /^\/v1\/credit\/identity\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const actor = agentActor(req);
+      const rl = limit(actor.key ?? anonKey(req));
+      const body = await readBody(req);
+      send(res, 200, await engine.linkIdentity(who, body, actor), rl);
+    }],
+
     ['GET', /^\/v1\/agents\/([a-z0-9_]+)$/, async (req, res, [agentId]) => {
       const rl = limit(keyOrAnon(req));
       send(res, 200, engine.getAgent(agentId), rl);

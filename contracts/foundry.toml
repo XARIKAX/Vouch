@@ -1,0 +1,27 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+solc_version = "0.8.26"
+evm_version = "paris"
+optimizer = true
+optimizer_runs = 2000
+via_ir = true
+fs_permissions = [
+  { access = "read", path = "./deployments" },
+  { access = "write", path = "./deployments" },
+  { access = "read", path = "./test/vectors" },
+]
+
+[invariant]
+runs = 64
+depth = 64
+fail_on_revert = false
+
+[fuzz]
+runs = 512
+
+[lint]
+lint_on_build = false

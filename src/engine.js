@@ -14,6 +14,7 @@ import { snapshotParams } from './launchpad-config.js';
 import { bondCapacity, protocolFeeSplit, netPayoutSplit, slashPlan, trackWeight, topUpFromRevenue } from './launchpad.js';
 import { createInference } from './inference.js';
 import { upstreamConfig, createUpstream } from './upstream.js';
+import { createCredit } from './credit/index.js';
 import { ApiError } from './errors.js';
 import { assertPublicUrl, fetchWithTimeout } from './netguard.js';
 
@@ -163,6 +164,12 @@ export function createEngine(cfg = {}) {
     p.catch(() => {}).finally(() => inflight.delete(p));
     return p;
   };
+  // Vouch Credit: the per-provider credit record built from this engine's own
+  // settlement flow (src/credit). Settlements, slashes and dispute losses are
+  // recorded below as they happen; linked ERC-8004 identities get the same
+  // events posted on-chain by the attester.
+  const credit = createCredit({ state, persist, cfg, track: (p) => track(p) });
+
   async function drain() {
     while (inflight.size) await Promise.allSettled([...inflight]);
   }
@@ -574,6 +581,7 @@ export function createEngine(cfg = {}) {
       quotes.push({
         provider: p.id, price, deadline_ms,
         track: p.track, stake_available: money(p.stake - p.stakeReserved),
+        credit: credit.scoreFor(p.id),
       });
     }
     return quotes;
@@ -583,6 +591,7 @@ export function createEngine(cfg = {}) {
     if (q.price > task.budget) return 'budget';
     if (q.deadline_ms > task.deadline_ms) return 'deadline';
     if (task.min_track !== undefined && q.track < task.min_track) return 'min_track';
+    if (task.min_credit !== undefined && (q.credit ?? 0) < task.min_credit) return 'min_credit';
     if (q.stake_available < q.price) return 'stake';
     return null;
   }
@@ -615,6 +624,7 @@ export function createEngine(cfg = {}) {
     p.earnings = money(p.earnings + task.quote.price);
     p.stakeReserved = money(Math.max(0, p.stakeReserved - task.quote.stake_reserved));
     p.settledCount++;
+    credit.record('settlement', p.id, task.id, task.quote.price, { task_id: task.id });
     // Reputation bump. Non-launchpad providers keep the flat bump. Launched
     // agents earn it weighted by the counterparty: self-dealing (same owner
     // wallet on both sides) earns zero, rubric-only work earns reduced weight,
@@ -675,6 +685,9 @@ export function createEngine(cfg = {}) {
     const amount = applySlash(p, price, multiple, meta);
     p.slashedCount++;
     p.track = clamp(p.track - 15, 0, 100);
+    // Credit record: a verification failure. An upheld dispute is recorded as
+    // a dispute loss by resolveDispute instead, so it is not counted twice.
+    if (meta.reason !== 'dispute_upheld') credit.record('slash', p.id, `${meta.taskId ?? id('slash')}|${meta.reason ?? 'slash'}`, amount, { task_id: meta.taskId ?? null, reason: meta.reason ?? null });
     return amount;
   }
 
@@ -1038,7 +1051,7 @@ export function createEngine(cfg = {}) {
 
   function createTask(key, body) {
     if (!body || typeof body !== 'object' || Array.isArray(body)) throw new ApiError(400, 'invalid_input', 'body must be a JSON object');
-    const { capability, input, acceptance = {}, budget, deadline_ms, min_track, webhook_url, idempotency_key, retry, consensus, cache } = body;
+    const { capability, input, acceptance = {}, budget, deadline_ms, min_track, min_credit, webhook_url, idempotency_key, retry, consensus, cache } = body;
 
     // A revoked key cannot act, even through a workflow created before revocation.
     if (key.revoked) throw new ApiError(403, 'account_revoked', 'This key has been revoked.');
@@ -1076,6 +1089,9 @@ export function createEngine(cfg = {}) {
     if (min_track !== undefined && !(typeof min_track === 'number' && Number.isFinite(min_track))) {
       throw new ApiError(400, 'invalid_input', 'min_track must be a number');
     }
+    if (min_credit !== undefined && !(typeof min_credit === 'number' && Number.isFinite(min_credit) && min_credit >= 0 && min_credit <= 1000)) {
+      throw new ApiError(400, 'invalid_input', 'min_credit must be a credit score from 0 to 1000');
+    }
     if (webhook_url !== undefined && webhook_url !== null) {
       assertPublicUrl(webhook_url, 'webhook_url', { allowPrivate: !!cfg.allowPrivateWebhooks });
     }
@@ -1103,7 +1119,7 @@ export function createEngine(cfg = {}) {
 
     const task = {
       id: id('tsk'), keyId: key.id, capability, input,
-      acceptance, budget, deadline_ms, min_track, webhook_url, idempotency_key,
+      acceptance, budget, deadline_ms, min_track, min_credit, webhook_url, idempotency_key,
       retry: retryOn, maxAttempts, attempts: [], consensus: consensusN > 1 ? consensusN : undefined,
       status: 'quoting', createdAt: Date.now(), events: [],
     };
@@ -1114,10 +1130,10 @@ export function createEngine(cfg = {}) {
 
     if (!admissibleQuotes.length) {
       const nearest = quotes.sort((a, b) => a.price - b.price)[0];
-      throw new ApiError(409, 'no_quotes', 'No provider quoted within budget, deadline, and min_track.', {
+      throw new ApiError(409, 'no_quotes', `No provider quoted within budget, deadline, min_track${min_credit !== undefined ? ' and min_credit' : ''}.`, {
         nearest_miss: nearest
           ? { provider: nearest.provider, price: nearest.price, deadline_ms: nearest.deadline_ms,
-              track: nearest.track, violated: admissible(task, nearest) ?? 'stake' }
+              track: nearest.track, credit: nearest.credit, violated: admissible(task, nearest) ?? 'stake' }
           : null,
       });
     }
@@ -1148,6 +1164,7 @@ export function createEngine(cfg = {}) {
     task.quote = {
       provider: winner.provider, price: winner.price,
       deadline_ms: winner.deadline_ms, stake_reserved: winner.price,
+      ...(winner.credit !== undefined ? { credit: winner.credit } : {}),
     };
 
     if (consensusN > 1) {
@@ -1582,6 +1599,7 @@ export function createEngine(cfg = {}) {
     if (upheld) {
       dispute.status = 'upheld';
       const slashed = slashForDispute(task);
+      credit.record('dispute_loss', p.id, dispute.id, task.quote.price, { task_id: task.id, dispute_id: dispute.id });
       // The payment was clawed off the provider's earnings when the dispute
       // opened; it now returns to the buyer. refund.tx is the history tx.
       const tx = creditAccount(task.keyId, task.quote.price, { kind: 'clawback_refund', task: task.id });
@@ -1997,5 +2015,16 @@ export function createEngine(cfg = {}) {
     verifyOutput, createWorkflow, getWorkflow,
     launchAgent, addStake, fundCompute, requestUnbond, withdrawUnbonded, getAgent, listAgents,
     guardianStatus, setGuardian, processPendingSlashes,
+    credit,
+    creditScore: (x) => credit.summary(credit.resolve(x)),
+    creditReport: (x) => credit.report(credit.resolve(x)),
+    creditLine: (x) => credit.line(credit.resolve(x)),
+    creditStatus: () => credit.status(),
+    linkIdentity: async (x, body, actor) => {
+      const subject = credit.resolve(x);
+      const p = state.providers[subject];
+      if (p) assertProviderActor(p, actor); else assertAgentActor(mustAgent(subject), actor);
+      return credit.link(subject, body, actor);
+    },
   };
 }
