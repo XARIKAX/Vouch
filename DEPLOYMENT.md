@@ -149,6 +149,17 @@ Before real traffic:
    settles on a sandbox ledger. Real USDT deposits and withdrawals on Solana
    are available; see `ONCHAIN.md`.
 
+## Vouch Credit
+
+The credit layer is off until `VOUCH_CREDIT_CHAIN_ID` names a chain whose
+`contracts/deployments/<chainId>.json` has a deployed `creditRegistry`. Scores
+still work without it (computed from the engine's own record); borrowing needs
+the pool. Deploying the contracts is a separate, signed-off step described in
+`contracts/DEPLOY.md`. After it: set `VOUCH_CREDIT_CHAIN_ID`,
+`VOUCH_CREDIT_ATTESTER_KEY` (the engine's EVM key, secret store only) and
+optionally `VOUCH_CREDIT_RPC`, fund the attester with USDG and gas, and run
+`node bin/vouch.js credit doctor` against the deployment.
+
 ## Environment variables
 
 | Variable | Purpose | Default |
@@ -172,6 +183,7 @@ Before real traffic:
 | `VOUCH_REAL_FUNDS` | `1` with a treasury address switches the deployment to real USDT on Solana: no faucet, simulated deposits off, on-chain deposits and withdrawals on | unset (sandbox credits) |
 | `VOUCH_TREASURY_ADDRESS` | The Solana wallet that receives deposits and pays withdrawals | unset |
 | `VOUCH_TREASURY_KEY` | Secret key of the treasury wallet (base58 as wallets export it) for automatic payouts; without it withdrawals wait for an operator payout confirmed through `/v1/admin/withdrawals` | unset |
+| `VOUCH_CREDIT_CHAIN_ID` / `VOUCH_CREDIT_RPC` / `VOUCH_CREDIT_ATTESTER_KEY` / `VOUCH_CREDIT_STAKE_DISCOUNT` | Vouch Credit: the chain (`4663`, `31337`), an RPC override, the attester's EVM key, the stake discount curve by tier (see README and `contracts/DEPLOY.md`) | unset (credit layer off; scores still computed from the engine's record) |
 | `VOUCH_USDT_MINT` / `VOUCH_TOKEN_SYMBOL` / `VOUCH_TOKEN_DECIMALS` | The settlement token | USDT on Solana / `USDT` / `6` |
 | `VOUCH_MIN_WITHDRAWAL` / `VOUCH_MAX_WITHDRAWAL` | Per-request withdrawal limits in USDT | `1` / `1000` |
 | `VOUCH_MODEL_BUDGET_USD` | Daily model spend cap; past it, or on a credit error, model calls pause until the next day and tasks run on the simulator and heuristic grader | `5` |

@@ -36,6 +36,18 @@ like every other balance until the escrow program exists. Verified work
 credits the owner's share back to the same account, where it can be
 withdrawn. Slashes move stake into the insurance pool in the ledger.
 
+### Vouch Credit (Robinhood Chain, EVM)
+
+The credit layer lives on an EVM chain, Robinhood Chain first, beside the
+Solana funds layer: `contracts/` holds the `CreditRegistry` (one record per
+ERC-8004 agentId, the engine as attester) and the `CreditPool` (an open USDG
+pool: advances against pending settlements, task-escrow and stake loans whose
+principal never leaves the contract, repayment intercepted from settlement
+proceeds, defaults absorbed by a first-loss reserve). The engine talks to it
+through `src/credit/chain.js` (ethers). Deployed on a local devnet by the
+tests and the quickstart; nothing is deployed on mainnet. See
+`contracts/DEPLOY.md` and the docs' Credit section.
+
 ### USDT deposits and withdrawals
 
 With `VOUCH_REAL_FUNDS=1` and a treasury address, deposits are a checked
