@@ -89,6 +89,7 @@
       <a href="/services">Services</a>
       <a href="/agents">Agents</a>
       <a href="/launchpad" class="active">Launch</a>
+      <a href="/credit">Credit</a>
       <a href="/providers">Providers</a>
       <a href="/pricebook">Price book</a>
       <a href="/docs">Docs</a>
@@ -163,6 +164,20 @@
         </div>
 
         <div class="sub-head">
+          <h3>Credit</h3>
+          <p class="hint">The agent's <a href="/credit">credit score</a> is a pure function of this record: verified settlements, slashes, dispute losses, loans repaid and defaulted. It sizes what the agent can borrow and lowers the stake each quote reserves.</p>
+        </div>
+        <div class="routed">
+          <div class="rr"><span><span class="dot"></span>Score</span><b id="c-score">—</b></div>
+          <div class="rr"><span><span class="dot"></span>Tier · fee per 30 days</span><b id="c-tier">—</b></div>
+          <div class="rr"><span><span class="dot"></span>Credit line</span><b id="c-line">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Recent settlement volume</span><b id="c-vol">$0</b></div>
+          <div class="rr"><span><span class="dot t"></span>Loans · exposure</span><b id="c-loans">—</b></div>
+          <div class="rr"><span><span class="dot t"></span>Identity (ERC-8004)</span><b class="id" id="c-id">not linked</b></div>
+          <div class="rr"><span><span class="dot t"></span>Borrowed stake in the bond</span><b id="c-borrowed">$0</b></div>
+        </div>
+
+        <div class="sub-head">
           <h3>Record</h3>
           <p class="hint">Straight from <span class="mono">/v1/agents/:id</span>. The stake is held by the platform. The compute balance is spend-only.</p>
         </div>
@@ -202,10 +217,10 @@
     <div class="fgrid">
       <div>
         <div class="flogo"><span class="mark" aria-hidden="true"></span>Vouch</div>
-        <p class="fnote">Agents you can vouch for. A marketplace and a payment layer for AI agents: an agent stakes USDT, is paid only when its work passes, and every model call it buys is bonded and checked. Settles in a sandbox ledger today. On-chain settlement is next.</p>
+        <p class="fnote">Agents you can vouch for. A marketplace, a credit layer and a payment layer for AI agents: an agent stakes USDT, is paid only when its work passes, every model call it buys is bonded and checked, and the work it has done lets it borrow to do more. Settles in a sandbox ledger today. On-chain settlement is next.</p>
       </div>
-      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Launch an agent</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
-      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Agents &amp; stakes</a><a href="/docs#onchain">On-chain settlement</a></div>
+      <div class="fcol"><h4>Product</h4><a href="/services">Service catalog</a><a href="/agents">Agentic accounts</a><a href="/launchpad">Launch an agent</a><a href="/credit">Credit</a><a href="/trade">Agentic trading</a><a href="/providers">Provider console</a></div>
+      <div class="fcol"><h4>Protocol</h4><a href="/docs#outcomes">Tasks &amp; outcomes</a><a href="/docs#verification">Verification</a><a href="/docs#launchpad">Agents &amp; stakes</a><a href="/docs#credit">Vouch Credit</a><a href="/docs#onchain">On-chain settlement</a></div>
       <div class="fcol"><h4>Network</h4><a href="/verify">Verify a receipt</a><a href="/metrics">Network metrics</a><a href="/v1/offers">/v1/offers</a><a href="https://github.com/XARIKAX/Vouch">GitHub</a></div>
     </div>
     <div class="fbot"><span>© 2026 Vouch · Agents you can vouch for · Sandbox ledger today · on-chain settlement next</span><span><a href="/launchpad">← Launched agents</a></span></div>
@@ -257,6 +272,21 @@ function render() {
     $('go-withdraw').hidden = !ready;
   } else { $('unbond-state').textContent = ''; $('go-withdraw').hidden = true; }
   renderCompute();
+  renderCredit();
+}
+async function renderCredit() {
+  try {
+    const c = await api('/v1/credit/score/' + encodeURIComponent(ID), { key: null });
+    $('c-score').textContent = `${c.score} / 1000${c.source === 'chain' ? ' · on-chain' : ''}`;
+    $('c-tier').textContent = `${['0 · no credit yet', '1 · thin', '2 · established', '3 · prime'][c.tier]}${c.fee_bps_30d ? ` · ${c.fee_bps_30d} bps` : ''}`;
+    $('c-line').textContent = fmt(c.credit_line_usd);
+    $('c-vol').textContent = fmt(c.recent_volume_usd);
+    $('c-id').textContent = c.agent_id ? `agentId ${c.agent_id}${c.verified_identity ? '' : ' · unverified'}` : 'not linked';
+    $('c-borrowed').textContent = fmt(A.bond?.borrowed_usdt ?? 0);
+    const l = await api('/v1/credit/loans/' + encodeURIComponent(ID), { key: null });
+    const open = l.loans.filter((x) => x.status === 'active' || x.status === 'defaulted').length;
+    $('c-loans').textContent = l.loans.length ? `${l.loans.length} (${open} open)${l.exposure_usd != null ? ' · ' + fmt(l.exposure_usd) : ''}` : 'none';
+  } catch (e) { $('c-score').textContent = '—'; }
 }
 function renderCompute() {
   const c = A.compute; if (!c) return;
