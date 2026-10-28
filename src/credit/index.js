@@ -25,6 +25,7 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
   state.credit.outbox ??= [];      // { event_id, subject, agent_id, status: 'pending'|'posted'|'failed', tx?, error?, attempts }
   state.credit.loans ??= {};       // loan_id -> { subject, agent_id, settlement_ref, borrowed_at, principal_usd, fee_usd, due_at, tx, repayments: [] }
   state.credit.payouts ??= {};     // settlement ref -> { subject, amount_usd, tx, repaid_usd, forwarded_usd, at }
+  state.credit.actions ??= [];     // on-chain follow-ups the engine owes the pool: settle/refund a task escrow, seize slashed borrowed stake
   const config = cfg.credit ?? creditConfig();
   let chain = null;           // lazily created on-chain client
   let chainError = null;
@@ -92,6 +93,11 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
     try { chainLoans = await client.loansOf(link.agent_id); } catch { return []; }
     const have = (kind, ref) => state.credit.events.some((e) => e.subject === subject && e.kind === kind && e.ref === ref);
     const added = [];
+    // borrowed stake the pool no longer holds (defaulted, released elsewhere) leaves the bond too
+    const borrowed = ledger?.borrowedStake(subject)?.loans ?? {};
+    for (const l of chainLoans) {
+      if (l.kind === 'stake' && borrowed[l.loan_id] > l.held_usd + 1e-9) ledger.takeBorrowedStake(subject, l.loan_id, borrowed[l.loan_id] - l.held_usd, 'stake_borrowed_released');
+    }
     for (const l of chainLoans) {
       const ts = { }; // the chain's timestamps are not exposed per transition; recorded now
       if ((l.status === 'defaulted' || l.status === 'recovered') && !have('default', l.loan_id)) added.push(record('default', subject, l.loan_id, l.principal_usd, { loan_id: l.loan_id, ...ts }));
@@ -119,6 +125,21 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
       const client = await chainClient();
       if (!client?.canWrite) return { posted: 0, reason: client ? 'read-only: no attester key' : (chainError ?? config.reason) };
       let posted = 0;
+      for (const item of state.credit.actions.filter((a) => a.status === 'pending')) {
+        item.attempts += 1;
+        try {
+          if (item.kind === 'settle_escrow') item.tx = await client.settleTaskEscrow(item.ref);
+          else if (item.kind === 'refund_escrow') item.tx = await client.refundTaskEscrow(item.ref);
+          else if (item.kind === 'slash_stake') item.tx = await client.slashHeldStake(item.loan_id, item.amount_usd);
+          item.status = 'done'; item.done_at = Date.now(); delete item.error; posted++;
+          if (item.subject) await syncLoans(item.subject);
+        } catch (e) {
+          item.error = String(e.reason ?? e.shortMessage ?? e.message).slice(0, 200);
+          if (/NothingHeld|SettlementClosed/.test(item.error)) { item.status = 'done'; item.note = 'already applied'; delete item.error; }
+          else if (item.attempts >= 5) item.status = 'failed';
+        }
+        persist();
+      }
       for (const item of state.credit.outbox.filter((o) => o.status === 'pending')) {
         const event = state.credit.events.find((e) => e.id === item.event_id);
         if (!event) { item.status = 'failed'; item.error = 'event missing'; continue; }
@@ -245,7 +266,7 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
   async function status() {
     const client = await chainClient();
     return {
-      phase: client?.hasPool ? 2 : 1,
+      phase: client?.hasPool ? 3 : 1,
       borrowing: !!client?.hasPool && !!client?.canWrite,
       chain: {
         enabled: config.enabled, chain_id: config.chainId || null, rpc: config.rpc ? config.rpc.replace(/\/\/([^@/]+@)/, '//') : null, explorer: config.explorer,
@@ -258,6 +279,7 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
       outbox: { pending: state.credit.outbox.filter((o) => o.status === 'pending').length, posted: state.credit.outbox.filter((o) => o.status === 'posted').length, failed: state.credit.outbox.filter((o) => o.status === 'failed').length },
       score: { max: 1000, tiers: { 1: 300, 2: 550, 3: 800 }, fee_bps_30d: { 1: 300, 2: 200, 3: 100 }, credit_line_cap_usd: CREDIT_LINE_CAP_USD },
       loans: Object.keys(state.credit.loans).length, payouts: Object.keys(state.credit.payouts).length,
+      actions: { pending: state.credit.actions.filter((a) => a.status === 'pending').length, done: state.credit.actions.filter((a) => a.status === 'done').length, failed: state.credit.actions.filter((a) => a.status === 'failed').length },
     };
   }
 
@@ -308,7 +330,9 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
 
   async function borrow(subject, body = {}, actor) {
     const path = String(body.path ?? 'advance');
-    if (path !== 'advance') throw new ApiError(501, 'not_implemented', `Borrowing path "${path}" is not open yet; only "advance" (against a pending settlement) is.`);
+    if (path === 'task_escrow') return borrowTaskEscrow(subject, body, actor);
+    if (path === 'stake') return borrowStake(subject, body, actor);
+    if (path !== 'advance') throw new ApiError(400, 'invalid_input', `Unknown borrowing path "${path}". Paths: advance, task_escrow, stake.`);
     const client = await poolClient();
     if (!client.canWrite) throw new ApiError(503, 'attester_read_only', 'The attester has no key; it cannot draw an advance for you.');
     const agentId = linkedAgentId(subject);
@@ -328,6 +352,105 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
     persist();
     return { ...loan, quote, chain: await client.loan(loan.loan_id) };
   }
+
+  const termOf = (body) => { const t = Number(body.term_days ?? 7); if (!Number.isInteger(t) || t < 1 || t > 30) throw new ApiError(400, 'invalid_input', 'term_days must be an integer from 1 to 30'); return t; };
+  const enqueueAction = (a) => { state.credit.actions.push({ ...a, status: 'pending', attempts: 0, at: Date.now() }); if (config.enabled) track(flush()); };
+
+  // The most the pool would lend on a sized path right now, and the fee.
+  async function quoteLoan(subject, amountUsd, termDays) {
+    const client = await poolClient();
+    const agentId = linkedAgentId(subject);
+    try { return { subject, agent_id: agentId, ...(await client.quoteLoan(agentId, amountUsd, termDays)) }; }
+    catch (e) { throw new ApiError(409, 'not_borrowable', `The pool refused a quote: ${e.reason ?? e.shortMessage ?? e.message}`); }
+  }
+
+  // Borrow a task's budget. The loan never touches a wallet: the pool holds the
+  // principal earmarked for the task, the engine credits the owner key and locks
+  // the same amount into the task in the same breath. The task's own settlement
+  // or refund tells the pool where the money went.
+  async function borrowTaskEscrow(subject, body, actor) {
+    const client = await poolClient();
+    if (!client.canWrite) throw new ApiError(503, 'attester_read_only', 'The attester has no key; it cannot fund an escrow for you.');
+    if (!ledger) throw new ApiError(500, 'no_ledger', 'The credit layer has no ledger access.');
+    const agentId = linkedAgentId(subject);
+    const key = ledger.ownerKey(subject);
+    if (!key) throw new ApiError(409, 'no_owner_key', 'This agent has no owner key to post the task with.');
+    const task = body.task;
+    if (!task || typeof task !== 'object') throw new ApiError(400, 'invalid_input', 'task is required: the task to post with the borrowed budget');
+    if (task.retry || task.consensus) throw new ApiError(400, 'invalid_input', 'A loan-funded task cannot use retry or consensus: the loan is exactly the committed price.');
+    const termDays = termOf(body);
+    const ref = `crt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    // the quote the task will get, so the loan is exactly what the task locks
+    const preview = ledger.previewTask(key, task, ref);
+    const amount = preview.lock;
+    let quote;
+    try { quote = await client.quoteLoan(agentId, amount, termDays); }
+    catch (e) { throw new ApiError(409, 'not_borrowable', `The pool refused the loan: ${e.reason ?? e.shortMessage ?? e.message}`, { amount_usd: amount }); }
+    let res;
+    try { res = await client.fundTaskEscrow(agentId, ref, amount, termDays); }
+    catch (e) { throw new ApiError(502, 'chain_error', `The escrow loan transaction failed: ${e.reason ?? e.shortMessage ?? e.message}`); }
+    // credit and lock in one tick: the borrowed budget is never spendable on anything else
+    ledger.credit(key.id, amount, 'credit_escrow_loan', { loan_id: res.loan_id, ref });
+    let posted;
+    try { posted = ledger.postTask(key, task, ref, { loan_id: res.loan_id, ref, principal_usd: amount }); }
+    catch (e) {
+      // the quote moved between preview and post: the budget goes straight back to the lenders
+      ledger.debit(subject, amount, 'credit_escrow_loan_reversal', { ref });
+      enqueueAction({ kind: 'refund_escrow', ref, subject, loan_id: res.loan_id });
+      throw new ApiError(409, 'task_not_posted', `The task could not be posted after the loan was funded (${e.code ?? e.message}); the escrow is being returned to the pool. The fee is still owed.`, { loan_id: res.loan_id });
+    }
+    const loan = { loan_id: res.loan_id, subject, agent_id: agentId, path: 'task_escrow', task_id: posted.task.id, ref, borrowed_at: Date.now(), principal_usd: amount, fee_usd: res.fee_usd ?? quote.fee_usd, due_at: res.due_at, term_days: termDays, tx: res.tx, by: actor?.key?.id ?? (actor?.admin ? 'admin' : null), repayments: [] };
+    state.credit.loans[loan.loan_id] = loan;
+    persist();
+    return { ...loan, quote, task: posted.task, chain: await client.loan(loan.loan_id) };
+  }
+
+  // Borrow stake. The pool holds the principal as the agent's borrowed collateral;
+  // the engine mirrors it into the bond. Slashes seize from it; repaying releases it.
+  async function borrowStake(subject, body, actor) {
+    const client = await poolClient();
+    if (!client.canWrite) throw new ApiError(503, 'attester_read_only', 'The attester has no key; it cannot fund stake for you.');
+    if (!ledger) throw new ApiError(500, 'no_ledger', 'The credit layer has no ledger access.');
+    const agentId = linkedAgentId(subject);
+    const amount = Number(body.amount);
+    if (!(amount > 0) || !Number.isFinite(amount)) throw new ApiError(400, 'invalid_input', 'amount must be a positive USDT amount');
+    const termDays = termOf(body);
+    if (!ledger.borrowedStake(subject) || !state.providers[subject]?.agentId) throw new ApiError(409, 'not_an_agent', 'Only a launched agent can borrow stake.');
+    let quote;
+    try { quote = await client.quoteLoan(agentId, amount, termDays); }
+    catch (e) { throw new ApiError(409, 'not_borrowable', `The pool refused the loan: ${e.reason ?? e.shortMessage ?? e.message}`, { amount_usd: amount }); }
+    let res;
+    try { res = await client.fundStake(agentId, amount, termDays); }
+    catch (e) { throw new ApiError(502, 'chain_error', `The stake loan transaction failed: ${e.reason ?? e.shortMessage ?? e.message}`); }
+    const bond = ledger.addBorrowedStake(subject, res.loan_id, amount);
+    const loan = { loan_id: res.loan_id, subject, agent_id: agentId, path: 'stake', borrowed_at: Date.now(), principal_usd: amount, fee_usd: res.fee_usd ?? quote.fee_usd, due_at: res.due_at, term_days: termDays, tx: res.tx, by: actor?.key?.id ?? (actor?.admin ? 'admin' : null), repayments: [] };
+    state.credit.loans[loan.loan_id] = loan;
+    persist();
+    return { ...loan, quote, bond_usdt: bond, chain: await client.loan(loan.loan_id) };
+  }
+
+  // ---- hooks from the engine's own flow ----
+  function onTaskSettled(task) {
+    if (!task.credit?.ref) return;
+    enqueueAction({ kind: 'settle_escrow', ref: task.credit.ref, subject: subjectOfTask(task), loan_id: task.credit.loan_id, task_id: task.id });
+  }
+  function onTaskRefunded(task, reason) {
+    if (!task.credit?.ref) return;
+    enqueueAction({ kind: 'refund_escrow', ref: task.credit.ref, subject: subjectOfTask(task), loan_id: task.credit.loan_id, task_id: task.id, reason });
+  }
+  // Borrowed stake slashed in the ledger: seize the same amount on-chain, oldest loan first.
+  function onBorrowedStakeSlashed(agent, amount, slashId) {
+    const subject = agent.providerId;
+    let left = amount;
+    for (const [loanId, held] of Object.entries(agent.borrowed?.loans ?? {})) {
+      if (left <= 0) break;
+      const take = Math.min(left, held);
+      ledger.takeBorrowedStake(subject, loanId, take, 'stake_borrowed_slashed', false); // the slash already left the bond
+      enqueueAction({ kind: 'slash_stake', loan_id: loanId, amount_usd: take, subject, slash_id: slashId });
+      left = Number((left - take).toFixed(6));
+    }
+  }
+  const subjectOfTask = (task) => { const l = Object.values(state.credit.loans).find((x) => x.loan_id === task.credit?.loan_id); return l?.subject ?? null; };
 
   // Route a settlement's proceeds through the pool. The owner asks for it (or
   // an admin, or the engine's own sweep once the payout date has passed).
@@ -365,9 +488,25 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
     if (!loan) throw new ApiError(404, 'not_found', `No loan ${loanId || '(none given)'}.`);
     if (loan.agent_id !== linkedAgentId(subject)) throw new ApiError(403, 'not_owner', `Loan ${loanId} belongs to another agent.`);
     if (!['active', 'defaulted'].includes(loan.status)) throw new ApiError(409, 'loan_closed', `Loan ${loanId} is ${loan.status}.`);
-    const amount = body.amount === undefined ? loan.owed_usd : Number(body.amount);
+    const total = loan.owed_usd + (loan.kind === 'stake' ? loan.held_usd : 0);
+    const amount = body.amount === undefined ? total : Number(body.amount);
     if (!(amount > 0) || !Number.isFinite(amount)) throw new ApiError(400, 'invalid_input', 'amount must be a positive USDT amount');
-    const pay = Math.min(amount, loan.owed_usd);
+    // borrowed stake is returned first (it never left the pool), then cash for the rest
+    let released = 0;
+    if (loan.kind === 'stake' && loan.held_usd > 0) {
+      released = Math.min(amount, loan.held_usd);
+      try { await client.releaseStake(loanId, released); }
+      catch (e) { throw new ApiError(502, 'chain_error', `Releasing the stake failed: ${e.reason ?? e.shortMessage ?? e.message}`); }
+      ledger.takeBorrowedStake(subject, loanId, released, 'stake_borrowed_returned');
+    }
+    const pay = Math.min(Number((amount - released).toFixed(6)), loan.owed_usd);
+    if (!(pay > 0)) {
+      const rec0 = state.credit.loans[loanId] ??= { loan_id: loanId, subject, agent_id: loan.agent_id, repayments: [] };
+      rec0.repayments.push({ at: Date.now(), released_usd: released, via: 'release', by: actor?.key?.id ?? (actor?.admin ? 'admin' : null) });
+      persist();
+      await syncLoans(subject);
+      return { loan_id: loanId, paid_usd: 0, released_usd: released, loan: await client.loan(loanId) };
+    }
     const treasury = await client.treasuryUsdg();
     if (treasury + 1e-9 < pay) throw new ApiError(503, 'treasury_short', `The treasury holds ${treasury} USDG; this repayment needs ${pay}.`);
     if (!ledger) throw new ApiError(500, 'no_ledger', 'The credit layer has no ledger access.');
@@ -376,10 +515,10 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
     try { res = await client.repay(loanId, pay); }
     catch (e) { ledger.refund(subject, pay, 'credit_repayment_refund'); throw new ApiError(502, 'chain_error', `The repayment transaction failed: ${e.reason ?? e.shortMessage ?? e.message}`); }
     const rec = state.credit.loans[loanId] ??= { loan_id: loanId, subject, agent_id: loan.agent_id, repayments: [] };
-    rec.repayments.push({ at: Date.now(), amount_usd: pay, via: 'repay', tx: res.tx, by: actor?.key?.id ?? (actor?.admin ? 'admin' : null) });
+    rec.repayments.push({ at: Date.now(), amount_usd: pay, released_usd: released, via: 'repay', tx: res.tx, by: actor?.key?.id ?? (actor?.admin ? 'admin' : null) });
     persist();
     await syncLoans(subject);
-    return { loan_id: loanId, paid_usd: pay, tx: res.tx, loan: res.loan };
+    return { loan_id: loanId, paid_usd: pay, released_usd: released, tx: res.tx, loan: res.loan };
   }
 
   async function loans(subject) {
@@ -392,5 +531,5 @@ export function createCredit({ state, persist, cfg, track = (p) => p, ledger = n
     return { subject, agent_id: link?.agent_id ?? null, loans: Array.isArray(chain) ? chain.map((c) => ({ ...c, record: local.find((l) => l.loan_id === c.loan_id) ?? null })) : local, chain_error: chain && !Array.isArray(chain) ? chain.error : null, exposure_usd: Array.isArray(chain) ? chain.filter((c) => c.status === 'active').reduce((a, c) => a + c.remaining_principal_usd, 0) : null };
   }
 
-  return { config, resolve, record, flush, link, identityOf, scoreFor, localScore, summary, report, line, status, eventsFor, reportFor, tier, feeBps30d, linkMessage, poolInfo, settlement, quoteAdvance, borrow, payout, repay, loans, syncLoans, chainClient };
+  return { config, resolve, record, flush, link, identityOf, scoreFor, localScore, summary, report, line, status, eventsFor, reportFor, tier, feeBps30d, linkMessage, poolInfo, settlement, quoteAdvance, quoteLoan, borrow, payout, repay, loans, syncLoans, chainClient, onTaskSettled, onTaskRefunded, onBorrowedStakeSlashed };
 }

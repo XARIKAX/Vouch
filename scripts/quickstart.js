@@ -138,6 +138,7 @@ try {
   cleanup.push(() => fake.close());
   engine.state.providers = {}; // only our agent quotes; the sandbox seeds would undercut it
   const owner = engine.createKey('calc-owner');
+  engine.state.keys[owner.id].tier = owner.tier = 'scale'; // a loan-funded task locks more than the sandbox tier's $5 a day
   const faucet = (key, total) => { for (let left = total; left > 0; left -= 100) engine.deposit(key, Math.min(100, left)); }; // the sandbox faucet credits $100 at a time
   faucet(owner, 400);
   const agent = engine.launchAgent({ name: 'calc', endpoint_url: fake.url, offers: { 'math.eval': { price_ceiling: 100, sla_deadline_ms: 5000 } }, stake: 300, compute: 10 }, owner);
@@ -199,6 +200,38 @@ try {
   const p = (await engine.creditPool()).pool;
   say('lenders now hold', `${USD(p.lender_assets_usd)} (share price ${p.share_price.toFixed(6)})`);
   say('reserve · protocol fees', `${USD(p.reserve_usd)} · ${USD(p.protocol_fees_usd)}`);
+
+  step('Borrow stake: $100 into the agent\'s bond, held by the pool as collateral');
+  const sl = await engine.creditBorrow(agent.id, { path: 'stake', amount: 100, term_days: 10 }, { key: owner });
+  say('loan', sl.loan_id);
+  say('bond', `${USD(agent.bond.stake_usdt)} → ${USD(sl.bond_usdt)} (borrowed ${USD(sl.principal_usd)}, fee ${USD(sl.fee_usd)})`);
+  say('capacity', USD(engine.getAgent(agent.id).bond.capacity_usdt));
+  say('pool holds as stake', USD((await engine.creditPool()).pool.stake_held_usd));
+  say('agent wallet', `${USD(walletFinal)} (unchanged: stake never leaves the pool)`);
+
+  step('Borrow a task budget into escrow: the agent posts a $100 task with money it does not have');
+  const el = await engine.creditBorrow(agent.id, { path: 'task_escrow', term_days: 5, task: { capability: 'math.eval', input: { expression: '7 * 6' }, acceptance: { checks: [{ assert: 'equals', path: 'result', value: 42 }] }, budget: 100, deadline_ms: 5000 } }, { key: owner });
+  say('loan', el.loan_id);
+  say('task', `${el.task.id} · quoted ${USD(el.task.quote.price)} · locked ${USD(el.task.escrow.locked)}`);
+  say('principal', `${USD(el.principal_usd)} = exactly the committed price, held by the pool for this task`);
+  say('owner balance', `${USD(engine.balance(owner).balance)} (unchanged: credited and locked in one breath)`);
+  const done2 = await waitTerminal(engine, el.task.id);
+  await engine.drain(); await engine.credit.flush();
+  const escrowLoan = await engine.credit.chainClient().then((c) => c.loan(el.loan_id));
+  say('task', `${done2.status} · the pool sent the held budget to the treasury`);
+  say('loan now owes in cash', `${USD(escrowLoan.owed_usd)} (principal ${USD(escrowLoan.remaining_principal_usd)} + fee)`);
+
+  step('Repay: the stake loan returns its held stake; the escrow loan is paid from the owner balance');
+  const r1 = await engine.creditRepay(agent.id, { loan_id: sl.loan_id }, { key: owner });
+  say('stake loan', `released ${USD(r1.released_usd)} back to the lenders · fee ${USD(r1.paid_usd)} paid · ${r1.loan.status}`);
+  say('bond', USD(engine.getAgent(agent.id).bond.stake_usdt));
+  const r2 = await engine.creditRepay(agent.id, { loan_id: el.loan_id }, { key: owner });
+  say('escrow loan', `${USD(r2.paid_usd)} paid · ${r2.loan.status}`);
+  const fin = await engine.creditReport(agent.id);
+  say('score (engine / chain)', `${fin.score} / ${fin.chain.score}`);
+  say('loans repaid', `${fin.inputs.loans_repaid} on time, ${fin.inputs.advances_repaid} advance`);
+  const p2 = (await engine.creditPool()).pool;
+  say('lenders now hold', `${USD(p2.lender_assets_usd)} · reserve ${USD(p2.reserve_usd)} · protocol fees ${USD(p2.protocol_fees_usd)}`);
 
   console.log(`\nDone. Every number above came from the engine's record or the chain; nothing was computed in this script.`);
   if (KEEP) {

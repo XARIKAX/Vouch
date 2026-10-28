@@ -323,28 +323,32 @@ contract CreditPoolTest is Test {
         (ScoreLib.Report memory r, uint256 score, , , , ) = reg.creditReport(agentId);
         assertEq(r.defaults, 2); assertEq(score, 0);
 
+        // recovery of loan 2 by hand: the reserve is refilled first, then the lenders
+        uint128 owed = pool.owedOn(loanIds[1]);
+        assertEq(owed, 80 * USDG + 800_000);
+        pool.repay(loanIds[1], uint128(20 * USDG));
+        assertEq(pool.reserve(), 20 * USDG, "the first $20 refills what the reserve absorbed");
+        assertEq(pool.lenderAssets(), lenderAssets0 - 60 * USDG, "lenders are still short");
+        pool.repay(loanIds[1], owed - uint128(20 * USDG));
+        assertEq(pool.lenderAssets(), lenderAssets0 + 560_000, "lenders are made whole, plus their share of the fee");
+        (, , CreditPool.Status st1b, , , , , , , , , , , , ) = pool.loans(loanIds[1]);
+        assertEq(uint8(st1b), uint8(CreditPool.Status.Recovered));
+        (r, , , , , ) = reg.creditReport(agentId);
+        assertEq(r.recoveries, 1);
+        // loan 1's settlement is void; it is paid by hand too
+        pool.repay(loanIds[0], pool.owedOn(loanIds[0]));
+        assertEq(pool.reserve(), 100 * USDG + 2 * 160_000, "the reserve is back to its seed plus two fee shares");
+        (, , CreditPool.Status st0, , , , , , , , , , , , ) = pool.loans(loanIds[0]);
+        assertEq(uint8(st0), uint8(CreditPool.Status.Recovered));
+
         // the third loan repays through its settlement as if nothing happened
         (uint128 repaid, uint128 forwarded) = pool.settleProceeds(sids[2]);
         assertEq(repaid, 80 * USDG + 800_000); assertEq(forwarded, 100 * USDG - repaid);
         assertEq(pool.exposure(agentId), 0); assertEq(pool.outstanding(), 0);
-
-        // recovery of loan 2: the reserve is refilled first, then the lenders
-        uint128 owed = pool.owedOn(loanIds[1]);
-        assertEq(owed, 80 * USDG + 800_000);
-        pool.repay(loanIds[1], uint128(20 * USDG));
-        assertEq(pool.reserve(), 20 * USDG + 160_000, "the fee share from loan 3 and the refill");
-        assertEq(pool.lenderAssets(), lenderAssets0 - 60 * USDG + 560_000, "still short the lender loss, plus loan 3's fee share");
-        pool.repay(loanIds[1], owed - uint128(20 * USDG));
-        assertEq(pool.lenderAssets(), lenderAssets0 + 2 * 560_000, "lenders are made whole, with two fees' worth of yield");
-        (, , CreditPool.Status st1b, , , , , , , , , , , , ) = pool.loans(loanIds[1]);
-        assertEq(uint8(st1b), uint8(CreditPool.Status.Recovered));
+        assertEq(pool.lenderAssets(), lenderAssets0 + 3 * 560_000);
+        assertEq(pool.reserve(), 100 * USDG + 3 * 160_000);
         (r, , , , , ) = reg.creditReport(agentId);
-        assertEq(r.recoveries, 1); assertEq(r.advancesRepaid, 1);
-        // recovery of loan 1 via its settlement would be void; pay it by hand
-        pool.repay(loanIds[0], pool.owedOn(loanIds[0]));
-        assertEq(pool.reserve(), 100 * USDG + 3 * 160_000, "the reserve is back to its seed plus three fee shares");
-        (, , CreditPool.Status st0, , , , , , , , , , , , ) = pool.loans(loanIds[0]);
-        assertEq(uint8(st0), uint8(CreditPool.Status.Recovered));
+        assertEq(r.recoveries, 2); assertEq(r.advancesRepaid, 1);
         _solvent();
     }
 

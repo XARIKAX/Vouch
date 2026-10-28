@@ -177,7 +177,8 @@ test('phase 2 without a chain: borrowing, repaying and payouts are refused with 
   const p = engine.registerProvider({ name: 'p', endpoint_url: 'http://localhost:1/task', offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } } }, owner);
   engine.credit.record('settlement', p.id, 'tsk_1', 20, { payout_at: Date.now() + 1000 });
   await assert.rejects(engine.creditBorrow(p.id, { path: 'advance', settlement_id: 'tsk_1' }, { key: owner }), (e) => e.code === 'credit_chain_off');
-  await assert.rejects(engine.creditBorrow(p.id, { path: 'task_escrow' }, { key: owner }), (e) => e.code === 'not_implemented');
+  await assert.rejects(engine.creditBorrow(p.id, { path: 'task_escrow' }, { key: owner }), (e) => e.code === 'credit_chain_off');
+  await assert.rejects(engine.creditBorrow(p.id, { path: 'nope' }, { key: owner }), (e) => e.code === 'invalid_input');
   await assert.rejects(engine.creditRepay(p.id, { loan_id: '0x00' }, { key: owner }), (e) => e.code === 'credit_chain_off');
   await assert.rejects(engine.creditPayout('tsk_1', { key: owner }), (e) => e.code === 'credit_chain_off');
   await assert.rejects(engine.creditPayout('tsk_nope', { key: owner }), (e) => e.code === 'not_found');
@@ -213,6 +214,31 @@ test('record: a settlement event carries what the agent will be paid and when', 
     const p = engine.registerProvider({ name: 'p', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 10 });
     const t2 = await waitTerminal(engine, engine.createTask(buyer, mathTask()).task.id);
     assert.equal(engine.credit.eventsFor(p.id).at(-1).amount, t2.settlement.price);
+  } finally { good.close(); }
+});
+
+test('stake discount: a quote reserves less of a creditworthy provider\'s stake, by tier, on a configurable curve', async () => {
+  const good = await fakeProvider({ result: 42 });
+  try {
+    const engine = createEngine({ ...FAST, creditStakeDiscount: { 0: 0, 1: 0.5, 2: 0.6, 3: 0.75 } });
+    engine.state.providers = {};
+    const buyer = engine.createKey('buyer');
+    engine.deposit(buyer, 5);
+    const p = engine.registerProvider({ name: 'p', endpoint_url: good.url, offers: { 'math.eval': { price_ceiling: 0.02, sla_deadline_ms: 5000 } }, stake: 10 });
+    const t1 = engine.createTask(buyer, mathTask()).task;
+    assert.equal(t1.quote.stake_reserved, t1.quote.price, 'tier 0: the full price');
+    await waitTerminal(engine, t1.id);
+    // give the provider a tier-1 record: 50 settlements of $20
+    for (let i = 0; i < 50; i++) engine.credit.record('settlement', p.id, `h${i}`, 20);
+    assert.equal(engine.creditScore(p.id).tier, 1);
+    const t2 = engine.createTask(buyer, mathTask()).task;
+    assert.ok(Math.abs(t2.quote.stake_reserved - t2.quote.price * 0.5) < 1e-6, 'tier 1 on this curve: half');
+    assert.ok(Math.abs(engine.state.providers[p.id].stakeReserved - t2.quote.stake_reserved) < 1e-6, 'the reservation itself is discounted');
+    await waitTerminal(engine, t2.id);
+    assert.equal(engine.state.providers[p.id].stakeReserved, 0, 'and released on settlement');
+    // the default curve leaves tiers 0 and 1 alone
+    const plain = createEngine(FAST);
+    assert.deepEqual(plain.cfg.creditStakeDiscount, { 0: 0, 1: 0, 2: 0.1, 3: 0.25 });
   } finally { good.close(); }
 });
 

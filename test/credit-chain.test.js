@@ -110,7 +110,7 @@ test('devnet: deploy, link a registered agentId with a wallet signature, post se
     assert.equal(engine.state.credit.outbox.at(-1).note, 'already recorded');
     assert.equal((await engine.creditReport(p.id)).chain.score, rep.chain.score);
     const status = await engine.creditStatus();
-    assert.equal(status.chain.attester, attester.address); assert.equal(status.chain.can_write, true); assert.equal(status.phase, 2); assert.equal(status.borrowing, true);
+    assert.equal(status.chain.attester, attester.address); assert.equal(status.chain.can_write, true); assert.equal(status.phase, 3); assert.equal(status.borrowing, true);
   } finally { d.close(); }
 });
 
@@ -141,7 +141,8 @@ test('devnet: an advance is drawn against a pending settlement, repaid out of it
     const chain0 = base.chain.score;
 
     // before a chain: nothing to borrow against that is not attested
-    await assert.rejects(engine.creditBorrow(p.id, { path: 'stake' }, { key: owner }), (e) => e.code === 'not_implemented');
+    await assert.rejects(engine.creditBorrow(p.id, { path: 'stake' }, { key: owner }), (e) => e.code === 'invalid_input');
+    await assert.rejects(engine.creditBorrow(p.id, { path: 'stake', amount: 10 }, { key: owner }), (e) => e.code === 'not_an_agent', 'a plain provider has no bond to borrow into');
     await assert.rejects(engine.creditBorrow(p.id, { path: 'advance', settlement_id: 'tsk_nope' }, { key: owner }), (e) => e.code === 'not_found');
     await assert.rejects(engine.creditBorrow(p.id, { path: 'advance', settlement_id: 'tsk_1' }, { key: engine.createKey('x') }), (e) => e.code === 'not_owner');
 
@@ -203,4 +204,99 @@ test('devnet: an advance is drawn against a pending settlement, repaid out of it
     const finalPool = await client.poolInfo();
     assert.ok(near(finalPool.reserve_usd, poolBefore.reserve_usd + 0.032, 1e-3), 'the reserve is refilled, plus the recovered loan\'s fee share');
   } finally { d.close(); }
+});
+
+test('devnet: a launched agent borrows stake into its bond and a task budget into escrow; slashes seize borrowed stake, settlements route the budget to the treasury, proceeds repay every loan', { skip: SKIP }, async () => {
+  const d = await devnet();
+  const { createServer } = await import('node:http');
+  const fake = await new Promise((resolve) => { const srv = createServer((req, res) => { let raw = ''; req.on('data', (c) => { raw += c; }); req.on('end', () => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ result: 42 })); }); }); srv.listen(0, '127.0.0.1', () => resolve({ url: `http://127.0.0.1:${srv.address().port}/task`, close: () => srv.close() })); });
+  try {
+    const { engine, record, agentWallet, lender, usdg, pool, agentId } = d;
+    const tx = async (p) => (await p).wait();
+    await tx(usdg.mint(lender.address, 10_000n * U)); await tx(usdg.mint(d.attester.address, 10_000n * U)); await tx(usdg.mint(d.deployer.address, 1_000n * U));
+    await tx(usdg.connect(lender).approve(record.creditPool, d.ethers.MaxUint256)); await tx(pool.connect(lender).deposit(5_000n * U));
+    await tx(usdg.approve(record.creditPool, d.ethers.MaxUint256)); await tx(pool.fundReserve(500n * U));
+    const client = await engine.credit.chainClient();
+
+    // a launched agent with a linked identity and a tier-1 history
+    const owner = engine.createKey('owner');
+    engine.deposit(owner, 100);
+    const a = engine.launchAgent({ name: 'calc', endpoint_url: fake.url, offers: { 'math.eval': { price_ceiling: 20, sla_deadline_ms: 5000 } }, stake: 20, compute: 0 }, owner);
+    const subject = a.provider_id;
+    await engine.linkIdentity(a.id, { agent_id: agentId, signature: await agentWallet.signMessage(linkMessage(subject, agentId)) }, { key: owner });
+    for (let i = 0; i < 50; i++) engine.credit.record('settlement', subject, `hist_${i}`, 20, { payout_at: Date.now() + 86400000 * 10 });
+    await d.flushAll();
+    assert.ok(engine.creditScore(a.id).score >= 449);
+
+    // --- stake: $100 borrowed into the bond, held by the pool ---
+    const size = await engine.creditQuoteLoan(a.id, 100, 10);
+    assert.equal(size.fee_usd, 1); assert.ok(Math.abs(size.room_usd - 500) < 0.01, String(size.room_usd));
+    const sl = await engine.creditBorrow(a.id, { path: 'stake', amount: 100, term_days: 10 }, { key: owner });
+    assert.equal(sl.chain.kind, 'stake'); assert.equal(sl.chain.held_usd, 100); assert.equal(sl.bond_usdt, 120);
+    let ag = engine.getAgent(a.id);
+    assert.equal(ag.bond.stake_usdt, 120); assert.equal(ag.bond.borrowed_usdt, 100); assert.equal(ag.bond.capacity_usdt, 60);
+    assert.equal((await client.poolInfo()).stake_held_usd, 100);
+    assert.equal(Number(await usdg.balanceOf(agentWallet.address)), 0, 'nothing reached the wallet');
+    // only own stake can be unstaked
+    engine.requestUnbond(a.id, 50, { key: owner });
+    assert.equal(engine.getAgent(a.id).unbonding.usdt, 20, 'capped at the agent\'s own $20');
+
+    // a slash of $30 takes the own $20 first, then $10 of borrowed stake, seized on-chain to the treasury
+    const treasuryBefore = Number(await usdg.balanceOf(d.attester.address)) / 1e6;
+    engine.credit.record('slash', subject, 'slash_test', 0); // (the credit event itself)
+    const agentRec = engine.state.agents[a.id];
+    engine.state.launchpad.pending_slashes.push({ id: 'slh_test', agent_id: a.id, provider_id: subject, task_id: null, reason: 'test', price_usdt: 15, multiple: 2, amount_usdt: 30, capped: false, queued_at: Date.now(), execute_after: Date.now() - 1, status: 'pending' });
+    engine.processPendingSlashes();
+    await d.flushAll();
+    ag = engine.getAgent(a.id);
+    assert.equal(ag.bond.stake_usdt, 90); assert.equal(ag.bond.borrowed_usdt, 90);
+    const slashed = (await client.loan(sl.loan_id));
+    assert.equal(slashed.held_usd, 90); assert.equal(slashed.remaining_principal_usd, 100, 'the agent still owes what it lost');
+    assert.ok(Math.abs(Number(await usdg.balanceOf(d.attester.address)) / 1e6 - treasuryBefore - 10) < 1e-6, 'the seized stake went to the treasury');
+    assert.equal(engine.state.credit.actions.filter((x) => x.status === 'done').length, 1);
+
+    // repaying returns the held $90 (bond shrinks), then $10 + the $1 fee in cash
+    const r = await engine.creditRepay(a.id, { loan_id: sl.loan_id }, { key: owner });
+    assert.equal(r.released_usd, 90); assert.ok(near(r.paid_usd, 11)); assert.equal(r.loan.status, 'repaid');
+    ag = engine.getAgent(a.id);
+    assert.equal(ag.bond.borrowed_usdt, 0); assert.equal(ag.bond.stake_usdt, 0);
+    assert.equal((await client.poolInfo()).stake_held_usd, 0);
+
+    // --- task escrow: the agent posts a task with a borrowed budget ---
+    engine.deposit(owner, 100);
+    engine.state.keys[owner.id].tier = owner.tier = 'scale'; // the sandbox tier may lock only $5 a day
+    engine.addStake(a.id, 50, { key: owner }); // the agent is also the only provider: it serves its own task
+    const ownerBefore = engine.balance(owner).balance;
+    const el = await engine.creditBorrow(a.id, { path: 'task_escrow', term_days: 5, task: { capability: 'math.eval', input: { expression: '6 * 7' }, acceptance: { checks: [{ assert: 'equals', path: 'result', value: 42 }] }, budget: 20, deadline_ms: 5000 } }, { key: owner });
+    assert.ok(el.principal_usd >= 5, 'a loan at least the pool minimum');
+    assert.equal(el.path, 'task_escrow'); assert.equal(el.chain.kind, 'task_escrow'); assert.ok(el.task.id);
+    assert.equal(el.principal_usd, el.task.quote.price, 'the loan is exactly the committed price');
+    assert.equal(el.chain.held_usd, el.principal_usd);
+    assert.equal(el.task.escrow.locked, el.principal_usd, 'the task locked exactly the loan');
+    const hist = engine.state.accounts[owner.id].history;
+    const credited = hist.findIndex((h) => h.kind === 'credit_escrow_loan' && h.amount === el.principal_usd);
+    assert.ok(credited >= 0 && hist[credited + 1]?.kind === 'lock' && hist[credited + 1].amount === el.principal_usd, 'credited and locked back to back: never spendable on anything else');
+    void ownerBefore;
+    assert.deepEqual(engine.state.tasks[el.task.id].credit, { loan_id: el.loan_id, ref: el.ref, principal_usd: el.principal_usd });
+    const treasury2 = Number(await usdg.balanceOf(d.attester.address)) / 1e6;
+    // it settles: the pool sends the held budget to the treasury; the loan is still owed
+    const t0 = Date.now();
+    while (Date.now() - t0 < 6000 && !['settled', 'refunded'].includes(engine.state.tasks[el.task.id].status)) await new Promise((r2) => setTimeout(r2, 20));
+    assert.equal(engine.state.tasks[el.task.id].status, 'settled');
+    await d.flushAll();
+    assert.ok(Math.abs(Number(await usdg.balanceOf(d.attester.address)) / 1e6 - treasury2 - el.principal_usd) < 1e-6, 'the task budget reached the treasury');
+    const after = await client.loan(el.loan_id);
+    assert.equal(after.held_usd, 0); assert.equal(after.status, 'active'); assert.ok(near(after.owed_usd, el.principal_usd + el.fee_usd));
+    // the settlement's own proceeds (the agent served its own task) repay it before the agent is paid
+    const settled = engine.state.tasks[el.task.id];
+    const paid = await engine.creditPayout(settled.id, { key: owner });
+    assert.ok(near(paid.repaid_usd, Math.min(paid.amount_usd, after.owed_usd)), 'the proceeds went to the escrow loan first');
+    assert.ok(paid.amount_usd < after.owed_usd ? paid.forwarded_usd === 0 : true, 'nothing reaches the agent while the loan is owed');
+    if ((await client.loan(el.loan_id)).status !== 'repaid') await engine.creditRepay(a.id, { loan_id: el.loan_id }, { key: owner });
+    assert.equal((await client.loan(el.loan_id)).status, 'repaid');
+    const rep = await engine.creditReport(a.id);
+    assert.equal(rep.inputs.loans_repaid, 2, 'the stake loan and the escrow loan'); assert.equal(rep.inputs.loans_repaid_on_time, 2);
+    const ls = await engine.creditLoans(a.id);
+    assert.equal(ls.loans.length, 2); assert.equal(ls.exposure_usd, 0);
+  } finally { fake.close(); d.close(); }
 });

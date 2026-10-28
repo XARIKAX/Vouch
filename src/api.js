@@ -385,6 +385,11 @@ export function createApi(engine, { buckets } = {}) {
       const rl = limit(keyOrAnon(req));
       send(res, 200, await engine.creditQuote(who, ref), rl);
     }],
+    ['GET', /^\/v1\/credit\/size\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
+      const rl = limit(keyOrAnon(req));
+      const q = new URL(req.url, 'http://x').searchParams;
+      send(res, 200, await engine.creditQuoteLoan(who, Number(q.get('amount')), Number(q.get('term_days') ?? 7)), rl);
+    }],
     ['POST', /^\/v1\/credit\/borrow\/([A-Za-z0-9_]+)$/, async (req, res, [who]) => {
       const actor = agentActor(req);
       const rl = limit(actor.key ?? anonKey(req));

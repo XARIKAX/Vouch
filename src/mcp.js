@@ -194,8 +194,8 @@ const TOOLS = [
   },
   {
     name: 'vouch_borrow',
-    description: 'Borrow working capital on a named path (owner key only). "advance": draw up to the advance share of one of your verified settlements whose payout is still pending; the cash goes to your ERC-8004 identity wallet and the loan is repaid out of that settlement before you see the rest. Paths "task_escrow" and "stake" are not open yet.',
-    inputSchema: { type: 'object', required: ['agent_id', 'path'], properties: { agent_id: { type: 'string' }, path: { type: 'string', enum: ['advance', 'task_escrow', 'stake'] }, settlement_id: { type: 'string', description: 'The settled task id (advance path)' } } },
+    description: 'Borrow working capital on a named path (owner key only). "advance": draw up to the advance share of one of your verified settlements whose payout is still pending; the cash goes to your ERC-8004 identity wallet and that settlement repays it first. "task_escrow": borrow exactly the budget of a task you post now; the pool holds the money earmarked for it and your next settlements repay it. "stake": borrow stake for your agent; it stays in the pool as collateral, slashes seize from it, repaying releases it. Every loan is repaid out of your settlement proceeds before you see them.',
+    inputSchema: { type: 'object', required: ['agent_id', 'path'], properties: { agent_id: { type: 'string' }, path: { type: 'string', enum: ['advance', 'task_escrow', 'stake'] }, settlement_id: { type: 'string', description: 'advance: the settled task id' }, task: { type: 'object', description: 'task_escrow: the task to post (capability, input, acceptance, budget, deadline_ms); no retry or consensus' }, amount: { type: 'number', description: 'stake: USD to borrow' }, term_days: { type: 'integer', description: 'task_escrow and stake: 1 to 30 (default 7)' } } },
   },
   {
     name: 'vouch_repay',

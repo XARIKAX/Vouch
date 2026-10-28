@@ -6,7 +6,9 @@
 //   vouch credit line   <id>                 how much the score sizes, and why
 //   vouch credit loans  <id>                 the agent's loans on the pool
 //   vouch credit pool                        the lender pool: cash, outstanding, reserve, fees
-//   vouch credit borrow <id> <settlement>    draw an advance against a pending settlement (VOUCH_KEY = owner key)
+//   vouch credit borrow <id> advance <settlement>        draw an advance against a pending settlement (VOUCH_KEY = owner key)
+//   vouch credit borrow <id> stake <amount> [days]       borrow stake into the agent's bond
+//   vouch credit borrow <id> escrow <task.json> [days]   post a task with a borrowed budget
 //   vouch credit repay  <id> <loan> [amount] repay a loan from your Vouch balance (owner key)
 //   vouch credit payout <settlement>         route a settlement's proceeds through the pool (owner key)
 //   vouch credit doctor                      is the credit layer configured and reachable?
@@ -20,7 +22,7 @@ const KEY = process.env.VOUCH_KEY || '';
 const [, , group, cmd, ...rest] = process.argv;
 
 const usage = () => {
-  console.log(`vouch credit score|report|line|loans <id>\nvouch credit pool\nvouch credit borrow <id> <settlement_id>\nvouch credit repay <id> <loan_id> [amount]\nvouch credit payout <settlement_id>\nvouch credit doctor\n\n  <id> is a provider id (prv_…), an agent id (agt_…) or a linked ERC-8004 agentId.\n  VOUCH_URL=${BASE}${KEY ? '' : '  (set VOUCH_KEY for borrow, repay and payout)'}`);
+  console.log(`vouch credit score|report|line|loans <id>\nvouch credit pool\nvouch credit borrow <id> advance <settlement_id> | stake <amount> [days] | escrow <task.json> [days]\nvouch credit repay <id> <loan_id> [amount]\nvouch credit payout <settlement_id>\nvouch credit doctor\n\n  <id> is a provider id (prv_…), an agent id (agt_…) or a linked ERC-8004 agentId.\n  VOUCH_URL=${BASE}${KEY ? '' : '  (set VOUCH_KEY for borrow, repay and payout)'}`);
   process.exit(1);
 };
 
@@ -102,12 +104,27 @@ async function pool() {
   line('loan size', `${usd(p.loan_usd.min)} to ${usd(p.loan_usd.max)} · advance ${p.advance_bps / 100}% · grace ${p.grace_seconds / 86400}d`);
   line('treasury USDG', usd(p.treasury_usdg_usd));
 }
-async function borrow(id, settlement) {
-  const q = await api('GET', `/v1/credit/quote/${encodeURIComponent(id)}/${encodeURIComponent(settlement)}`);
-  console.log(`quote: ${usd(q.principal_usd)} for ${q.term_days}d at ${q.fee_bps_30d} bps/30d → fee ${usd(q.fee_usd)} (score ${q.score}, line ${usd(q.credit_line_usd)})`);
-  const r = await api('POST', `/v1/credit/borrow/${encodeURIComponent(id)}`, { path: 'advance', settlement_id: settlement });
-  console.log(`advance drawn: loan ${r.loan_id}`);
-  line('principal', usd(r.principal_usd)); line('fee', usd(r.fee_usd)); line('paid to', r.borrower); line('due', new Date(r.due_at * 1000).toISOString().slice(0, 16)); line('tx', r.tx);
+async function borrow(id, path, arg, term) {
+  if (path === 'advance') {
+    const q = await api('GET', `/v1/credit/quote/${encodeURIComponent(id)}/${encodeURIComponent(arg)}`);
+    console.log(`quote: ${usd(q.principal_usd)} for ${q.term_days}d at ${q.fee_bps_30d} bps/30d → fee ${usd(q.fee_usd)} (score ${q.score}, line ${usd(q.credit_line_usd)})`);
+    const r = await api('POST', `/v1/credit/borrow/${encodeURIComponent(id)}`, { path: 'advance', settlement_id: arg });
+    console.log(`advance drawn: loan ${r.loan_id}`);
+    line('principal', usd(r.principal_usd)); line('fee', usd(r.fee_usd)); line('paid to', r.borrower); line('due', new Date(r.due_at * 1000).toISOString().slice(0, 16)); line('tx', r.tx);
+  } else if (path === 'stake') {
+    const amount = Number(arg), term_days = Number(term || 7);
+    const q = await api('GET', `/v1/credit/size/${encodeURIComponent(id)}?amount=${amount}&term_days=${term_days}`);
+    console.log(`quote: ${usd(amount)} of stake for ${term_days}d at ${q.fee_bps_30d} bps/30d → fee ${usd(q.fee_usd)} (room ${usd(q.room_usd)})`);
+    const r = await api('POST', `/v1/credit/borrow/${encodeURIComponent(id)}`, { path: 'stake', amount, term_days });
+    console.log(`stake borrowed: loan ${r.loan_id}`);
+    line('bond now', usd(r.bond_usdt)); line('held by the pool', usd(r.principal_usd)); line('fee', usd(r.fee_usd)); line('due', new Date(r.due_at * 1000).toISOString().slice(0, 16)); line('tx', r.tx);
+  } else if (path === 'escrow') {
+    const fs = await import('node:fs');
+    const task = JSON.parse(fs.readFileSync(arg, 'utf8')), term_days = Number(term || 7);
+    const r = await api('POST', `/v1/credit/borrow/${encodeURIComponent(id)}`, { path: 'task_escrow', task, term_days });
+    console.log(`task ${r.task.id} posted with a borrowed budget: loan ${r.loan_id}`);
+    line('committed price', usd(r.task.quote.price)); line('held by the pool', usd(r.principal_usd)); line('fee', usd(r.fee_usd)); line('due', new Date(r.due_at * 1000).toISOString().slice(0, 16)); line('tx', r.tx);
+  } else usage();
 }
 async function repay(id, loan, amount) {
   const r = await api('POST', `/v1/credit/repay/${encodeURIComponent(id)}`, { loan_id: loan, ...(amount ? { amount: Number(amount) } : {}) });
@@ -150,7 +167,7 @@ async function doctor() {
     else if (cmd === 'line' && id) await creditLine(id);
     else if (cmd === 'loans' && id) await loans(id);
     else if (cmd === 'pool') await pool();
-    else if (cmd === 'borrow' && id && rest[1]) await borrow(id, rest[1]);
+    else if (cmd === 'borrow' && id && rest[1]) await borrow(id, rest[2] !== undefined ? rest[1] : 'advance', rest[2] !== undefined ? rest[2] : rest[1], rest[3]);
     else if (cmd === 'repay' && id && rest[1]) await repay(id, rest[1], rest[2]);
     else if (cmd === 'payout' && id) await payout(id);
     else if (cmd === 'doctor') await doctor();

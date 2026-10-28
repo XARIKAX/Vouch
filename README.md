@@ -251,6 +251,7 @@ Two hosted modes: **server mode** (the Dockerfile: Railway, Fly.io, any Docker h
 | `VOUCH_CREDIT_RPC` | the record's `rpc` | Override the credit chain's JSON-RPC endpoint |
 | `VOUCH_CREDIT_ATTESTER_KEY` | unset (read-only) | The attester's secp256k1 private key; set, the engine posts credit events on-chain and, as the treasury, pays settlement proceeds and repayments to the pool in USDG. Keep it in the host's secret store only |
 | `VOUCH_CREDIT_DEPLOYMENTS` | `contracts/deployments` | Directory of deployment records |
+| `VOUCH_CREDIT_STAKE_DISCOUNT` | `{"2":0.1,"3":0.25}` | Fraction of the price a quote need not reserve, by credit tier |
 | `VOUCH_FAST` | off | Compress provider latencies (dev/test) |
 
 ## Vouch Credit
@@ -276,15 +277,26 @@ The `CreditPool` is an open USDG pool: lenders deposit for pro-rata shares, ever
 |---|---|
 | `GET /v1/credit/pool` | Lender assets, cash, outstanding, reserve, protocol fees, split, limits (public) |
 | `GET /v1/credit/loans/{id}` · `GET /v1/credit/settlements/{ref}` · `GET /v1/credit/quote/{id}/{ref}` | The agent's loans; an attested settlement; what an advance against it would cost now (public) |
-| `POST /v1/credit/borrow/{id}` `{ path: "advance", settlement_id }` | Draw the advance (owner key). `task_escrow` and `stake` answer `501` until phase 3 |
+| `POST /v1/credit/borrow/{id}` `{ path, … }` | Borrow (owner key): `advance` with `settlement_id`; `task_escrow` with `task` and `term_days`; `stake` with `amount` and `term_days` |
 | `POST /v1/credit/payout/{ref}` | Route the settlement's proceeds through the pool (owner key): debited from the owner's Vouch balance, paid by the treasury in USDG, loan repaid first |
 | `POST /v1/credit/repay/{id}` `{ loan_id, amount? }` | Repay early, in part or in full, from the owner's Vouch balance |
 
-MCP: `vouch_borrow`, `vouch_repay`, `vouch_credit_loans`. CLI: `vouch credit pool|loans|borrow|repay|payout`. `npm run quickstart` starts a devnet, deploys everything and walks one agent through register → verified work → score → advance → payout → auto-repay → a higher score, printing each step (`--keep` leaves it up for the CLI).
+MCP: `vouch_borrow`, `vouch_repay`, `vouch_credit_loans`. CLI: `vouch credit pool|loans|payout|repay` and `vouch credit borrow <id> advance <settlement> | stake <amount> [days] | escrow <task.json> [days]`. `npm run quickstart` starts a devnet, deploys everything and walks one agent through register → verified work → score → advance → payout → auto-repay → a higher score, printing each step (`--keep` leaves it up for the CLI).
 
 The invariant suite (`contracts/test/CreditPoolInvariants.t.sol`, handler-based) holds across random lifecycles: solvency, lender principal untouched while the reserve covers a default across multiple defaults per agent and across agents (the multi-default accounting Priors shipped broken), every loan tied to an attested settlement and never above the advance share, repayment applied before anything reaches the agent, and exposure equal to the sum of each agent's active principal. Lenders can still lose principal once the reserve is empty; that is the documented limit, not a claim of safety.
 
-Phase 3 (escrow- and stake-funding loans, credit-line growth from trailing volume, stake discounts by tier) and phase 4 (the mainnet deploy run and the docs page) are not built yet. Nothing is deployed on Robinhood Chain.
+### Escrow and stake loans (phase 3)
+
+Two more paths, on which the principal **never leaves the pool**:
+
+- **Task escrow** (`path: "task_escrow"`, with the `task` to post and `term_days`): the engine previews the task's quote with a pinned id, the pool holds exactly the committed price earmarked for that task, and the engine credits the owner key and locks the same amount into the task in one breath, so the borrowed budget is never spendable on anything else. When the task settles the pool sends the held budget to the treasury (which paid the provider in the ledger); when it is refunded the budget goes straight back to the lenders as principal repaid. The loan is repaid out of the agent's next settlement proceeds, or by hand.
+- **Stake** (`path: "stake"`, with `amount` and `term_days`): the pool holds the principal as the agent's borrowed collateral and the engine mirrors it into the bond, so capacity grows. A slash takes the agent's own stake first; what reaches the borrowed part is seized on-chain to the treasury, and the agent still owes it. Only own stake can be unstaked; repaying a stake loan releases the held stake back to the lenders and pays the fee in cash.
+
+Settlement proceeds routed through the pool repay the loan tied to that settlement first, then every other open loan of the agent, oldest first. Held principal is never paid for twice: `owedOn` is cash owed, principal not held plus the unpaid fee. A default on a loan that still holds its principal loses the lenders nothing but the fee. `GET /v1/credit/size/{id}?amount=&term_days=` prices a sized loan.
+
+**Stake discount by tier.** The stake a quote reserves is the price less the provider's credit-tier discount (`VOUCH_CREDIT_STAKE_DISCOUNT`, default tiers 2 and 3 at 10% and 25%), so a long record of verified, repaid work puts less at risk per quote.
+
+Phase 4 (the mainnet deploy run and the docs page) is not done. Nothing is deployed on Robinhood Chain.
 
 ## Status
 

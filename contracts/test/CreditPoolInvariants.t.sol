@@ -33,6 +33,8 @@ contract PoolHandler is Test {
     uint256 public ghost_uncoveredLoss;   // principal lost by lenders because the reserve was empty
     bool public ghost_orderingViolated;   // a payout reached the agent before the loan was repaid
     bool public ghost_reserveViolated;    // lender assets moved on a default the reserve could cover
+    mapping(address => uint256) public ghost_walletCredits; // USDG that legitimately reached an agent wallet: advances and forwarded proceeds
+    uint256 public ghost_treasuryCredits;  // USDG that legitimately reached the attester: settled escrow and slashed stake
     uint256 public ghost_defaults;
     uint256 public ghost_calls;
 
@@ -125,7 +127,11 @@ contract PoolHandler is Test {
             (uint256 agentId, , uint64 payoutAt, , bytes32 loanId, bool paid, bool voided) = pool.settlements(sid);
             if (paid || voided || loanId != bytes32(0) || payoutAt <= block.timestamp) continue;
             vm.prank(attester);
-            try pool.advance(agentId, sid) returns (bytes32 newLoan) { loanIds.push(newLoan); } catch {}
+            try pool.advance(agentId, sid) returns (bytes32 newLoan) {
+                loanIds.push(newLoan);
+                (, , , uint128 principal, , , , , , , , , , , ) = pool.loans(newLoan);
+                ghost_walletCredits[identity.ownerOf(agentId)] += principal;
+            } catch {}
             return;
         }
     }
@@ -142,7 +148,8 @@ contract PoolHandler is Test {
         vm.prank(attester);
         try pool.settleProceeds(sid) returns (uint128 repaid, uint128 forwarded) {
             uint128 expectRepaid = owedBefore < amount ? owedBefore : amount;
-            if (repaid != expectRepaid || forwarded != amount - repaid || usdg.balanceOf(wallet) - walletBefore != forwarded) ghost_orderingViolated = true;
+            if (repaid < expectRepaid || forwarded != amount - repaid || usdg.balanceOf(wallet) - walletBefore != forwarded) ghost_orderingViolated = true;
+            ghost_walletCredits[wallet] += forwarded;
         } catch {}
     }
 
@@ -182,6 +189,7 @@ contract PoolHandler is Test {
         }
         if (loanId == bytes32(0)) return;
         (, , , , uint128 remaining, , , , , , , , , , ) = pool.loans(loanId);
+        remaining -= pool.held(loanId); // held principal comes back; only the rest is at risk
         uint256 reserveBefore = pool.reserve();
         uint256 assetsBefore = pool.lenderAssets();
         try pool.markDefault(loanId) {
@@ -195,6 +203,59 @@ contract PoolHandler is Test {
             }
         } catch {}
     }
+
+    function fundEscrow(uint256 seed, uint256 amount, uint256 termDays) external {
+        ghost_calls++;
+        uint256 agentId = _agent(seed);
+        bytes32 ref = keccak256(abi.encode("task", ghost_calls));
+        vm.prank(attester);
+        try pool.fundTaskEscrow(agentId, ref, uint128(bound(amount, 5 * USDG, 400 * USDG)), uint16(bound(termDays, 1, 30))) returns (bytes32 loanId) { loanIds.push(loanId); taskRefs.push(ref); } catch {}
+    }
+
+    function settleEscrow(uint256 idx) external {
+        ghost_calls++;
+        if (taskRefs.length == 0) return;
+        bytes32 ref = taskRefs[idx % taskRefs.length];
+        uint256 before = usdg.balanceOf(attester);
+        vm.prank(attester);
+        try pool.settleTaskEscrow(ref) { ghost_treasuryCredits += usdg.balanceOf(attester) - before; } catch {}
+    }
+
+    function refundEscrow(uint256 idx) external {
+        ghost_calls++;
+        if (taskRefs.length == 0) return;
+        vm.prank(attester);
+        try pool.refundTaskEscrow(taskRefs[idx % taskRefs.length]) {} catch {}
+    }
+
+    function fundStake(uint256 seed, uint256 amount, uint256 termDays) external {
+        ghost_calls++;
+        vm.prank(attester);
+        try pool.fundStake(_agent(seed), uint128(bound(amount, 5 * USDG, 400 * USDG)), uint16(bound(termDays, 1, 30))) returns (bytes32 loanId) { loanIds.push(loanId); } catch {}
+    }
+
+    function slashStake(uint256 idx, uint256 amount) external {
+        ghost_calls++;
+        if (loanIds.length == 0) return;
+        bytes32 loanId = loanIds[idx % loanIds.length];
+        uint128 h = pool.held(loanId);
+        if (h == 0) return;
+        uint256 before = usdg.balanceOf(attester);
+        vm.prank(attester);
+        try pool.slashHeldStake(loanId, uint128(bound(amount, 1, h))) { ghost_treasuryCredits += usdg.balanceOf(attester) - before; } catch {}
+    }
+
+    function releaseStake(uint256 idx, uint256 amount) external {
+        ghost_calls++;
+        if (loanIds.length == 0) return;
+        bytes32 loanId = loanIds[idx % loanIds.length];
+        uint128 h = pool.held(loanId);
+        if (h == 0) return;
+        vm.prank(attester);
+        try pool.releaseStake(loanId, uint128(bound(amount, 1, h))) {} catch {}
+    }
+
+    bytes32[] public taskRefs;
 
     function _owedIfOpen(bytes32 loanId) internal view returns (uint128) {
         (, , CreditPool.Status st, , , , , , , , , , , , ) = pool.loans(loanId);
@@ -237,7 +298,35 @@ contract CreditPoolInvariants is Test {
 
     /// Solvency: every USDG the pool holds is accounted to lenders, the reserve or the protocol.
     function invariant_solvent() public view {
-        assertEq(usdg.balanceOf(address(pool)), pool.lenderCash() + pool.reserve() + pool.protocolFees());
+        assertEq(usdg.balanceOf(address(pool)), pool.lenderCash() + pool.reserve() + pool.protocolFees() + pool.escrowHeld() + pool.stakeHeld());
+    }
+
+    /// Held principal: every escrow/stake loan holds at most its principal, and the buckets are their sums.
+    function invariant_heldBuckets() public view {
+        uint256 n = handler.loanCount();
+        uint256 escrow;
+        uint256 stake;
+        for (uint256 i = 0; i < n; i++) {
+            bytes32 loanId = handler.loanIds(i);
+            (, CreditPool.Kind kind, , uint128 principal, , , , , , , , , , , ) = pool.loans(loanId);
+            uint128 h = pool.held(loanId);
+            assertLe(h, principal, "held above principal");
+            if (kind == CreditPool.Kind.TaskEscrow) escrow += h;
+            else if (kind == CreditPool.Kind.Stake) stake += h;
+            else assertEq(h, 0, "an advance holds nothing");
+        }
+        assertEq(pool.escrowHeld(), escrow);
+        assertEq(pool.stakeHeld(), stake);
+    }
+
+    /// Money reaches an agent wallet only as an advance or as forwarded proceeds, and reaches
+    /// the treasury only as a settled task budget or slashed stake. Nothing else ever leaves on
+    /// a loan path. (Wallets and the treasury's own spending are accounted by the handler.)
+    function invariant_noFreeWalletDisbursement() public view {
+        for (uint256 j = 0; j < handler.agentCount(); j++) {
+            address w = identity.ownerOf(handler.agents(j));
+            assertEq(usdg.balanceOf(w), handler.ghost_walletCredits(w), "an agent wallet holds USDG it was not paid on a lawful path");
+        }
     }
 
     /// Lenders never lose principal while the reserve covers a default, across any number of
@@ -252,19 +341,25 @@ contract CreditPoolInvariants is Test {
         }
     }
 
-    /// No loan ever leaves on a path other than an advance against an attested pending
-    /// settlement, and never for more than the advance share of it.
+    /// Every loan is on a lawful path: an advance is tied to an attested pending settlement,
+    /// never above the advance share, paid to the identity owner; an escrow loan is tied to a
+    /// task ref; a stake loan is tied to nothing and nobody was paid.
     function invariant_disbursementPaths() public view {
         uint256 n = handler.loanCount();
         for (uint256 i = 0; i < n; i++) {
             bytes32 loanId = handler.loanIds(i);
             (uint256 agentId, CreditPool.Kind kind, , uint128 principal, , , , , , , , bytes32 sid, address borrower, , ) = pool.loans(loanId);
-            assertEq(uint8(kind), uint8(CreditPool.Kind.Advance));
-            (uint256 sAgent, uint128 amount, , uint64 attestedAt, bytes32 sLoan, , ) = pool.settlements(sid);
-            assertTrue(attestedAt != 0, "loan without an attested settlement");
-            assertEq(sAgent, agentId); assertEq(sLoan, loanId);
-            assertLe(principal, (uint256(amount) * pool.advanceBps()) / 10_000, "advance above the settlement share");
-            assertEq(borrower, identity.ownerOf(agentId), "advance paid to someone other than the identity owner");
+            assertEq(borrower, identity.ownerOf(agentId), "borrower is not the identity owner");
+            if (kind == CreditPool.Kind.Advance) {
+                (uint256 sAgent, uint128 amount, , uint64 attestedAt, bytes32 sLoan, , ) = pool.settlements(sid);
+                assertTrue(attestedAt != 0, "advance without an attested settlement");
+                assertEq(sAgent, agentId); assertEq(sLoan, loanId);
+                assertLe(principal, (uint256(amount) * pool.advanceBps()) / 10_000, "advance above the settlement share");
+            } else if (kind == CreditPool.Kind.TaskEscrow) {
+                assertEq(pool.escrowLoan(sid), loanId, "escrow loan not tied to its task");
+            } else {
+                assertEq(sid, bytes32(0));
+            }
         }
     }
 
